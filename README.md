@@ -1,4 +1,4 @@
-# Tools for analyzing PA Department of Education PDE public data
+# Tools for analyzing PA Department of Education (PDE) public data
 
 We will begin with a collection of tools to download the PDE Data and 
 organize it in a useful format for analysis. Currently much of this 
