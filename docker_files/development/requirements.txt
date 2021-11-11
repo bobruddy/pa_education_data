@@ -1,2 +1,3 @@
 # requirements with no version requirements
 openpyxl
+plotly
