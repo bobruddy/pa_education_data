@@ -1,5 +1,5 @@
 # start with this baseline
-FROM alpine:latest
+FROM alpine:edge
 
 # upgrade pip3 and install requirements
 RUN mkdir build
