@@ -5,7 +5,7 @@ pipeline {
 		stage('Build') {
 			steps {
 				sh 'docker build -t pa_education \
-					-f docker_files/development/Dockerfile docker_files/development' 
+					-f docker_files/production/Dockerfile docker_files/production' 
 			}
 		}
 		stage('Test') {
