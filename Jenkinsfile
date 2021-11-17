@@ -4,7 +4,8 @@ pipeline {
 	stages {
 		stage('Build') {
 			steps {
-				echo 'Your building steps...'
+				sh 'docker build -t pa_education \
+					-f docker_files/development/Dockerfile .' 
 			}
 		}
 		stage('Test') {
