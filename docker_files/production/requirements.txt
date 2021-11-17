@@ -1,0 +1,6 @@
+# requirements with no version requirements
+openpyxl
+plotly
+runipy
+numpy
+pandas
