@@ -3,9 +3,11 @@ FROM jupyter/scipy-notebook
 
 # upgrade pip3 and install requirements
 RUN mkdir build
-COPY . build/
+#COPY . build/
+COPY requirements.txt .
 RUN pip3 -q install pip --upgrade
-RUN pip3 install -r build/requirements.txt
+#RUN pip3 install -r build/requirements.txt
+RUN pip3 install -r requirements.txt
 
 # run jupyter
 WORKDIR /home/jovyan/work
