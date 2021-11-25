@@ -1,6 +1,9 @@
 # start with this baseline
 FROM jupyter/scipy-notebook
 
+EXPOSE 8080
+EXPOSE 8050
+
 # upgrade pip3 and install requirements
 RUN mkdir build
 COPY . build/
