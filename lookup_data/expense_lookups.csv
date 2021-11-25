@@ -5,7 +5,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 1100-400,Instruction,Regular Programs - Elementary / Secondary,Purchased Property Services
 1100-500,Instruction,Regular Programs - Elementary / Secondary,Other Purchased Services
 1100-600,Instruction,Regular Programs - Elementary / Secondary,Supplies
-1100-700,Instruction,Regular Programs - Elementary / Secondary,unknown (700)
+1100-700,Instruction,Regular Programs - Elementary / Secondary,Property
 1100-800,Instruction,Regular Programs - Elementary / Secondary,Other Objects
 1200-100,Instruction,Special Programs - Elementary / Secondary,Personnel Services - Salaries
 1200-200,Instruction,Special Programs - Elementary / Secondary,Personnel Services - Employee Benefits
@@ -13,7 +13,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 1200-400,Instruction,Special Programs - Elementary / Secondary,Purchased Property Services
 1200-500,Instruction,Special Programs - Elementary / Secondary,Other Purchased Services
 1200-600,Instruction,Special Programs - Elementary / Secondary,Supplies
-1200-700,Instruction,Special Programs - Elementary / Secondary,unknown (700)
+1200-700,Instruction,Special Programs - Elementary / Secondary,Property
 1200-800,Instruction,Special Programs - Elementary / Secondary,Other Objects
 1300-100,Instruction,Vocational Education,Personnel Services - Salaries
 1300-200,Instruction,Vocational Education,Personnel Services - Employee Benefits
@@ -21,7 +21,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 1300-400,Instruction,Vocational Education,Purchased Property Services
 1300-500,Instruction,Vocational Education,Other Purchased Services
 1300-600,Instruction,Vocational Education,Supplies
-1300-700,Instruction,Vocational Education,unknown (700)
+1300-700,Instruction,Vocational Education,Property
 1300-800,Instruction,Vocational Education,Other Objects
 1400-100,Instruction,Other Instructional Programs - Elementary / Secondary,Personnel Services - Salaries
 1400-200,Instruction,Other Instructional Programs - Elementary / Secondary,Personnel Services - Employee Benefits
@@ -29,7 +29,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 1400-400,Instruction,Other Instructional Programs - Elementary / Secondary,Purchased Property Services
 1400-500,Instruction,Other Instructional Programs - Elementary / Secondary,Other Purchased Services
 1400-600,Instruction,Other Instructional Programs - Elementary / Secondary,Supplies
-1400-700,Instruction,Other Instructional Programs - Elementary / Secondary,unknown (700)
+1400-700,Instruction,Other Instructional Programs - Elementary / Secondary,Property
 1400-800,Instruction,Other Instructional Programs - Elementary / Secondary,Other Objects
 1500-100,Instruction,Nonpublic School Programs,Personnel Services - Salaries
 1500-200,Instruction,Nonpublic School Programs,Personnel Services - Employee Benefits
@@ -37,33 +37,33 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 1500-400,Instruction,Nonpublic School Programs,Purchased Property Services
 1500-500,Instruction,Nonpublic School Programs,Other Purchased Services
 1500-600,Instruction,Nonpublic School Programs,Supplies
-1500-700,Instruction,Nonpublic School Programs,unknown (700)
+1500-700,Instruction,Nonpublic School Programs,Property
 1500-800,Instruction,Nonpublic School Programs,Other Objects
-1600-100,Instruction,unknown (1600),Personnel Services - Salaries
-1600-200,Instruction,unknown (1600),Personnel Services - Employee Benefits
-1600-300,Instruction,unknown (1600),Purchased Professional and Technical Services
-1600-400,Instruction,unknown (1600),Purchased Property Services
-1600-500,Instruction,unknown (1600),Other Purchased Services
-1600-600,Instruction,unknown (1600),Supplies
-1600-700,Instruction,unknown (1600),unknown (700)
-1600-800,Instruction,unknown (1600),Other Objects
-1700-500,Instruction,unknown (1700),Other Purchased Services
-1700-600,Instruction,unknown (1700),Supplies
-1800-100,Instruction,unknown(1800),Personnel Services - Salaries
-1800-200,Instruction,unknown(1800),Personnel Services - Employee Benefits
-1800-300,Instruction,unknown(1800),Purchased Professional and Technical Services
-1800-400,Instruction,unknown(1800),Purchased Property Services
-1800-500,Instruction,unknown(1800),Other Purchased Services
-1800-600,Instruction,unknown(1800),Supplies
-1800-700,Instruction,unknown(1800),unknown (700)
-1800-800,Instruction,unknown(1800),Other Objects
+1600-100,Instruction,Adult Edecation Programs,Personnel Services - Salaries
+1600-200,Instruction,Adult Edecation Programs,Personnel Services - Employee Benefits
+1600-300,Instruction,Adult Edecation Programs,Purchased Professional and Technical Services
+1600-400,Instruction,Adult Edecation Programs,Purchased Property Services
+1600-500,Instruction,Adult Edecation Programs,Other Purchased Services
+1600-600,Instruction,Adult Edecation Programs,Supplies
+1600-700,Instruction,Adult Edecation Programs,Property
+1600-800,Instruction,Adult Edecation Programs,Other Objects
+1700-500,Instruction,Higher Education Programs For Secondary Students,Other Purchased Services
+1700-600,Instruction,Higher Education Programs For Secondary Students,Supplies
+1800-100,Instruction,Pre-Kindergarten,Personnel Services - Salaries
+1800-200,Instruction,Pre-Kindergarten,Personnel Services - Employee Benefits
+1800-300,Instruction,Pre-Kindergarten,Purchased Professional and Technical Services
+1800-400,Instruction,Pre-Kindergarten,Purchased Property Services
+1800-500,Instruction,Pre-Kindergarten,Other Purchased Services
+1800-600,Instruction,Pre-Kindergarten,Supplies
+1800-700,Instruction,Pre-Kindergarten,Property
+1800-800,Instruction,Pre-Kindergarten,Other Objects
 2100-100,Support Services,Support Services - Students,Personnel Services - Salaries
 2100-200,Support Services,Support Services - Students,Personnel Services - Employee Benefits
 2100-300,Support Services,Support Services - Students,Purchased Professional and Technical Services
 2100-400,Support Services,Support Services - Students,Purchased Property Services
 2100-500,Support Services,Support Services - Students,Other Purchased Services
 2100-600,Support Services,Support Services - Students,Supplies
-2100-700,Support Services,Support Services - Students,unknown (700)
+2100-700,Support Services,Support Services - Students,Property
 2100-800,Support Services,Support Services - Students,Other Objects
 2200-100,Support Services,Support Services - Instructional Staff,Personnel Services - Salaries
 2200-200,Support Services,Support Services - Instructional Staff,Personnel Services - Employee Benefits
@@ -71,7 +71,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 2200-400,Support Services,Support Services - Instructional Staff,Purchased Property Services
 2200-500,Support Services,Support Services - Instructional Staff,Other Purchased Services
 2200-600,Support Services,Support Services - Instructional Staff,Supplies
-2200-700,Support Services,Support Services - Instructional Staff,unknown (700)
+2200-700,Support Services,Support Services - Instructional Staff,Property
 2200-800,Support Services,Support Services - Instructional Staff,Other Objects
 2300-100,Support Services,Support Services - Administration,Personnel Services - Salaries
 2300-200,Support Services,Support Services - Administration,Personnel Services - Employee Benefits
@@ -79,7 +79,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 2300-400,Support Services,Support Services - Administration,Purchased Property Services
 2300-500,Support Services,Support Services - Administration,Other Purchased Services
 2300-600,Support Services,Support Services - Administration,Supplies
-2300-700,Support Services,Support Services - Administration,unknown (700)
+2300-700,Support Services,Support Services - Administration,Property
 2300-800,Support Services,Support Services - Administration,Other Objects
 2400-100,Support Services,Support Services - Pupil Health,Personnel Services - Salaries
 2400-200,Support Services,Support Services - Pupil Health,Personnel Services - Employee Benefits
@@ -87,7 +87,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 2400-400,Support Services,Support Services - Pupil Health,Purchased Property Services
 2400-500,Support Services,Support Services - Pupil Health,Other Purchased Services
 2400-600,Support Services,Support Services - Pupil Health,Supplies
-2400-700,Support Services,Support Services - Pupil Health,unknown (700)
+2400-700,Support Services,Support Services - Pupil Health,Property
 2400-800,Support Services,Support Services - Pupil Health,Other Objects
 2500-100,Support Services,Support Services - Business,Personnel Services - Salaries
 2500-200,Support Services,Support Services - Business,Personnel Services - Employee Benefits
@@ -95,7 +95,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 2500-400,Support Services,Support Services - Business,Purchased Property Services
 2500-500,Support Services,Support Services - Business,Other Purchased Services
 2500-600,Support Services,Support Services - Business,Supplies
-2500-700,Support Services,Support Services - Business,unknown (700)
+2500-700,Support Services,Support Services - Business,Property
 2500-800,Support Services,Support Services - Business,Other Objects
 2600-100,Support Services,Operation and Maintenance of Plant Services,Personnel Services - Salaries
 2600-200,Support Services,Operation and Maintenance of Plant Services,Personnel Services - Employee Benefits
@@ -103,7 +103,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 2600-400,Support Services,Operation and Maintenance of Plant Services,Purchased Property Services
 2600-500,Support Services,Operation and Maintenance of Plant Services,Other Purchased Services
 2600-600,Support Services,Operation and Maintenance of Plant Services,Supplies
-2600-700,Support Services,Operation and Maintenance of Plant Services,unknown (700)
+2600-700,Support Services,Operation and Maintenance of Plant Services,Property
 2600-800,Support Services,Operation and Maintenance of Plant Services,Other Objects
 2700-100,Support Services,Student Transportation Services,Personnel Services - Salaries
 2700-200,Support Services,Student Transportation Services,Personnel Services - Employee Benefits
@@ -111,7 +111,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 2700-400,Support Services,Student Transportation Services,Purchased Property Services
 2700-500,Support Services,Student Transportation Services,Other Purchased Services
 2700-600,Support Services,Student Transportation Services,Supplies
-2700-700,Support Services,Student Transportation Services,unknown (700)
+2700-700,Support Services,Student Transportation Services,Property
 2700-800,Support Services,Student Transportation Services,Other Objects
 2800-100,Support Services,Support Services - Central,Personnel Services - Salaries
 2800-200,Support Services,Support Services - Central,Personnel Services - Employee Benefits
@@ -119,7 +119,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 2800-400,Support Services,Support Services - Central,Purchased Property Services
 2800-500,Support Services,Support Services - Central,Other Purchased Services
 2800-600,Support Services,Support Services - Central,Supplies
-2800-700,Support Services,Support Services - Central,unknown (700)
+2800-700,Support Services,Support Services - Central,Property
 2800-800,Support Services,Support Services - Central,Other Objects
 2900-100,Support Services,Other Support Services,Personnel Services - Salaries
 2900-200,Support Services,Other Support Services,Personnel Services - Employee Benefits
@@ -127,23 +127,23 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 2900-400,Support Services,Other Support Services,Purchased Property Services
 2900-500,Support Services,Other Support Services,Other Purchased Services
 2900-600,Support Services,Other Support Services,Supplies
-2900-700,Support Services,Other Support Services,unknown (700)
+2900-700,Support Services,Other Support Services,Property
 2900-800,Support Services,Other Support Services,Other Objects
-3100-100,Operation of Non-Instructional Services,unknown (3100),Personnel Services - Salaries
-3100-200,Operation of Non-Instructional Services,unknown (3100),Personnel Services - Employee Benefits
-3100-300,Operation of Non-Instructional Services,unknown (3100),Purchased Professional and Technical Services
-3100-400,Operation of Non-Instructional Services,unknown (3100),Purchased Property Services
-3100-500,Operation of Non-Instructional Services,unknown (3100),Other Purchased Services
-3100-600,Operation of Non-Instructional Services,unknown (3100),Supplies
-3100-700,Operation of Non-Instructional Services,unknown (3100),unknown (700)
-3100-800,Operation of Non-Instructional Services,unknown (3100),Other Objects
+3100-100,Operation of Non-Instructional Services,Food Services,Personnel Services - Salaries
+3100-200,Operation of Non-Instructional Services,Food Services,Personnel Services - Employee Benefits
+3100-300,Operation of Non-Instructional Services,Food Services,Purchased Professional and Technical Services
+3100-400,Operation of Non-Instructional Services,Food Services,Purchased Property Services
+3100-500,Operation of Non-Instructional Services,Food Services,Other Purchased Services
+3100-600,Operation of Non-Instructional Services,Food Services,Supplies
+3100-700,Operation of Non-Instructional Services,Food Services,Property
+3100-800,Operation of Non-Instructional Services,Food Services,Other Objects
 3200-100,Operation of Non-Instructional Services,Student Activities,Personnel Services - Salaries
 3200-200,Operation of Non-Instructional Services,Student Activities,Personnel Services - Employee Benefits
 3200-300,Operation of Non-Instructional Services,Student Activities,Purchased Professional and Technical Services
 3200-400,Operation of Non-Instructional Services,Student Activities,Purchased Property Services
 3200-500,Operation of Non-Instructional Services,Student Activities,Other Purchased Services
 3200-600,Operation of Non-Instructional Services,Student Activities,Supplies
-3200-700,Operation of Non-Instructional Services,Student Activities,unknown (700)
+3200-700,Operation of Non-Instructional Services,Student Activities,Property
 3200-800,Operation of Non-Instructional Services,Student Activities,Other Objects
 3300-100,Operation of Non-Instructional Services,Community Services,Personnel Services - Salaries
 3300-200,Operation of Non-Instructional Services,Community Services,Personnel Services - Employee Benefits
@@ -151,7 +151,7 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 3300-400,Operation of Non-Instructional Services,Community Services,Purchased Property Services
 3300-500,Operation of Non-Instructional Services,Community Services,Other Purchased Services
 3300-600,Operation of Non-Instructional Services,Community Services,Supplies
-3300-700,Operation of Non-Instructional Services,Community Services,unknown (700)
+3300-700,Operation of Non-Instructional Services,Community Services,Property
 3300-800,Operation of Non-Instructional Services,Community Services,Other Objects
 3400-100,Operation of Non-Instructional Services,Scholarships and Awards,Personnel Services - Salaries
 3400-200,Operation of Non-Instructional Services,Scholarships and Awards,Personnel Services - Employee Benefits
@@ -159,19 +159,19 @@ raw_category,expense_category_name_0,expense_category_name_1,expense_category_na
 3400-400,Operation of Non-Instructional Services,Scholarships and Awards,Purchased Property Services
 3400-500,Operation of Non-Instructional Services,Scholarships and Awards,Other Purchased Services
 3400-600,Operation of Non-Instructional Services,Scholarships and Awards,Supplies
-3400-700,Operation of Non-Instructional Services,Scholarships and Awards,unknown (700)
+3400-700,Operation of Non-Instructional Services,Scholarships and Awards,Property
 3400-800,Operation of Non-Instructional Services,Scholarships and Awards,Other Objects
-4000-100,unknown,unknown (4000),Personnel Services - Salaries
-4000-200,unknown,unknown (4000),Personnel Services - Employee Benefits
-4000-300,unknown,unknown (4000),Purchased Professional and Technical Services
-4000-400,unknown,unknown (4000),Purchased Property Services
-4000-500,unknown,unknown (4000),Other Purchased Services
-4000-600,unknown,unknown (4000),Supplies
-4000-700,unknown,unknown (4000),unknown (700)
+4000-100,"Facilities Acquisition, Construction, and Improvement Services","Facilities Acquisition, Construction, and Improvement Services",Personnel Services - Salaries
+4000-200,"Facilities Acquisition, Construction, and Improvement Services","Facilities Acquisition, Construction, and Improvement Services",Personnel Services - Employee Benefits
+4000-300,"Facilities Acquisition, Construction, and Improvement Services","Facilities Acquisition, Construction, and Improvement Services",Purchased Professional and Technical Services
+4000-400,"Facilities Acquisition, Construction, and Improvement Services","Facilities Acquisition, Construction, and Improvement Services",Purchased Property Services
+4000-500,"Facilities Acquisition, Construction, and Improvement Services","Facilities Acquisition, Construction, and Improvement Services",Other Purchased Services
+4000-600,"Facilities Acquisition, Construction, and Improvement Services","Facilities Acquisition, Construction, and Improvement Services",Supplies
+4000-700,"Facilities Acquisition, Construction, and Improvement Services","Facilities Acquisition, Construction, and Improvement Services",Property
 5100-800,Other Expenditures and Financing Uses,Debt Service / Other Expenditures and Financing Uses,Other Objects
 5100-900,Other Expenditures and Financing Uses,Debt Service / Other Expenditures and Financing Uses,Other Uses of Funds
 5200-900,Other Expenditures and Financing Uses,Interfund Transfers - Ou,Other Uses of Funds
-5300-900,Other Expenditures and Financing Uses,unknown (5300),Other Uses of Funds
-5500-800,Other Expenditures and Financing Uses,unknown (5500),Other Objects
-5500-900,Other Expenditures and Financing Uses,unknown (5500),Other Uses of Funds
-5900-800,Other Expenditures and Financing Uses,unknown (5900),Other Objects
+5300-900,Other Expenditures and Financing Uses,Transrers Out To Component Units / Primary Governments,Other Uses of Funds
+5500-800,Other Expenditures and Financing Uses,Special And Extraordinary Items,Other Objects
+5500-900,Other Expenditures and Financing Uses,Special And Extraordinary Items,Other Uses of Funds
+5900-800,Other Expenditures and Financing Uses,Budgetary Reserve,Other Objects
