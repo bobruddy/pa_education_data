@@ -1,4 +1,7 @@
 # requirements with no version requirements
+jupyter
 openpyxl
 plotly
-dash
+runipy
+numpy
+pandas
