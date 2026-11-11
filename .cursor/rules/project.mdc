@@ -1,0 +1,26 @@
+---
+description: Project goals, philosophy, and how agents should work in this repo
+alwaysApply: true
+---
+
+# PA education data — project rules
+
+## What this is
+
+Public PDE files → citeable Parquet tables → LEA browser at https://pdenumbers.org. Read `AGENTS.md` and `docs/refined-pipeline.md` for the full design.
+
+## Philosophy
+
+- **The workbook is the truth.** Refined numbers must round-trip to a cell (or long row) in a retained raw file. Analyses cite `document.source_url`.
+- **Do not invent structure.** Keep PDE’s published grain. Budget ≠ actuals. Parent accounts are not summed with their children. Equalized mills are not “the millage.”
+- **Fail loud on unknown layouts.** New or moved headers stay `review` until a parser rule and a check exist. Never “best effort” melt unknown columns into facts.
+- **Identity stays text.** AUN is a 9-digit string. School numbers stay text (`9999`, `0`, `LEAW`). Excel floats must not corrupt codes.
+- **Empty is not zero.** A reported zero is a row. A missing account or suppressed enrollment cell is absence (or null), not `0`.
+
+## Working method
+
+- Use `.venv/bin/python`. Network fetches need `pa_edu.common.HEADERS`.
+- New sources: catalog entry → `parse_*.py` → wire `refine` / `model.sql` / `check` → tests → only then UI.
+- Prefer small, focused diffs. Match existing parse / check / publish patterns.
+- Do not commit, push, or force-push unless asked. Do not kill the user’s DuckDB CLI lock on `data/pde.duckdb`.
+- Verify site changes on elm (or a local `pde_site` server) with a hard reload after bumping `index.html`’s `?v=` cache query.

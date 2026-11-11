@@ -1,0 +1,28 @@
+---
+description: LEA browser UI, publish JSON, and elm deploy
+globs: pa_edu/web/**/*,pa_edu/publish.py,pde_site/**/*
+alwaysApply: false
+---
+
+# Site and publish
+
+## Source of truth
+
+Edit `pa_edu/web/` (`app.js`, `app.css`, `index.html`). `pde_site/` is generated and gitignored. `python -m pa_edu.publish` copies web assets, writes `data/index.json` + `data/lea/<aun>.json` from parquet, then rsyncs to `elm:/data/pdenumbers/htdocs/` (https://pdenumbers.org).
+
+## JSON shape
+
+- Publish reads parquet (via DuckDB), not the locked `pde.duckdb` file contents beyond what refine wrote.
+- Attach Act 1, millage, and similar sidecars only onto years that already exist (budget / actual / enrollment). Do not create sidecar-only years.
+- Keep precise rates in JSON (mills to 4 decimals). Do not run millage through helpers that round money to 2 decimals.
+- Catalog `sources` in `index.json` should link the workbook URL for the series (per-year when files are yearly).
+
+## UI habits
+
+- Budget card notes: year-over-year change, then Act 1, then mills. Multi-rate districts list each county/place line.
+- Bump `app.js?v=` / `app.css?v=` in `index.html` whenever those files change so elm visitors are not stuck on a cached script.
+- After deploy, prove with the public URL or on-disk elm paths—not only local `pde_site`.
+
+## Deploy note
+
+`publish.main()` always rsyncs. To build without deploying, call `main` with `deploy` monkeypatched, or copy assets after a local build. Prefer the same path Robert has been using; do not invent a second host.
