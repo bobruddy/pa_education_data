@@ -1,0 +1,73 @@
+gfb_year = 2024
+gfb_aun_count = 791
+total_auns = ["101260303", "112011103"]
+
+[[gfb_cell]]
+school_year = 2024
+aun = "101260303"
+function_code = "1100"
+object_code = "100"
+program_code = ""
+
+[[afr_cell]]
+school_year = 2024
+aun = "101260303"
+fund_code = "10"
+function_code = "1110"
+object_code = "120"
+program_code = ""
+
+[[enrollment_cell]]
+school_year = 2024
+aun = "124150002"
+school_number = "7691"
+grade_code = "012"
+
+[[act1_cell]]
+school_year = 2024
+aun = "101260303"
+
+[[retax_cell]]
+school_year = 2025
+aun = "124150503"
+county = "Chester"
+locality = ""
+
+[[charter_adm_cell]]
+school_year = 2024
+aun = "112011103"
+
+[[homeschool_cell]]
+school_year = 2024
+aun = "112011103"
+
+[[assessment_cell]]
+school_year = 2024
+aun = "124150503"
+assessment = "pssa"
+subject = "ela"
+grade = "003"
+student_group = "All Students"
+
+[[assessment_cell]]
+school_year = 2024
+aun = "124150503"
+assessment = "keystone"
+subject = "algebra_i"
+grade = "011"
+student_group = "All Students"
+
+# Building rows PDE published for these lines do not add up to the EXP amount.
+[[school_rollup_gap]]
+aun = "102027451"
+school_year = 2024
+fund_code = "10"
+function_code = "2519"
+object_code = "890"
+
+[[school_rollup_gap]]
+aun = "115674603"
+school_year = 2024
+fund_code = "10"
+function_code = "2260"
+object_code = "350"

@@ -52,7 +52,6 @@ const PSSA_TOGGLE_GROUPS = [
 const PSSA_DEFAULT_GROUPS = [
   "All Students",
   "Economically Disadvantaged",
-  "Hispanic (any race)",
   "IEP",
   "ELL",
 ];
@@ -81,6 +80,12 @@ const PSSA_GROUP_LABEL = {
   Female: "Female",
   Male: "Male",
 };
+const PSSA_SUBJECTS = [
+  ["math", "Math"],
+  ["ela", "ELA"],
+];
+const PSSA_SUBJECT_IDS = PSSA_SUBJECTS.map(([id]) => id);
+const PSSA_SUBJECT_LABEL = Object.fromEntries(PSSA_SUBJECTS);
 const PSSA_GRADE_CODES = ["003", "004", "005", "006", "007", "008"];
 const PSSA_GRADE_LABELS = ["3", "4", "5", "6", "7", "8"];
 /** Canvas chart palette — high hue/luma spread so multi-series lines stay separable. */
@@ -142,6 +147,13 @@ const TREND_SERIES = [
 const TREND_SERIES_CODES = TREND_SERIES.map((row) => row.code);
 const TREND_DEFAULT = [TREND_TOTAL];
 const K_GRADE_CODES = ["k4", "k4a", "k4p", "k4f", "k5", "k5a", "k5p", "k5f"];
+const ALT_SERIES = [
+  { code: "district", label: "District", color: "#0c5c56", dash: null, field: null },
+  { code: "charter", label: "Charter", color: "#C06028", dash: "7 5", field: "charterAdm" },
+  { code: "homeschool", label: "Homeschool", color: "#7B64B8", dash: "3 4", field: "homeEducation" },
+];
+const ALT_SERIES_CODES = ALT_SERIES.map((row) => row.code);
+const ALT_DEFAULT = [...ALT_SERIES_CODES];
 
 /** Total is exclusive of grade lines; multiple grades may be on together. */
 function normalizeTrendSelection(codes) {
@@ -150,6 +162,11 @@ function normalizeTrendSelection(codes) {
   const grades = selected.filter((code) => code !== TREND_TOTAL);
   if (grades.length) return grades;
   return [TREND_TOTAL];
+}
+
+function normalizeAltSelection(codes) {
+  const selected = ALT_SERIES_CODES.filter((code) => (codes || []).includes(code));
+  return selected.length ? selected : [...ALT_DEFAULT];
 }
 const RACE_ORDER = [
   "White",
@@ -160,6 +177,16 @@ const RACE_ORDER = [
   "American Indian / Alaskan Native",
   "Native Hawaiian or other Pacific Islander(not Hispanic)",
 ];
+/** Stable colors for race trend lines — keep separable across the seven PDE groups. */
+const RACE_COLOR = {
+  White: "#2A9A8A",
+  Hispanic: "#7B64B8",
+  "Black or African American": "#C06028",
+  Asian: "#2E79B5",
+  "Multi-Racial": "#C85898",
+  "American Indian / Alaskan Native": "#F0A040",
+  "Native Hawaiian or other Pacific Islander(not Hispanic)": "#5A6CC0",
+};
 
 function readState() {
   const query = new URLSearchParams(location.search);
@@ -178,11 +205,16 @@ function readState() {
   const etrend = normalizeTrendSelection(
     etrendParam ? etrendParam.split("|") : TREND_DEFAULT,
   );
+  const ealtParam = query.get("ealt");
+  const ealt = normalizeAltSelection(
+    ealtParam ? ealtParam.split("|") : ALT_DEFAULT,
+  );
   const rawSubject = query.get("subject") || "";
   let subject = "math";
   if (KEYSTONE_SUBJECT_IDS.includes(rawSubject)) subject = rawSubject;
   else if (rawSubject === "ela") subject = "ela";
   const metric = query.get("metric") || "pct";
+  const experience = query.get("experience") === "edu" ? "edu" : "lea";
   return {
     county: query.get("county") || "",
     aun: query.get("aun") || "",
@@ -190,10 +222,12 @@ function readState() {
     tab: LEA_TABS.some(([id]) => id === tab) ? tab : "overview",
     subject,
     metric: KEYSTONE_METRIC_IDS.includes(metric) ? metric : "pct",
+    experience,
     groups: groups.length ? groups : [...PSSA_DEFAULT_GROUPS],
     cohort: PSSA_TOGGLE_GROUPS.includes(cohort) ? cohort : "All Students",
     egrades: egrades.length ? egrades : [...ENROLL_GRADE_CODES],
     etrend,
+    ealt,
     q: query.get("q") || "",
     category: categories ? categories.split(",").filter(Boolean) : CATEGORIES.map(([id]) => id),
     categoryAll: !categories,
@@ -248,6 +282,12 @@ function putAssessmentParams(query, state) {
     if (trend.join("|") !== TREND_DEFAULT.join("|")) {
       query.set("etrend", trend.join("|"));
     }
+    const alt = normalizeAltSelection(state.ealt);
+    if (alt.join("|") !== ALT_DEFAULT.join("|")) {
+      query.set("ealt", alt.join("|"));
+    }
+  } else if (state.tab === "staff") {
+    if (state.experience === "edu") query.set("experience", "edu");
   }
 }
 
@@ -474,6 +514,15 @@ function bindLea() {
       paintLea(state);
       return;
     }
+    const experienceToggle = event.target.closest("[data-experience]");
+    if (experienceToggle) {
+      const state = readState();
+      state.tab = "staff";
+      state.experience = experienceToggle.dataset.experience === "edu" ? "edu" : "lea";
+      writeUrl(state, "replace");
+      paintLea(state);
+      return;
+    }
     const groupToggle = event.target.closest("[data-pssa-group]");
     if (groupToggle) {
       const state = readState();
@@ -522,6 +571,19 @@ function bindLea() {
         selected = TREND_SERIES_CODES.filter((code) => selected.includes(code));
       }
       state.etrend = normalizeTrendSelection(selected);
+      writeUrl(state, "replace");
+      paintLea(state);
+      return;
+    }
+    const altSeriesToggle = event.target.closest("[data-alt-series]");
+    if (altSeriesToggle) {
+      const state = readState();
+      const value = altSeriesToggle.dataset.altSeries;
+      const selected = new Set(normalizeAltSelection(state.ealt));
+      if (selected.has(value)) {
+        if (selected.size > 1) selected.delete(value);
+      } else selected.add(value);
+      state.ealt = normalizeAltSelection(ALT_SERIES_CODES.filter((code) => selected.has(code)));
       writeUrl(state, "replace");
       paintLea(state);
       return;
@@ -726,7 +788,7 @@ function paintLea(state) {
     const year = state.year;
     const priorYear = String(Number(year) - 1);
     paintFinancials(blockFor(year), blockFor(priorYear), priorYear, year, state);
-  } else if (tab === "staff") paintStaff();
+  } else if (tab === "staff") paintStaff(state);
   else if (tab === "enrollment") paintEnrollment(state);
   else if (tab === "pssa") paintPssa(state);
   else paintKeystone(state);
@@ -813,11 +875,21 @@ function paintFinancials(block, priorBlock, priorYear, year, state) {
   app.querySelector("#sources").innerHTML = sourceLinks(year);
 }
 
-function paintStaff() {
-  const year = latestYear((block) => Object.values(block.salaries || {}).some((stats) => stats?.n));
+function paintStaff(state) {
+  const year = latestYear((block) =>
+    Object.values(block.salaries || {}).some((stats) => stats?.n)
+    || Object.values(block.experience || {}).some((group) => group?.lea?.n || group?.edu?.n)
+  );
+  const mode = state.experience === "edu" ? "edu" : "lea";
   const heading = app.querySelector("#staff-heading");
   if (heading) heading.textContent = year ? `Full-time salaries · ${yearLabel(year)}` : "Full-time salaries";
+  const experienceHeading = app.querySelector("#experience-heading");
+  if (experienceHeading) {
+    experienceHeading.textContent = year ? `Full-time experience · ${yearLabel(year)}` : "Full-time experience";
+  }
+  setPressed("[data-experience]", (value) => value === mode);
   const block = blockFor(year);
+  drawExperience(block.experience || {}, mode);
   drawSalaries(block.salaries || {}, block.retention);
 }
 
@@ -841,6 +913,7 @@ function paintEnrollment(state) {
   const egrades = (state.egrades || ENROLL_GRADE_CODES).filter((code) => ENROLL_GRADE_CODES.includes(code));
   const selectedGrades = egrades.length ? egrades : [...ENROLL_GRADE_CODES];
   const selectedTrend = normalizeTrendSelection(state.etrend);
+  const selectedAlt = normalizeAltSelection(state.ealt);
   const trendFilterHost = app.querySelector("#trend-filters");
   if (trendFilterHost) {
     trendFilterHost.innerHTML = TREND_SERIES.map((row, index) => {
@@ -851,6 +924,27 @@ function paintEnrollment(state) {
     }).join("");
   }
   setPressed("[data-trend-series]", (value) => selectedTrend.includes(value));
+  const altPanel = app.querySelector("#alt-enrollment");
+  if (altPanel) {
+    const showAlt = leaPack.category === "school_district";
+    altPanel.hidden = !showAlt;
+    if (showAlt) {
+      const altHeading = app.querySelector("#alt-heading");
+      if (altHeading) {
+        altHeading.textContent = year
+          ? `Charter and home education · through ${yearLabel(year)}`
+          : "Charter and home education";
+      }
+      const altFilterHost = app.querySelector("#alt-filters");
+      if (altFilterHost) {
+        altFilterHost.innerHTML = ALT_SERIES.map((row) => (
+          `<button type="button" class="chip chip-series" data-alt-series="${escapeAttr(row.code)}" data-value="${escapeAttr(row.code)}" style="--series:${row.color}"><i class="swatch" style="background:${row.color}"></i>${escapeHtml(row.label)}</button>`
+        )).join("");
+      }
+      setPressed("[data-alt-series]", (value) => selectedAlt.includes(value));
+      drawAltEnrollment(selectedAlt);
+    }
+  }
   const filterHost = app.querySelector("#cohort-filters");
   if (filterHost) {
     filterHost.innerHTML = ENROLL_LADDER.map((grade, index) => {
@@ -862,62 +956,77 @@ function paintEnrollment(state) {
   drawTrend(selectedTrend);
   drawEnrollmentCohorts(year, selectedGrades);
   drawGrades(block.grades || {});
-  drawRace(app.querySelector("#enrollment-race"), block.race || {}, year ? `Race / ethnicity · ${yearLabel(year)}` : "Race / ethnicity");
+  const raceHeading = app.querySelector("#race-heading");
+  if (raceHeading) {
+    const raceYearList = raceYears();
+    raceHeading.textContent = raceYearList.length
+      ? `Race / ethnicity · through ${yearLabel(raceYearList[raceYearList.length - 1])}`
+      : "Race / ethnicity";
+  }
+  drawRaceTrend(app.querySelector("#enrollment-race"));
   drawGender(app.querySelector("#enrollment-gender"), block.gender || {}, year ? `Gender · ${yearLabel(year)}` : "Gender");
   drawSchools(block.schools, state.schools);
+  const enrollmentSources = app.querySelector("#enrollment-sources");
+  if (enrollmentSources) enrollmentSources.innerHTML = enrollmentSourceLinks(year);
+}
+
+function pssaYears(subject) {
+  return Object.keys(leaPack.years)
+    .filter((year) => {
+      if (subject) return Boolean(leaPack.years[year]?.pssa?.[subject]);
+      return leaPack.years[year]?.pssa && Object.keys(leaPack.years[year].pssa).length;
+    })
+    .map(Number)
+    .sort((a, b) => a - b);
 }
 
 function paintPssa(state) {
-  const subject = state.subject === "ela" ? "ela" : "math";
-  const year = latestYear((block) => block.pssa?.[subject]) || latestYear((block) => block.pssa && Object.keys(block.pssa).length);
-  if (!year) {
-    setPressed("[data-subject]", (value) => value === subject);
-    app.querySelector("#pssa-stats").innerHTML = "";
-    app.querySelector("#pssa-body").innerHTML = `<p class="note">No PSSA results are published for this LEA.</p>`;
+  const stats = app.querySelector("#pssa-stats");
+  const body = app.querySelector("#pssa-body");
+  const subject = PSSA_SUBJECT_IDS.includes(state.subject) ? state.subject : "math";
+  if (subject !== state.subject) {
+    state.subject = subject;
+    writeUrl(state, "replace");
+  }
+  if (!pssaYears().length) {
+    if (stats) stats.innerHTML = "";
+    if (body) body.innerHTML = `<p class="note">No PSSA results are published for this LEA.</p>`;
     return;
   }
-  paintPssaYear(year, state);
-}
 
-function paintPssaYear(year, state) {
-  const subject = state.subject === "ela" ? "ela" : "math";
+  const years = pssaYears(subject);
+  const year = years.length ? years[years.length - 1] : pssaYears().at(-1);
+  const label = PSSA_SUBJECT_LABEL[subject];
   const groups = (state.groups || PSSA_DEFAULT_GROUPS).filter((name) => PSSA_TOGGLE_GROUPS.includes(name));
   const selected = groups.length ? groups : [...PSSA_DEFAULT_GROUPS];
   const cohort = PSSA_TOGGLE_GROUPS.includes(state.cohort) ? state.cohort : "All Students";
-  setPressed("[data-subject]", (value) => value === subject);
-  setPressed("[data-pssa-group]", (value) => selected.includes(value));
-  setPressed("[data-cohort-group]", (value) => value === cohort);
-
-  const label = subject === "math" ? "Math" : "ELA";
   const yearNum = Number(year);
-  const all = pssaTotal(yearNum, subject, "All Students");
-  const gapRows = pssaGapRows(yearNum, subject, all?.pct ?? null);
-  const worst = gapRows[0] || null;
+  const all = year == null ? null : pssaTotal(yearNum, subject, "All Students");
+  const gapRows = year == null ? [] : pssaGapRows(yearNum, subject, all?.pct ?? null);
 
-  const stats = app.querySelector("#pssa-stats");
-  const body = app.querySelector("#pssa-body");
-  if (!all && !leaPack.years[String(year)]?.pssa?.[subject]) {
-    stats.innerHTML = "";
-    body.innerHTML = `<p class="note">Not enough data available for ${yearLabel(year)}.</p>`;
+  stats.innerHTML = PSSA_SUBJECTS.map(([id, subLabel]) => {
+    const subYears = pssaYears(id);
+    const subYear = subYears.length ? subYears[subYears.length - 1] : null;
+    const priorYear = subYear == null ? null : priorIn(subYears, subYear);
+    const cell = subYear == null ? null : pssaTotal(subYear, id, "All Students");
+    const prior = priorYear == null ? null : pssaTotal(priorYear, id, "All Students");
+    const ranks = subYear == null ? {} : (blockFor(subYear).countyRanks || {});
+    const value = cell?.pct == null ? "Not published" : `${Number(cell.pct).toFixed(1)}%`;
+    const extra = `${yearDeltaPoints(cell?.pct, prior?.pct, priorYear)}${cell?.n != null ? `<div class="note">${count(cell.n)} scored · grades 3–8</div>` : ""}${yearNote(subYear)}`;
+    return stat(`${subLabel} · proficient+`, value, extra, subYear, ranks[`pssa_${id}`], "pct", {
+      pick: id,
+      selected: id === subject,
+    });
+  }).join("");
+
+  if (year == null || (!all && !leaPack.years[String(year)]?.pssa?.[subject])) {
+    body.innerHTML = `<p class="note">Not enough data available for ${escapeHtml(label)}.</p>`;
     return;
   }
 
-  stats.innerHTML = [
-    stat(`All students · ${label} · grades 3–8`, all?.pct == null ? "Not published" : `${Number(all.pct).toFixed(1)}%`, all?.n != null ? `<div class="note">${count(all.n)} scored</div>` : ""),
-    worst
-      ? stat(`${worst.label} · gap ${worst.gap.toFixed(0)} pts`, `${Number(worst.pct).toFixed(1)}%`, `<div class="note">${count(worst.n)} scored</div>`)
-      : "",
-  ].join("");
-
   const gapLead = gapRows.slice(0, 3).map((row) => `${escapeHtml(row.label)} ${row.pct.toFixed(1)}% (${row.gap.toFixed(0)} pts)`).join(" · ");
-  const groupPills = PSSA_TOGGLE_GROUPS.map((grp) => {
-    const color = PSSA_GROUP_COLOR[grp] || "#8888A8";
-    return `<button type="button" class="chip chip-series" data-pssa-group="${escapeAttr(grp)}" data-value="${escapeAttr(grp)}" style="--series:${color}"><i class="swatch" style="background:${color}"></i>${escapeHtml(PSSA_GROUP_LABEL[grp] || grp)}</button>`;
-  }).join("");
-  const cohortPills = PSSA_TOGGLE_GROUPS.map((grp) => {
-    const color = PSSA_GROUP_COLOR[grp] || "#8888A8";
-    return `<button type="button" class="chip chip-series" data-cohort-group="${escapeAttr(grp)}" data-value="${escapeAttr(grp)}" style="--series:${color}"><i class="swatch" style="background:${color}"></i>${escapeHtml(PSSA_GROUP_LABEL[grp] || grp)}</button>`;
-  }).join("");
+  const groupPills = seriesChips("data-pssa-group");
+  const cohortPills = seriesChips("data-cohort-group");
 
   body.innerHTML = `
     <div class="callout">
@@ -1335,23 +1444,111 @@ function raceLabel(name) {
   return name;
 }
 
-function drawRace(host, race, title) {
-  if (!host) return;
+function raceYears() {
+  return Object.keys(leaPack?.years || {})
+    .map(Number)
+    .sort((a, b) => a - b)
+    .filter((year) => {
+      const race = leaPack.years[String(year)]?.race || {};
+      return Object.keys(race).some((key) => race[key] != null && Number(race[key]) > 0);
+    });
+}
+
+function raceKeysForYears(years) {
+  const seen = new Set();
+  for (const year of years) {
+    const race = leaPack.years[String(year)]?.race || {};
+    for (const [key, value] of Object.entries(race)) {
+      if (value != null && Number(value) > 0) seen.add(key);
+    }
+  }
+  const ordered = RACE_ORDER.filter((key) => seen.has(key));
+  const extras = [...seen].filter((key) => !RACE_ORDER.includes(key)).sort();
+  return [...ordered, ...extras];
+}
+
+function raceMetersHtml(race) {
   const rows = (RACE_ORDER.filter((key) => race[key] > 0).length
     ? RACE_ORDER.filter((key) => race[key] > 0)
     : Object.keys(race).filter((key) => race[key] > 0)
   ).map((key) => [key, race[key]]);
-  if (!rows.length) {
-    host.innerHTML = `<h3>${escapeHtml(title)}</h3><p class="note">No race counts published.</p>`;
-    return;
-  }
+  if (!rows.length) return `<p class="note">No race counts published.</p>`;
   const total = rows.reduce((sum, [, value]) => sum + value, 0) || 1;
   const max = Math.max(...rows.map(([, value]) => value)) || 1;
-  host.innerHTML = `<h3>${escapeHtml(title)}</h3>` + rows.map(([key, value]) => {
+  return rows.map(([key, value]) => {
     const width = Math.max(2, (value / max) * 100);
     const tip = tipLines(raceLabel(key), [`${count(value)} students`, `${((value / total) * 100).toFixed(1)}% of reported`]);
     return `<div class="grade-row" data-tip="${escapeAttr(tip)}"><span>${escapeHtml(raceLabel(key))}</span><div class="meter"><span style="width:${width}%"></span></div><b>${count(value)}</b></div>`;
   }).join("");
+}
+
+function drawRace(host, race, title) {
+  if (!host) return;
+  if (!title) {
+    host.innerHTML = raceMetersHtml(race);
+    return;
+  }
+  const body = raceMetersHtml(race);
+  if (body.startsWith("<p class=\"note\">No race")) {
+    host.innerHTML = `<h3>${escapeHtml(title)}</h3>${body}`;
+    return;
+  }
+  host.innerHTML = `<h3>${escapeHtml(title)}</h3>${body}`;
+}
+
+function drawRaceTrend(host) {
+  if (!host) return;
+  const years = raceYears();
+  if (years.length < 2) {
+    const year = years[0];
+    const race = year == null ? {} : (leaPack.years[String(year)]?.race || {});
+    const note = year == null
+      ? ""
+      : `<p class="note">Only ${yearLabel(year)} is published — not enough years for a trend.</p>`;
+    host.innerHTML = raceMetersHtml(race) + note;
+    return;
+  }
+  const keys = raceKeysForYears(years);
+  const series = keys.map((key, index) => {
+    const slots = years.map((year) => {
+      const value = leaPack.years[String(year)]?.race?.[key];
+      if (value == null || value === "") return null;
+      const number = Number(value);
+      return Number.isFinite(number) ? number : null;
+    });
+    if (!slots.some((value) => value != null)) return null;
+    return {
+      name: raceLabel(key),
+      color: RACE_COLOR[key] || COHORT_COLORS[index % COHORT_COLORS.length],
+      slots,
+      pointYears: years,
+      key,
+    };
+  }).filter(Boolean);
+  if (!series.length) {
+    host.innerHTML = `<p class="note">No race counts published.</p>`;
+    return;
+  }
+  const maxValue = Math.max(...series.flatMap((row) => row.slots.filter((value) => value != null)));
+  const maxY = niceMax(maxValue);
+  const ticks = [0, 0.5, 1].map((share) => Math.round(maxY * share));
+  drawMultiLine(host, {
+    categories: years.map((year) => String(year).slice(-2)),
+    series,
+    ariaLabel: "October 1 enrollment by race and ethnicity",
+    yMin: 0,
+    yMax: maxY,
+    yTicks: ticks,
+    formatY: (value) => count(value),
+    formatPoint: (row, _category, value, index) => tipLines(yearLabel(row.pointYears[index]), [
+      `${count(value)} students`,
+      `<span class="tip-muted">${escapeHtml(row.name)}</span>`,
+    ]),
+    categoryLabel: (label) => "’" + label,
+    left: 58,
+    labelEvery: years.length > 16 ? 3 : years.length > 8 ? 2 : 1,
+    showLegend: true,
+  });
 }
 
 function drawGender(host, gender, title = "Gender") {
@@ -1570,6 +1767,69 @@ function drawTrend(selectedCodes = TREND_DEFAULT) {
     }
   }
   host.insertAdjacentHTML("beforeend", `<p class="note">October 1 counts by selected grade. Kindergarten combines half-day and full-day.</p>`);
+}
+
+function drawAltEnrollment(selectedCodes = ALT_DEFAULT) {
+  const host = app.querySelector("#alt-trend");
+  if (!host) return;
+  const years = Object.keys(leaPack.years)
+    .map(Number)
+    .sort((a, b) => a - b)
+    .filter((year) => {
+      const block = leaPack.years[String(year)];
+      return enrollmentOf(block) != null
+        || block?.charterAdm != null
+        || block?.homeEducation != null;
+    });
+  if (!years.length) {
+    host.innerHTML = `<p class="note">No district, charter, or home-education counts are published to chart.</p>`;
+    return;
+  }
+  const selected = normalizeAltSelection(selectedCodes);
+  const series = selected.map((code) => {
+    const meta = ALT_SERIES.find((row) => row.code === code);
+    const slots = years.map((year) => {
+      const block = leaPack.years[String(year)];
+      if (code === "district") return enrollmentOf(block);
+      const value = Number(block?.[meta.field]);
+      return Number.isFinite(value) ? value : null;
+    });
+    if (!slots.some((value) => value != null)) return null;
+    return {
+      name: meta.label,
+      color: meta.color,
+      dash: meta.dash,
+      slots,
+      pointYears: years,
+      code,
+      emphasis: code === "district",
+    };
+  }).filter(Boolean);
+  if (!series.length) {
+    host.innerHTML = `<p class="note">No selected series have published counts to chart.</p>`;
+    return;
+  }
+  series.sort((a, b) => Number(a.emphasis) - Number(b.emphasis));
+  const maxValue = Math.max(...series.flatMap((row) => row.slots.filter((value) => value != null)));
+  const maxY = niceMax(maxValue);
+  const ticks = [0, 0.5, 1].map((share) => Math.round(maxY * share));
+  drawMultiLine(host, {
+    categories: years.map((year) => String(year).slice(-2)),
+    series,
+    ariaLabel: "District enrollment versus charter ADM and home education",
+    yMin: 0,
+    yMax: maxY,
+    yTicks: ticks,
+    formatY: (value) => count(value),
+    formatPoint: (row, _category, value, index) => tipLines(yearLabel(row.pointYears[index]), [
+      `${count(value)} ${row.code === "charter" ? "ADM" : "students"}`,
+      `<span class="tip-muted">${escapeHtml(row.name)}</span>`,
+    ]),
+    categoryLabel: (label) => "’" + label,
+    left: 58,
+    labelEvery: years.length > 16 ? 3 : years.length > 8 ? 2 : 1,
+    showLegend: false,
+  });
 }
 
 function niceMax(value) {
@@ -1941,6 +2201,44 @@ function drawSchools(schools, sort) {
   }).join("") || `<tr><td colspan="3" class="note">No school rows published.</td></tr>`;
 }
 
+function drawExperience(experience, mode) {
+  const host = app.querySelector("#experience");
+  if (!host) return;
+  const groups = catalog.salaryGroups || [];
+  const edges = catalog.experienceEdges || [];
+  const modeLabel = mode === "edu" ? "years in education" : "years in this LEA";
+  const otherLabel = mode === "edu" ? "years in this LEA" : "years in education";
+  const cards = groups.map((group) => {
+    const stats = experience[group.id]?.[mode];
+    if (!stats || !stats.n) {
+      return `<article class="panel salary-card"><h3>${escapeHtml(group.label)}</h3><p class="note">No ${escapeHtml(modeLabel)} published for this year.</p></article>`;
+    }
+    const hist = experienceHist(group.label, stats, edges, mode);
+    const other = mode === "lea" ? experience[group.id]?.edu : experience[group.id]?.lea;
+    const note = other?.mean != null
+      ? `Mean ${Number(other.mean).toFixed(1)} ${otherLabel}`
+      : "";
+    return `<article class="panel salary-card">
+      <h3>${escapeHtml(group.label)}</h3>
+      <div class="people">${count(stats.n)} full-time staff</div>
+      <div class="salary-stats">
+        <div><div class="label">Lowest</div><div class="value">${escapeHtml(yearsLabel(stats.min))}</div></div>
+        <div><div class="label">Mean</div><div class="value">${escapeHtml(yearsLabel(stats.mean, 1))}</div></div>
+        <div><div class="label">Median</div><div class="value">${escapeHtml(yearsLabel(stats.median))}</div></div>
+        <div><div class="label">Highest</div><div class="value">${escapeHtml(yearsLabel(stats.max))}</div></div>
+      </div>
+      ${hist}
+      ${note ? `<p class="note">${escapeHtml(note)}</p>` : ""}
+    </article>`;
+  });
+  if (!groups.some((group) => experience[group.id]?.[mode]?.n)) {
+    host.innerHTML = `<p class="note">No full-time professional staff experience for this year. PDE’s classified support staff (aides and similar) are published only as counts, not individual tenure.</p>`;
+    return;
+  }
+  host.innerHTML = `<div class="salary-grid">${cards.join("")}</div>
+    <p class="note">Full-time only (FTE 100%), same staff as the salary charts. Toggle between years employed in this LEA and years in education. Hover a bar for mean salary, ${escapeHtml(otherLabel)}, and degree mix in that band.</p>`;
+}
+
 function drawSalaries(salaries, retention) {
   const host = app.querySelector("#salaries");
   if (!host) return;
@@ -1984,6 +2282,56 @@ function drawSalaries(salaries, retention) {
 
 function pct(rate) {
   return `${(Number(rate) * 100).toFixed(1)}%`;
+}
+
+function yearsLabel(value, digits = 0) {
+  if (value == null || Number.isNaN(Number(value))) return "Not published";
+  const amount = Number(value);
+  const text = digits > 0 ? amount.toFixed(digits) : String(Math.round(amount));
+  return `${text} ${Math.abs(amount) === 1 && digits === 0 ? "year" : "years"}`;
+}
+
+function experienceRangeLabel(index, edges, histLength) {
+  if (index === 0) return "Under 1 year";
+  if (index === histLength - 1) return `${edges[edges.length - 1]}+ years`;
+  const years = edges[index - 1];
+  return years === 1 ? "1 year" : `${years} years`;
+}
+
+function experienceHist(label, stats, edges, mode) {
+  if (!edges.length || !stats.hist?.length) return "";
+  const expected = edges.length + 1;
+  if (stats.hist.length !== expected) return "";
+  let start = 0;
+  let end = stats.hist.length - 1;
+  while (start < end && stats.hist[start] === 0) start += 1;
+  while (end > start && stats.hist[end] === 0) end -= 1;
+  const slice = stats.hist.slice(start, end + 1);
+  const width = 420;
+  const height = 84;
+  const pad = 2;
+  const max = Math.max(...slice, 1);
+  const barWidth = (width - pad * 2) / slice.length;
+  const otherKey = mode === "edu" ? "leaYears" : "eduYears";
+  const otherLabel = mode === "edu" ? "years in this LEA" : "years in education";
+  const bars = slice.map((people, offset) => {
+    const index = start + offset;
+    const range = experienceRangeLabel(index, edges, stats.hist.length);
+    const bin = stats.bins?.[index];
+    const tip = tipLines(label, [
+      range,
+      `${count(people)} staff`,
+      bin?.meanSalary != null ? `Mean salary ${money(bin.meanSalary, 0)}` : null,
+      bin?.[otherKey] != null ? `Mean ${Number(bin[otherKey]).toFixed(1)} ${otherLabel}` : null,
+      bin?.mastersPct != null ? `${Math.round(bin.mastersPct)}% master’s or higher` : null,
+    ].filter(Boolean));
+    const barHeight = (people / max) * (height - 8);
+    const x = pad + offset * barWidth;
+    const y = height - barHeight;
+    return `<rect class="hist-bar" data-tip="${escapeAttr(tip)}" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${Math.max(1, barWidth - 1).toFixed(1)}" height="${barHeight.toFixed(1)}"></rect>`;
+  }).join("");
+  const measure = mode === "edu" ? "years in education" : "years in this LEA";
+  return `<svg class="hist" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttr(label)} full-time ${escapeAttr(measure)} distribution">${bars}</svg>`;
 }
 
 function salaryHist(label, stats, edges) {
@@ -2047,6 +2395,39 @@ function sourceLinks(year) {
     <p class="sources note">${items.join(" · ") || "Source files are listed in the catalog."}</p>`;
 }
 
+function enrollmentSourceLinks(year) {
+  const items = [];
+  const sources = catalog?.sources || {};
+  if (sources.enrollmentPage) {
+    items.push(`<a href="${escapeAttr(sources.enrollmentPage)}" target="_blank" rel="noopener">Enrollment data</a>`);
+  }
+  const enrollment = year ? sources.enrollment?.[String(year)] : null;
+  if (enrollment) {
+    items.push(`<a href="${escapeAttr(enrollment)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(year))} public-school workbook</a>`);
+  }
+  if (leaPack.category === "school_district") {
+    if (sources.admPage) {
+      items.push(`<a href="${escapeAttr(sources.admPage)}" target="_blank" rel="noopener">Financial data elements (ADM)</a>`);
+    }
+    const charterYears = Object.keys(sources.charterAdm || {}).sort((a, b) => Number(b) - Number(a));
+    for (const charterYear of charterYears) {
+      const url = sources.charterAdm[charterYear];
+      if (!url) continue;
+      items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(charterYear))} charter ADM by district</a>`);
+    }
+    const homeYears = Object.keys(sources.homeEducation || {}).sort((a, b) => Number(b) - Number(a));
+    for (const homeYear of homeYears) {
+      const url = sources.homeEducation[homeYear];
+      if (!url) continue;
+      items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(homeYear))} home education</a>`);
+    }
+  }
+  const lead = items.length
+    ? `Source: ${items.join(" · ")}`
+    : "Source: PDE enrollment files listed in the catalog";
+  return `<p class="sources note">${lead}. October 1 public-school counts come from the yearly enrollment workbooks. Charter is average daily membership of resident students in charter schools from the ADM release. Homeschool is PDE’s home-education student total.</p>`;
+}
+
 function homeHtml() {
   return `<h1>Counties</h1>
     <p class="lede">October 1 enrollment for ${yearLabel(catalog.enrollmentYear)}, general fund actuals for ${yearLabel(catalog.actualYear)}, and adopted budgets for ${yearLabel(catalog.budgetYear)}.</p>
@@ -2080,10 +2461,9 @@ function leaHtml() {
     ? `<div class="year-row"><span class="year-label">School year</span><div class="years" role="group" aria-label="School year">${yearButtons}</div></div>`
     : "";
   const tabs = LEA_TABS.map(([id, label]) => `<button type="button" data-tab="${id}" data-value="${id}">${label}</button>`).join("");
-  const iu = leaPack.iuName ? ` · ${escapeHtml(leaPack.iuName)}` : "";
   const directory = leaPack.inDirectory ? "" : " This AUN is not in the current EdNA public-entity extract.";
   return `<h1>${escapeHtml(leaPack.name)}</h1>
-    <p class="meta">${escapeHtml(categoryName(leaPack.category))} · ${escapeHtml(leaPack.status)} · AUN ${escapeHtml(leaPack.aun)} · ${escapeHtml(leaPack.county)}${iu}.${directory}</p>
+    <p class="meta">${escapeHtml(categoryName(leaPack.category))} · ${escapeHtml(leaPack.status)} · AUN ${escapeHtml(leaPack.aun)} · ${escapeHtml(leaPack.county)}.${directory}</p>
     <div class="lea-tabs" role="tablist" aria-label="LEA sections">${tabs}</div>
 
     <div data-tab-panel="overview">
@@ -2104,6 +2484,14 @@ function leaHtml() {
     </div>
 
     <div data-tab-panel="staff" hidden>
+      <section class="panel">
+        <h2 id="experience-heading">Full-time experience</h2>
+        <div class="chips" aria-label="Experience measure">
+          <button type="button" class="chip" data-experience="lea" data-value="lea">Years in this LEA</button>
+          <button type="button" class="chip" data-experience="edu" data-value="edu">Years in education</button>
+        </div>
+        <div id="experience"></div>
+      </section>
       <section class="panel"><h2 id="staff-heading">Full-time salaries</h2><div id="salaries"></div></section>
     </div>
 
@@ -2115,39 +2503,43 @@ function leaHtml() {
         <div id="trend"></div>
         <p class="note">One line per selected series across October 1 files. K–12 are grade counts; Total is all published grade membership for the year. Kindergarten combines half-day and full-day.</p>
       </section>
+      <section class="panel" id="alt-enrollment" hidden>
+        <h2 id="alt-heading">Charter and home education</h2>
+        <div class="chips" id="alt-filters" aria-label="District alternative enrollment series"></div>
+        <div id="alt-trend"></div>
+        <p class="note">School districts only. District is the October 1 public-school headcount. Charter is average daily membership of resident students attending brick-and-mortar or cyber charters. Homeschool is PDE’s home-education student total. If district enrollment falls while charter rises, the tradeoff shows here.</p>
+      </section>
       <section class="panel">
         <h2 id="cohort-heading">How classes change as they move up</h2>
         <div class="chips" id="cohort-filters" aria-label="Current grade classes"></div>
         <div id="cohort"></div>
         <p class="note">Anchored on the latest October 1 enrollment file. One line per selected current class from kindergarten through grade 12. Grade 12 walks back through all thirteen points; kindergarten is only this year’s count. Up = the class grew; down = it shrank. Kindergarten combines half-day and full-day. Pre-kindergarten is not included — membership changes year to year, so these are approximate cohorts.</p>
       </section>
+      <section class="panel">
+        <h2 id="race-heading">Race / ethnicity</h2>
+        <div id="enrollment-race"></div>
+        <p class="note">One line per PDE race / ethnicity group across October 1 files. A gap is unpublished or suppressed, not zero.</p>
+      </section>
       <div class="panels">
         <section class="panel"><h2 id="grades-heading">Grades</h2><div id="grades"></div></section>
-        <section class="panel" id="enrollment-race"></section>
-      </div>
-      <div class="panels" style="margin-top:12px">
         <section class="panel" id="enrollment-gender"></section>
-        <section class="panel">
-          <h2 id="schools-heading">Schools</h2>
-          <table class="schools">
-            <thead><tr>
-              <th><button type="button" data-schools="name" data-value="name">School</button></th>
-              <th></th>
-              <th class="num"><button type="button" data-schools="enrollment" data-value="enrollment">Enrollment</button></th>
-            </tr></thead>
-            <tbody id="school-rows"></tbody>
-          </table>
-        </section>
       </div>
+      <section class="panel">
+        <h2 id="schools-heading">Schools</h2>
+        <table class="schools">
+          <thead><tr>
+            <th><button type="button" data-schools="name" data-value="name">School</button></th>
+            <th></th>
+            <th class="num"><button type="button" data-schools="enrollment" data-value="enrollment">Enrollment</button></th>
+          </tr></thead>
+          <tbody id="school-rows"></tbody>
+        </table>
+      </section>
+      <div id="enrollment-sources"></div>
     </div>
 
     <div data-tab-panel="pssa" hidden>
-      <p class="lede">Compare student groups across grades, then follow each current grade cohort along its PSSA path. Algebra I, Literature, and Biology are on the Keystone tab.</p>
-      <div class="chips" aria-label="PSSA subject">
-        <button type="button" class="chip" data-subject="math" data-value="math">Math</button>
-        <button type="button" class="chip" data-subject="ela" data-value="ela">English Language Arts</button>
-      </div>
-      <div class="stats" id="pssa-stats"></div>
+      <div class="stats stats-2" id="pssa-stats"></div>
       <div id="pssa-body"></div>
     </div>
 

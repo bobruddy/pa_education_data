@@ -16,7 +16,12 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
 button, input, select { font: inherit; color: inherit; }
 button { cursor: pointer; }
 a { color: var(--teal); }
@@ -78,7 +83,7 @@ a:hover { color: #083f3b; }
 }
 .crumb a { color: inherit; }
 
-#app { max-width: 1120px; margin: 0 auto; padding: 22px 20px 64px; }
+#app { flex: 1; width: 100%; max-width: 1120px; margin: 0 auto; padding: 22px 20px 40px; }
 h1 {
   font-family: "Iowan Old Style", Palatino, Georgia, serif;
   font-size: clamp(1.8rem, 3vw, 2.5rem);
@@ -255,7 +260,8 @@ a.tip-rank:hover { color: #fff; }
 
 .panels { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 12px; }
 [data-tab-panel] > .panel + .panel,
-[data-tab-panel] > .panel + .panels { margin-top: 12px; }
+[data-tab-panel] > .panel + .panels,
+[data-tab-panel] > .panels + .panel { margin-top: 12px; }
 .panel { padding: 14px 14px 8px; }
 .panel h2 { font-size: 1rem; margin: 0 0 8px; font-weight: 600; }
 .year-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 2px 0 4px; }
@@ -286,6 +292,7 @@ a.tip-rank:hover { color: #fff; }
 .lea-tabs button:hover { color: var(--ink); }
 .lea-tabs button[aria-pressed="true"]:hover { color: white; }
 .stats-wide { grid-template-columns: repeat(4, 1fr); }
+.stats-2 { grid-template-columns: repeat(2, 1fr); }
 .stats-3 { grid-template-columns: repeat(3, 1fr); }
 .table-scroll { overflow-x: auto; }
 .panel h3 { font-size: 0.95rem; margin: 0 0 8px; font-weight: 600; }
@@ -387,6 +394,19 @@ table.schools td.num, table.schools th.num { text-align: right; }
 .sources { margin-top: 18px; }
 .empty { padding: 28px 8px; color: var(--muted); }
 
+.site-foot {
+  border-top: 1px solid var(--line);
+  padding: 14px 20px 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.site-foot p {
+  max-width: 1120px;
+  margin: 0 auto;
+}
+.site-foot a { color: var(--muted); text-underline-offset: 2px; }
+.site-foot a:hover { color: var(--teal); }
+
 #toast {
   position: fixed;
   bottom: 18px;
@@ -444,13 +464,13 @@ table.schools td.num, table.schools th.num { text-align: right; }
 
 @media (max-width: 800px) {
   .brand-note { display: none; }
-  .stats, .stats-wide, .stats-3, .panels, .lea-row, .salary-grid { grid-template-columns: 1fr 1fr; }
+  .stats, .stats-wide, .stats-2, .stats-3, .panels, .lea-row, .salary-grid { grid-template-columns: 1fr 1fr; }
   .lea-row { grid-template-columns: 1fr auto; }
   .lea-row .hide-sm { display: none; }
   .salary-stats { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 560px) {
-  .stats, .stats-wide, .stats-3, .salary-grid { grid-template-columns: 1fr; }
+  .stats, .stats-wide, .stats-2, .stats-3, .salary-grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   #toast { transition: none; }

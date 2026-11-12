@@ -1,0 +1,34 @@
+---
+description: Parser tests and offline rebuild checks
+globs: tests/**/*.py,sources/checks.toml,pa_edu/check.py
+alwaysApply: false
+---
+
+# Testing standards
+
+Two layers. Both are offline. Neither checks a real PDE workbook into git.
+
+## Parser tests (`pytest`, `tests/`)
+
+Build a tiny xlsx/pdf fixture in the test. Pin the cases that corrupt silently:
+
+- AUN stays nine-digit text (`101260303.0` must not become a float/scientific string).
+- `school_year` comes from the catalog fixture, not the sheet title.
+- Zeros kept; absent columns produce no row; junk headers are rejected.
+- Split rates / multi-county / stacked sheets behave as designed.
+- `document_id` is present on fact rows.
+
+Run at least the touched files: `.venv/bin/python -m pytest tests/test_refine.py tests/test_publish.py -q`.
+
+## Rebuild checks (`python -m pa_edu.check`)
+
+Needs local `data/raw` + `data/refined`. A year moves `review` → `stable` only after these pass for that file.
+
+| Kind | Intent |
+| --- | --- |
+| Identity | Every fact `aun` ∈ `lea`; every `document_id` has a URL |
+| Grain | No duplicate natural keys |
+| Cell round-trip | Listed cells in `sources/checks.toml` re-read from the workbook equal parquet |
+| Published totals / rollups | Do not sum parent+child or major+component objects |
+
+When adding a source, add a `[[…_cell]]` (or equivalent) that re-opens the raw file independently of the parser output. That is the citation test.

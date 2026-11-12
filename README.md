@@ -1,24 +1,66 @@
-# Tools for analyzing PA Department of Education (PDE) public data
+# PA education data
 
-Notebooks and a small Python package download PDE spreadsheets, line them up across years, and chart General Fund Budget spending per enrolled student. The repo does not ship the data. Loaders write it under `data/`, which is gitignored.
+Public [Pennsylvania Department of Education](https://www.education.pa.gov/) files → citeable Parquet tables → a small LEA browser at [pdenumbers.org](https://pdenumbers.org/).
+
+The active path is the **refined pipeline**: a checked-in catalog of source URLs, parsers that keep PDE’s published grain, offline checks that round-trip cells back to the workbooks, and a static site built from the Parquet. The repo does not ship the data.
+
+Source: [github.com/bobruddy/pa_education_data](https://github.com/bobruddy/pa_education_data) · License: GPL-3.0
+
+## What you get
+
+| Piece | Role |
+| --- | --- |
+| `sources/catalog.toml` | Known documents (URL, parser, `stable` / `review`, school year) |
+| `sources/checks.toml` | AUNs and cells that must match the cached workbook |
+| `pa_edu/parse_*.py` | One parser family per source shape |
+| `python -m pa_edu.refine` | Fetch missing raw files, parse `stable`, write Parquet (+ DuckDB views) |
+| `python -m pa_edu.check` | Offline identity, grain, and cell checks |
+| `python -m pa_edu.publish` | Build `pde_site/` and rsync to elm → https://pdenumbers.org |
+| `pa_edu/web/` | Source of truth for the LEA browser UI |
+
+Refined coverage today includes EdNA LEAs, General Fund Budget expenditures, AFR actuals (LEA and school), public-school enrollment (with gender/race cuts), PSSA/Keystone district proficiency, Act 1 indexes, real-estate tax mills, charter ADM, and home-education counts. Staff salaries still load through the older personnel path and are attached at publish time.
 
 ## Run locally
 
-Python 3.14 is what this was brought back up on. The system `python3` may be newer than the wheels for pandas.
+Python 3.11+ (this tree was brought back up on 3.14). Use the project venv; `pa.gov` needs the User-Agent in `pa_edu.common.HEADERS`.
 
 ```bash
 python3.14 -m venv .venv
 source .venv/bin/activate
-pip install -e .
-python -m pa_edu.load
-python -m pa_edu.personnel
-python -m pa_edu.app
+pip install -e ".[dev]"
+
+python -m pa_edu.refine    # first run needs the network; later runs use data/raw/
+python -m pa_edu.check     # offline, against the local cache
+python -m pa_edu.publish   # writes pde_site/ and deploys to elm
+pytest tests/
 ```
 
-`python -m pa_edu.refine` rebuilds the Parquet tables and `data/pde.duckdb` from the catalog in `sources/catalog.toml`. `python -m pa_edu.check` compares that rebuild to the cached workbooks. The first refine needs the network. A later refine uses `data/raw/`.
+Raw bytes land under `data/raw/<source_id>/<sha256>/`. Refined tables under `data/refined/*.parquet`. DuckDB views from `sql/model.sql` live in `data/pde.duckdb`. All of `data/` is gitignored.
 
-`python -m pa_edu.publish` writes the LEA browser to `pde_site/` from those Parquet tables and rsyncs it to `/data/pdenumbers/htdocs/` on elm. nginx serves it at https://pdenumbers.org. The address bar holds the county, LEA, the Financials year, budget drill, and filters, and Share copies that URL. Other LEA tabs use the latest published year for each series.
+`school_year` is the **four-digit start year** (`2024` = 2024–25). It comes from the catalog entry, not from a workbook header string.
 
-The load step caches workbooks under `data/raw/` and rebuilds `data/pde.db`. `python -m pa_edu.personnel` loads only the professional-staff salary files. The app listens on http://127.0.0.1:8050.
+## Site
 
-Enrollment currently covers school years 2007–08 through whatever the public-school enrollment page publishes. Budget covers the General Fund Budget files on the current GFB data page (2017–18 onward as of 2026). The chart offers years that exist in both. See `docs/` for the table layout and the account-code map. 
+Edit `pa_edu/web/`, not the generated `pde_site/` (gitignored). After JS/CSS changes, bump the `?v=` query on `pa_edu/web/index.html` so browsers pick up the new file.
+
+The browser is county → LEA, with Overview, Financials, Staff, Enrollment, PSSA, and Keystone. The address bar holds the selection; Share copies that URL. Every figure cites the PDE workbook URL it came from.
+
+## Design rules (short)
+
+1. **Cite the source.** Every refined fact row has a `document_id` that resolves to the URL and retained bytes.
+2. **Rebuild from the catalog.** Clone + `pip install -e .` + `python -m pa_edu.refine` rebuilds the Parquet.
+3. **Keep raw bytes.** A later PDE edit does not erase what was already fetched.
+4. **Stable only when the layout is known.** `review` is downloaded and left alone until a human confirms the layout.
+5. **Show published grain.** Budget ≠ AFR. Parent accounts are not summed with their children. Empty is not zero.
+
+Deep design: [`docs/refined-pipeline.md`](docs/refined-pipeline.md). Agent guidance: [`AGENTS.md`](AGENTS.md).
+
+## Legacy path
+
+The older SQLite loaders (`python -m pa_edu.load`), Dash app (`python -m pa_edu.app`), and notebooks under `data_acquisition/` still exist. Do not extend them for new sources. Historical notes for that stack live under [`docs/`](docs/) and are marked legacy.
+
+```bash
+python -m pa_edu.load       # rebuilds data/pde.db
+python -m pa_edu.personnel  # professional-staff salaries into SQLite
+python -m pa_edu.app        # Dash chart at http://127.0.0.1:8050
+```

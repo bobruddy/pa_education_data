@@ -1,0 +1,35 @@
+[project]
+name = "pa-education-data"
+version = "0.2.0"
+description = "Citeable PDE public data: cataloged downloads, Parquet tables, and the pdenumbers.org LEA browser."
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4==4.15.0",
+    "dash==4.5.0",
+    "dash-bootstrap-components==2.0.4",
+    "openpyxl==3.1.5",
+    "pandas==3.1.1",
+    "plotly==7.1.0",
+    "requests==2.34.2",
+    "xlrd==2.0.2",
+    "duckdb==2.0.0",
+    "pyarrow==26.0.1",
+    "pypdf==7.0.1",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==9.2.0"]
+
+[project.scripts]
+pa-edu-load = "pa_edu.load:main"
+pa-edu-app = "pa_edu.app:main"
+pa-edu-refine = "pa_edu.refine:main"
+pa-edu-check = "pa_edu.check:main"
+pa-edu-publish = "pa_edu.publish:main"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["pa_edu*"]

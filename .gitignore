@@ -1,5 +1,7 @@
 # Custome items
 .DS_Store
+site/
+pde_site/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

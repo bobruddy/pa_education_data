@@ -1,0 +1,671 @@
+[[document]]
+id = "edna-entities"
+source_id = "edna"
+source_url = "https://www.edna.pa.gov/Screens/Extracts/wfExtractEntitiesAdmin.aspx"
+page_url = "https://www.edna.pa.gov/Screens/Extracts/wfExtractEntitiesAdmin.aspx"
+parser = "edna"
+status = "stable"
+fetch = "edna"
+filename = "ExtractEntitiesAdmin.xlsx"
+
+[[document]]
+id = "chart-2024"
+source_id = "chart"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/comptrollers-office/chart%20of%20accounts%202024-2025.pdf"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/summary-of-annual-financial-report-data/afr-data-detailed"
+parser = "chart"
+status = "stable"
+school_year = 2024
+
+[[document]]
+id = "gfb-2017"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2017-18gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2017
+
+[[document]]
+id = "gfb-2018"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2018-19gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2018
+
+[[document]]
+id = "gfb-2019"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2019-20gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2019
+
+[[document]]
+id = "gfb-2020"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2020-21gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2020
+
+[[document]]
+id = "gfb-2021"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2021-22gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2021
+
+[[document]]
+id = "gfb-2022"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2022-23gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2022
+
+[[document]]
+id = "gfb-2023"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2023-24gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2023
+
+[[document]]
+id = "gfb-2024"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2024-25gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2024
+
+[[document]]
+id = "gfb-2025"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2025-26gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2025
+
+[[document]]
+id = "gfb-2026"
+source_id = "gfb"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/finances/gfbdata/2026-27gfbdata.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+parser = "gfb"
+status = "stable"
+school_year = 2026
+
+[[document]]
+id = "afr-2022"
+source_id = "afr"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/summary-of-afr-data/afr-data-summary-level/afr%202022-2023.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/summary-of-annual-financial-report-data/afr-data-summary-level"
+parser = "afr"
+status = "stable"
+school_year = 2022
+
+[[document]]
+id = "afr-2023"
+source_id = "afr"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/summary-of-afr-data/afr-data-summary-level/afr%202023-2024.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/summary-of-annual-financial-report-data/afr-data-summary-level"
+parser = "afr"
+status = "stable"
+school_year = 2023
+
+[[document]]
+id = "afr-2024"
+source_id = "afr"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/summary-of-afr-data/afr-data-summary-level/afr%202024-2025.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/summary-of-annual-financial-report-data/afr-data-summary-level"
+parser = "afr"
+status = "stable"
+school_year = 2024
+
+[[document]]
+id = "afr-expdetail"
+source_id = "afr_reference"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/summary-of-afr-data/afr-data-detailed/finances%20afr%20expdetail%201516-2425.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/summary-of-annual-financial-report-data/afr-data-detailed"
+parser = "afr"
+status = "review"
+
+[[document]]
+id = "afr-majorobject"
+source_id = "afr_reference"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/summary-of-afr-data/afr-data-detailed/finances%20afr%20majorobject%201516-2425.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/summary-of-annual-financial-report-data/afr-data-detailed"
+parser = "afr"
+status = "review"
+
+[[document]]
+id = "enrollment-2025"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202025-2026.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2025
+
+[[document]]
+id = "enrollment-2011"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202011-12.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2011
+
+[[document]]
+id = "enrollment-2012"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202012-13.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2012
+
+[[document]]
+id = "enrollment-2013"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202013-14.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2013
+
+[[document]]
+id = "enrollment-2014"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202014-15.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2014
+
+[[document]]
+id = "enrollment-2015"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202015-16.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2015
+
+[[document]]
+id = "enrollment-2016"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202016-17.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2016
+
+[[document]]
+id = "enrollment-2017"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202017-18.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2017
+
+[[document]]
+id = "enrollment-2018"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202018-19.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2018
+
+[[document]]
+id = "enrollment-2019"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202019-20.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2019
+
+[[document]]
+id = "enrollment-2020"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202020-21.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2020
+
+[[document]]
+id = "enrollment-2021"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202021-22.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2021
+
+[[document]]
+id = "enrollment-2022"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202022-23.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2022
+
+[[document]]
+id = "enrollment-2023"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202023-24.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2023
+
+[[document]]
+id = "enrollment-2024"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202024-25.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2024
+
+[[document]]
+id = "enrollment-2007"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20school%202007-08.xls"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2007
+
+[[document]]
+id = "enrollment-2008"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20school%202008-09.xls"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2008
+
+[[document]]
+id = "enrollment-2009"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20school%202009-10.xls"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2009
+
+[[document]]
+id = "enrollment-2010"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20school%202010-11.xls"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "stable"
+school_year = 2010
+
+[[document]]
+id = "enrollment-2004"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20school%202004-05.xls"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "review"
+school_year = 2004
+
+[[document]]
+id = "enrollment-2005"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20school%202005-06.xls"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "review"
+school_year = 2005
+
+[[document]]
+id = "enrollment-2006"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20school%202006-07.xls"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "review"
+school_year = 2006
+
+[[document]]
+id = "enrollment-2007-2012"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20schools%202007-2012.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "review"
+
+[[document]]
+id = "enrollment-consolidated"
+source_id = "enrollment"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/enrollment/public-school/enrollment%20public%20school%201617%20through%202526.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "enrollment"
+status = "review"
+
+[[document]]
+id = "keystone-district-2014"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2015%20keystone%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2014
+
+[[document]]
+id = "keystone-district-2015"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2016%20keystone%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2015
+
+[[document]]
+id = "keystone-district-2016"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2017%20keystone%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2016
+
+[[document]]
+id = "keystone-district-2017"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2018%20keystone%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2017
+
+[[document]]
+id = "keystone-district-2018"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2019%20keystone%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2018
+
+[[document]]
+id = "keystone-district-2020"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2021%20keystone%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2020
+
+[[document]]
+id = "keystone-district-2021"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2022%20keystone%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2021
+
+[[document]]
+id = "keystone-district-2022"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2023%20keystone%20district%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2022
+
+[[document]]
+id = "keystone-district-2023"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2024-keystone-exams-district-grade-11-data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2023
+
+[[document]]
+id = "keystone-district-2024"
+source_id = "keystone"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/keystones/2025-keystone-exams-district-level-data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "keystone"
+status = "stable"
+school_year = 2024
+
+[[document]]
+id = "pssa-district-2014"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2015%20pssa%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2014
+
+[[document]]
+id = "pssa-district-2015"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2016%20pssa%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2015
+
+[[document]]
+id = "pssa-district-2016"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2017%20pssa%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2016
+
+[[document]]
+id = "pssa-district-2017"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2018%20pssa%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2017
+
+[[document]]
+id = "pssa-district-2018"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2019%20pssa%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2018
+
+[[document]]
+id = "pssa-district-2020"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2021%20pssa%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2020
+
+[[document]]
+id = "pssa-district-2021"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2022%20pssa%20district%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2021
+
+[[document]]
+id = "pssa-district-2022"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2023%20pssa%20district%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2022
+
+[[document]]
+id = "pssa-district-2023"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2024-pssa-district-data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2023
+
+[[document]]
+id = "pssa-district-2024"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2025-pssa-district-level-data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa"
+status = "stable"
+school_year = 2024
+
+[[document]]
+id = "act1-adjusted-history"
+source_id = "act1"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/property-tax-relief/act1index/ssact1%20adjindexhistory%202027-28.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/property-tax-relief/act-1-index"
+parser = "act1"
+status = "stable"
+
+[[document]]
+id = "act1-base-history"
+source_id = "act1"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/property-tax-relief/act1index/ssact1%20baseindexhistory%202027-28.pdf"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/property-tax-relief/act-1-index"
+parser = "act1_base"
+status = "stable"
+
+[[document]]
+id = "retax-2017"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/real%20estate%20tax%20rates%202017-18.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2017
+
+[[document]]
+id = "retax-2018"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/real%20estate%20tax%20rates%202018-19.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2018
+
+[[document]]
+id = "retax-2019"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/real%20estate%20tax%20rates%202019-20.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2019
+
+[[document]]
+id = "retax-2020"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/real%20estate%20tax%20rates%202020-21.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2020
+
+[[document]]
+id = "retax-2021"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/real%20estate%20tax%20rates%202021-22.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2021
+
+[[document]]
+id = "retax-2022"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/real%20estate%20tax%20rates%202022-23.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2022
+
+[[document]]
+id = "retax-2023"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/real%20estate%20tax%20rates%202023-24.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2023
+
+[[document]]
+id = "retax-2024"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/real%20estate%20tax%20rates%202024-2025.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2024
+
+[[document]]
+id = "retax-2025"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/finances%20retaxrates%202025-2026.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2025
+
+[[document]]
+id = "retax-2026"
+source_id = "retax"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/real-estate-tax-rates/finances%20retaxrates%202026-2027.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "retax"
+status = "stable"
+school_year = 2026
+
+# Charter ADM by resident school district. Only 2024–25 publishes the CS ADM by SD sheet.
+[[document]]
+id = "adm-2024"
+source_id = "adm"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/grants-and-funding/school-finances/financial-data-elements/average-daily-membership/finances%20adm-wadm%202024-25.xlsx"
+page_url = "https://www.pa.gov/agencies/education/programs-and-services/schools/grants-and-funding/school-finances/financial-data/financial-data-elements"
+parser = "charter_adm"
+status = "stable"
+school_year = 2024
+
+[[document]]
+id = "homeschool-2024"
+source_id = "homeschool"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/home-school-education/homeschool%20data%20by%20district%20and%20county.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+parser = "homeschool"
+status = "stable"
+school_year = 2024
+

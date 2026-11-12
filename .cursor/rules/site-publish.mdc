@@ -20,6 +20,7 @@ Edit `pa_edu/web/` (`app.js`, `app.css`, `index.html`). `pde_site/` is generated
 ## UI habits
 
 - Budget card notes: year-over-year change, then Act 1, then mills. Multi-rate districts list each county/place line.
+- Keep the `site-foot` source-code footnote in `index.html` (outside `#app`) so every SPA view links to the GitHub repo.
 - Bump `app.js?v=` / `app.css?v=` in `index.html` whenever those files change so elm visitors are not stuck on a cached script.
 - After deploy, prove with the public URL or on-disk elm paths—not only local `pde_site`.
 

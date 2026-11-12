@@ -1,0 +1,236 @@
+import numpy as np
+import pandas as pd
+
+from pa_edu.publish import (
+    EXPERIENCE_EDGES,
+    _county_ranks,
+    _experience_stats,
+    _percent_points,
+    _salary_group,
+    _years_for,
+    directory_row,
+    lea_document,
+)
+
+
+def test_empty_years_are_left_out() -> None:
+    document = lea_document(
+        {"aun": "1", "name": "One"},
+        {
+            2024: {
+                "grades": {"012": 10},
+                "schools": [],
+                "actual": {},
+                "budget": {},
+                "budgetDetail": {"1100": {"100": 5}},
+                "actualDetail": {"1110": {"120": {"t": 9, "e": 4}}},
+                "actualSchool": {},
+            },
+            2023: {
+                "grades": {},
+                "schools": [],
+                "actual": {},
+                "budget": {},
+                "budgetDetail": {},
+                "actualDetail": {},
+                "actualSchool": {},
+            },
+        },
+    )
+    assert list(document["years"]) == ["2024"]
+    assert document["years"]["2024"]["actualDetail"]["1110"]["120"]["t"] == 9
+
+
+def test_salary_groups_follow_edf_codes() -> None:
+    assert _salary_group("ELMTCH") == "elementary"
+    assert _salary_group("KGTCH") == "elementary"
+    assert _salary_group("SECTCH") == "secondary"
+    assert _salary_group("SCHADM") == "administrator"
+    assert _salary_group("LEAADM") == "administrator"
+    assert _salary_group("UGTCH") == "ungraded"
+    assert _salary_group("GUI") == "support"
+    assert _salary_group("Elementary Teachers") == "elementary"
+    assert _salary_group("Secondary Teachers") == "secondary"
+    assert _salary_group(None) is None
+
+
+def test_experience_hist_bins_integer_years() -> None:
+    frame = pd.DataFrame({
+        "years_in_lea": [0, 1, 1, 5, 40, 42, None],
+        "years_in_education": [2, 3, 4, 10, 25, 30, 8],
+        "annual_salary": [40_000, 45_000, 50_000, 60_000, 80_000, 90_000, 55_000],
+        "degree_code": ["1054", "1054", "1051", "1055", "1054", "1051", "1054"],
+    })
+    edges = np.asarray(EXPERIENCE_EDGES, dtype=float)
+    stats = _experience_stats(frame, "years_in_lea", "years_in_education", edges)
+    assert stats is not None
+    assert stats["n"] == 6
+    assert stats["min"] == 0
+    assert stats["max"] == 42
+    assert len(stats["hist"]) == len(EXPERIENCE_EDGES) + 1
+    assert stats["hist"][0] == 1  # under 1 year
+    assert stats["hist"][1] == 2  # 1 year
+    assert stats["hist"][5] == 1  # 5 years
+    assert stats["hist"][-1] == 2  # 40+
+    assert stats["bins"][1]["n"] == 2
+    assert stats["bins"][1]["meanSalary"] == 47_500
+    assert stats["bins"][1]["eduYears"] == 3.5
+
+    document = lea_document(
+        {"aun": "1", "name": "One"},
+        {2024: {"experience": {"elementary": {"lea": stats}}}},
+    )
+    assert document["years"]["2024"]["experience"]["elementary"]["lea"]["n"] == 6
+
+
+def test_county_ranks_order_highest_first() -> None:
+    profiles = [
+        {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "2", "name": "Beta", "county": "Fayette", "category": "school_district"},
+        {"aun": "3", "name": "Other", "county": "Greene", "category": "school_district"},
+    ]
+    grades = {"1": {2024: {"012": 100}}, "2": {2024: {"012": 300}}, "3": {2024: {"012": 900}}}
+    actual = {"1": {2024: {"1000": 50}}, "2": {2024: {"1000": 200}}}
+    budget = {"1": {2024: {"1000": 60}}, "2": {2024: {"1000": 180}}}
+    keystone = {
+        "1": {2024: {"algebra_i": {"011": {"All Students": {"n": 100, "pct": 50.0}}}}},
+        "2": {2024: {"algebra_i": {"011": {"All Students": {"n": 120, "pct": 70.0}}}}},
+    }
+    pssa = {
+        "1": {2024: {"math": {"total": {"All Students": {"n": 80, "pct": 40.0}}}}},
+        "2": {2024: {"math": {"total": {"All Students": {"n": 90, "pct": 65.0}}}}},
+    }
+    ranks = _county_ranks(profiles, grades, actual, budget, {}, keystone, pssa)
+    assert ranks["2"][2024]["enrollment"]["rank"] == 1
+    assert ranks["1"][2024]["enrollment"]["rank"] == 2
+    assert ranks["1"][2024]["enrollment"]["of"] == 2
+    assert [peer["aun"] for peer in ranks["1"][2024]["enrollment"]["peers"]] == ["2", "1"]
+    assert ranks["2"][2024]["perStudent"]["rank"] == 1
+    assert ranks["2"][2024]["keystone_algebra_i"]["rank"] == 1
+    assert ranks["1"][2024]["keystone_algebra_i"]["rank"] == 2
+    assert ranks["2"][2024]["pssa_math"]["rank"] == 1
+    assert ranks["1"][2024]["pssa_math"]["rank"] == 2
+    assert "3" not in ranks or 2024 not in ranks.get("3", {}) or "actual" not in ranks.get("3", {}).get(2024, {})
+
+
+def test_act1_rides_along_on_a_year_that_already_exists() -> None:
+    years = _years_for(
+        "101260303",
+        {},
+        {},
+        {},
+        {"101260303": {2024: {"1000": 5}, 2017: {"1000": 1}}},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        act1={"101260303": {2024: 7.8, 2027: 5.3}},
+        act1_base={2024: 5.3},
+    )
+    assert years[2024]["act1"] == 7.8
+    assert years[2024]["act1Base"] == 5.3
+    assert "act1" not in years[2017]
+    assert 2027 not in years
+    assert _percent_points(0.078) == 7.8
+    document = lea_document({"aun": "101260303"}, {2024: {"act1": 7.8}})
+    assert document["years"]["2024"]["act1"] == 7.8
+
+
+def test_mills_ride_along_on_a_budget_year() -> None:
+    years = _years_for(
+        "124150503",
+        {},
+        {},
+        {},
+        {"124150503": {2025: {"1000": 1}}},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        mills={"124150503": {
+            2025: [{"county": "Chester", "mills": 36}],
+            2027: [{"county": "Chester", "mills": 37}],
+        }},
+    )
+    assert years[2025]["mills"][0]["mills"] == 36
+    assert 2027 not in years
+
+
+def test_charter_and_homeschool_ride_along_on_enrollment_years() -> None:
+    years = _years_for(
+        "124150503",
+        {"124150503": {2024: {"012": 5000}, 2023: {"012": 5100}}},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        charter_adm={"124150503": {2024: 116.7, 2027: 200.0}},
+        home_education={"124150503": {2024: 120.0, 2027: 130.0}},
+    )
+    assert years[2024]["charterAdm"] == 116.7
+    assert years[2024]["homeEducation"] == 120.0
+    assert "charterAdm" not in years[2023]
+    assert 2027 not in years
+    document = lea_document(
+        {"aun": "124150503"},
+        {2024: {"grades": {"012": 1}, "charterAdm": 116.7, "homeEducation": 120.0}},
+    )
+    assert document["years"]["2024"]["charterAdm"] == 116.7
+
+
+def test_keystone_year_is_kept_on_its_own() -> None:
+    years = _years_for(
+        "124150503",
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        keystone={
+            "124150503": {
+                2024: {
+                    "algebra_i": {"011": {"All Students": {"n": 410, "pct": 64.9}}},
+                    "literature": {"011": {"All Students": {"n": 413, "pct": 81.6}}},
+                    "biology": {"011": {"All Students": {"n": 411, "pct": 67.6}}},
+                }
+            }
+        },
+    )
+    assert years[2024]["keystone"]["literature"]["011"]["All Students"]["pct"] == 81.6
+    document = lea_document({"aun": "124150503", "name": "Avon Grove"}, years)
+    algebra = document["years"]["2024"]["keystone"]["algebra_i"]["011"]["All Students"]
+    assert algebra["n"] == 410
+    assert algebra["pct"] == 64.9
+
+
+def test_directory_row_keeps_a_missing_actual() -> None:
+    row = directory_row(
+        {"aun": "101260303", "name": "Albert Gallatin", "county": "Fayette", "category": "school_district", "status": "open"},
+        3000,
+        None,
+        100.5,
+    )
+    assert row["enrollment"] == 3000
+    assert row["actual"] is None
+    assert row["budget"] == 100.5

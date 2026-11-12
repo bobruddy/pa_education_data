@@ -1,0 +1,4711 @@
+{
+  "year": 2024,
+  "ag": [
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "All Students",
+      "pct": 45.9,
+      "n": 357
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 4
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 4
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "ELL",
+      "pct": 10.4,
+      "n": 67
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "Economically Disadvantaged",
+      "pct": 17.9,
+      "n": 106
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "Female",
+      "pct": 52.4,
+      "n": 166
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "Hispanic (any race)",
+      "pct": 17.1,
+      "n": 105
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "IEP",
+      "pct": 13.4,
+      "n": 67
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "Male",
+      "pct": 40.3,
+      "n": 191
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 5
+    },
+    {
+      "subject": "ela",
+      "grade": "003",
+      "student_group": "White (not Hispanic)",
+      "pct": 57.4,
+      "n": 237
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "All Students",
+      "pct": 55.1,
+      "n": 363
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 9
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 9
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "ELL",
+      "pct": 10.7,
+      "n": 56
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "Economically Disadvantaged",
+      "pct": 32.0,
+      "n": 122
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "Female",
+      "pct": 61.9,
+      "n": 160
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "Hispanic (any race)",
+      "pct": 24.7,
+      "n": 97
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "IEP",
+      "pct": 23.4,
+      "n": 64
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "Male",
+      "pct": 49.8,
+      "n": 203
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 6
+    },
+    {
+      "subject": "ela",
+      "grade": "004",
+      "student_group": "White (not Hispanic)",
+      "pct": 68.2,
+      "n": 242
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "All Students",
+      "pct": 67.2,
+      "n": 375
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 8
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 2
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "ELL",
+      "pct": 12.0,
+      "n": 25
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "Economically Disadvantaged",
+      "pct": 34.9,
+      "n": 106
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "Female",
+      "pct": 70.3,
+      "n": 192
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "Hispanic (any race)",
+      "pct": 40.0,
+      "n": 105
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "IEP",
+      "pct": 27.8,
+      "n": 54
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "Male",
+      "pct": 63.9,
+      "n": 183
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 8
+    },
+    {
+      "subject": "ela",
+      "grade": "005",
+      "student_group": "White (not Hispanic)",
+      "pct": 77.8,
+      "n": 252
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "All Students",
+      "pct": 60.1,
+      "n": 361
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 8
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 5
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "ELL",
+      "pct": 0.0,
+      "n": 28
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "Economically Disadvantaged",
+      "pct": 28.6,
+      "n": 119
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "Female",
+      "pct": 72.2,
+      "n": 180
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "Hispanic (any race)",
+      "pct": 25.8,
+      "n": 97
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "IEP",
+      "pct": 14.9,
+      "n": 47
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "Male",
+      "pct": 48.1,
+      "n": 181
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 7
+    },
+    {
+      "subject": "ela",
+      "grade": "006",
+      "student_group": "White (not Hispanic)",
+      "pct": 72.8,
+      "n": 243
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "All Students",
+      "pct": 71.2,
+      "n": 354
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 7
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 7
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "ELL",
+      "pct": 4.8,
+      "n": 21
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "Economically Disadvantaged",
+      "pct": 37.6,
+      "n": 93
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "Female",
+      "pct": 76.2,
+      "n": 168
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "Hispanic (any race)",
+      "pct": 44.3,
+      "n": 97
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "IEP",
+      "pct": 38.1,
+      "n": 42
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "Male",
+      "pct": 66.7,
+      "n": 186
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 76.9,
+      "n": 13
+    },
+    {
+      "subject": "ela",
+      "grade": "007",
+      "student_group": "White (not Hispanic)",
+      "pct": 82.6,
+      "n": 230
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "All Students",
+      "pct": 68.4,
+      "n": 373
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 7
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 5
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "ELL",
+      "pct": 8.0,
+      "n": 25
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "Economically Disadvantaged",
+      "pct": 36.3,
+      "n": 113
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "Female",
+      "pct": 70.6,
+      "n": 177
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "Hispanic (any race)",
+      "pct": 34.8,
+      "n": 112
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "IEP",
+      "pct": 31.4,
+      "n": 35
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "Male",
+      "pct": 66.3,
+      "n": 196
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 6
+    },
+    {
+      "subject": "ela",
+      "grade": "008",
+      "student_group": "White (not Hispanic)",
+      "pct": 82.3,
+      "n": 243
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "All Students",
+      "pct": 61.4,
+      "n": 2183
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 83.7,
+      "n": 43
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 43.8,
+      "n": 32
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "ELL",
+      "pct": 8.6,
+      "n": 222
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "Economically Disadvantaged",
+      "pct": 31.1,
+      "n": 659
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "Female",
+      "pct": 67.5,
+      "n": 1043
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "Hispanic (any race)",
+      "pct": 31.2,
+      "n": 613
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "IEP",
+      "pct": 23.6,
+      "n": 309
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "Male",
+      "pct": 55.8,
+      "n": 1140
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 73.3,
+      "n": 45
+    },
+    {
+      "subject": "ela",
+      "grade": "total",
+      "student_group": "White (not Hispanic)",
+      "pct": 73.5,
+      "n": 1447
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "All Students",
+      "pct": 61.1,
+      "n": 357
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 4
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 4
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "ELL",
+      "pct": 29.9,
+      "n": 67
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "Economically Disadvantaged",
+      "pct": 33.0,
+      "n": 106
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "Female",
+      "pct": 59.0,
+      "n": 166
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "Hispanic (any race)",
+      "pct": 34.3,
+      "n": 105
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "IEP",
+      "pct": 28.4,
+      "n": 67
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "Male",
+      "pct": 62.8,
+      "n": 191
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 5
+    },
+    {
+      "subject": "math",
+      "grade": "003",
+      "student_group": "White (not Hispanic)",
+      "pct": 72.2,
+      "n": 237
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "All Students",
+      "pct": 60.3,
+      "n": 363
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 9
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 9
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "ELL",
+      "pct": 14.0,
+      "n": 57
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "Economically Disadvantaged",
+      "pct": 30.1,
+      "n": 123
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "Female",
+      "pct": 56.6,
+      "n": 159
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "Hispanic (any race)",
+      "pct": 24.5,
+      "n": 98
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "IEP",
+      "pct": 35.9,
+      "n": 64
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "Male",
+      "pct": 63.2,
+      "n": 204
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 6
+    },
+    {
+      "subject": "math",
+      "grade": "004",
+      "student_group": "White (not Hispanic)",
+      "pct": 76.8,
+      "n": 241
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "All Students",
+      "pct": 63.7,
+      "n": 375
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 8
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 2
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "ELL",
+      "pct": 4.0,
+      "n": 25
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "Economically Disadvantaged",
+      "pct": 28.3,
+      "n": 106
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "Female",
+      "pct": 60.4,
+      "n": 192
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "Hispanic (any race)",
+      "pct": 32.4,
+      "n": 105
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "IEP",
+      "pct": 27.8,
+      "n": 54
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "Male",
+      "pct": 67.2,
+      "n": 183
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 8
+    },
+    {
+      "subject": "math",
+      "grade": "005",
+      "student_group": "White (not Hispanic)",
+      "pct": 75.8,
+      "n": 252
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "All Students",
+      "pct": 52.6,
+      "n": 361
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 8
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 5
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "ELL",
+      "pct": 0.0,
+      "n": 28
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "Economically Disadvantaged",
+      "pct": 21.8,
+      "n": 119
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "Female",
+      "pct": 57.2,
+      "n": 180
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "Hispanic (any race)",
+      "pct": 17.5,
+      "n": 97
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "IEP",
+      "pct": 14.9,
+      "n": 47
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "Male",
+      "pct": 48.1,
+      "n": 181
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 7
+    },
+    {
+      "subject": "math",
+      "grade": "006",
+      "student_group": "White (not Hispanic)",
+      "pct": 65.4,
+      "n": 243
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "All Students",
+      "pct": 48.7,
+      "n": 355
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 7
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 7
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "ELL",
+      "pct": 4.5,
+      "n": 22
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "Economically Disadvantaged",
+      "pct": 18.1,
+      "n": 94
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "Female",
+      "pct": 42.0,
+      "n": 169
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "Hispanic (any race)",
+      "pct": 24.5,
+      "n": 98
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "IEP",
+      "pct": 16.7,
+      "n": 42
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "Male",
+      "pct": 54.8,
+      "n": 186
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 46.2,
+      "n": 13
+    },
+    {
+      "subject": "math",
+      "grade": "007",
+      "student_group": "White (not Hispanic)",
+      "pct": 59.1,
+      "n": 230
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "All Students",
+      "pct": 43.2,
+      "n": 373
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 7
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": null,
+      "n": 5
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "ELL",
+      "pct": 4.0,
+      "n": 25
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "Economically Disadvantaged",
+      "pct": 15.0,
+      "n": 113
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "Female",
+      "pct": 40.1,
+      "n": 177
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "Hispanic (any race)",
+      "pct": 16.1,
+      "n": 112
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "IEP",
+      "pct": 14.3,
+      "n": 35
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "Male",
+      "pct": 45.9,
+      "n": 196
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": null,
+      "n": 6
+    },
+    {
+      "subject": "math",
+      "grade": "008",
+      "student_group": "White (not Hispanic)",
+      "pct": 54.7,
+      "n": 243
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "All Students",
+      "pct": 54.9,
+      "n": 2184
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 79.1,
+      "n": 43
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 37.5,
+      "n": 32
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "ELL",
+      "pct": 13.8,
+      "n": 224
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "Economically Disadvantaged",
+      "pct": 24.5,
+      "n": 661
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "Female",
+      "pct": 52.6,
+      "n": 1043
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "Hispanic (any race)",
+      "pct": 24.9,
+      "n": 615
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "IEP",
+      "pct": 24.6,
+      "n": 309
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "Male",
+      "pct": 57.1,
+      "n": 1141
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 53.3,
+      "n": 45
+    },
+    {
+      "subject": "math",
+      "grade": "total",
+      "student_group": "White (not Hispanic)",
+      "pct": 67.4,
+      "n": 1446
+    }
+  ],
+  "trend": [
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 71.9,
+      "n": 2255
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 90.9,
+      "n": 44
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 56.3,
+      "n": 32
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 11.4,
+      "n": 176
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 44.800000000000004,
+      "n": 592
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 79.2,
+      "n": 1034
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 43.7,
+      "n": 498
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 24.099999999999998,
+      "n": 299
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 65.6,
+      "n": 1221
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 80.0,
+      "n": 65
+    },
+    {
+      "school_year": 2014,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 79.9,
+      "n": 1616
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 55.2,
+      "n": 2255
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 84.1,
+      "n": 44
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 28.1,
+      "n": 32
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 8.0,
+      "n": 176
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 27.0,
+      "n": 590
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 55.5,
+      "n": 1033
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 29.3,
+      "n": 498
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 17.3,
+      "n": 301
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 54.8,
+      "n": 1222
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 60.0,
+      "n": 65
+    },
+    {
+      "school_year": 2014,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 62.699999999999996,
+      "n": 1616
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 72.9,
+      "n": 2231
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 90.7,
+      "n": 43
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 62.5,
+      "n": 40
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 6.5,
+      "n": 170
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 46.5,
+      "n": 598
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 78.7,
+      "n": 1022
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 44.1,
+      "n": 522
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 21.1,
+      "n": 261
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 68.2,
+      "n": 1209
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 70.7,
+      "n": 65
+    },
+    {
+      "school_year": 2015,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 82.5,
+      "n": 1561
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 59.099999999999994,
+      "n": 2229
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 90.7,
+      "n": 43
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 50.0,
+      "n": 40
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 5.8999999999999995,
+      "n": 170
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 32.6,
+      "n": 598
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 60.900000000000006,
+      "n": 1020
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 30.6,
+      "n": 522
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 19.1,
+      "n": 261
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 57.5,
+      "n": 1209
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 55.400000000000006,
+      "n": 65
+    },
+    {
+      "school_year": 2015,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 68.2,
+      "n": 1559
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 71.6,
+      "n": 2203
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 90.5,
+      "n": 42
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 51.5,
+      "n": 33
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 7.9,
+      "n": 178
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 46.4,
+      "n": 603
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 77.3,
+      "n": 1039
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 45.3,
+      "n": 539
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 23.6,
+      "n": 254
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 66.7,
+      "n": 1164
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 68.69999999999999,
+      "n": 67
+    },
+    {
+      "school_year": 2016,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 81.0,
+      "n": 1521
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 64.0,
+      "n": 2193
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 85.7,
+      "n": 42
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 46.9,
+      "n": 32
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 8.1,
+      "n": 173
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 38.4,
+      "n": 597
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 64.8,
+      "n": 1037
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 36.3,
+      "n": 535
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 15.6,
+      "n": 249
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 63.300000000000004,
+      "n": 1156
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 56.1,
+      "n": 66
+    },
+    {
+      "school_year": 2016,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 73.9,
+      "n": 1517
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 73.8,
+      "n": 2261
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 93.9,
+      "n": 49
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 56.7,
+      "n": 30
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 17.8,
+      "n": 196
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 49.0,
+      "n": 665
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 80.2,
+      "n": 1067
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 48.1,
+      "n": 577
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 26.5,
+      "n": 256
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 68.1,
+      "n": 1194
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 80.0,
+      "n": 70
+    },
+    {
+      "school_year": 2017,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 83.0,
+      "n": 1534
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 62.6,
+      "n": 2258
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 93.80000000000001,
+      "n": 49
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 40.0,
+      "n": 30
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 12.3,
+      "n": 195
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 33.8,
+      "n": 664
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 63.5,
+      "n": 1064
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 33.9,
+      "n": 575
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 20.0,
+      "n": 256
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 61.7,
+      "n": 1194
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 61.4,
+      "n": 70
+    },
+    {
+      "school_year": 2017,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 72.80000000000001,
+      "n": 1533
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 75.80000000000001,
+      "n": 2253
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 90.0,
+      "n": 50
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 59.2,
+      "n": 27
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 19.2,
+      "n": 203
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 52.5,
+      "n": 636
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 80.7,
+      "n": 1080
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 51.4,
+      "n": 578
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 29.4,
+      "n": 255
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 71.3,
+      "n": 1173
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 79.69999999999999,
+      "n": 64
+    },
+    {
+      "school_year": 2018,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 84.69999999999999,
+      "n": 1532
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 65.4,
+      "n": 2257
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 93.9,
+      "n": 49
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 44.4,
+      "n": 27
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 14.7,
+      "n": 205
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 36.7,
+      "n": 640
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 67.0,
+      "n": 1080
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 37.099999999999994,
+      "n": 582
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 19.5,
+      "n": 256
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 63.900000000000006,
+      "n": 1177
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 66.7,
+      "n": 63
+    },
+    {
+      "school_year": 2018,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 75.69999999999999,
+      "n": 1534
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 62.7,
+      "n": 1663
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 83.3,
+      "n": 30
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 56.3,
+      "n": 16
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 6.5,
+      "n": 124
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 33.7,
+      "n": 457
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 66.7,
+      "n": 747
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 31.400000000000002,
+      "n": 434
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 25.6,
+      "n": 176
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 59.4,
+      "n": 916
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 69.7,
+      "n": 33
+    },
+    {
+      "school_year": 2020,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 73.8,
+      "n": 1149
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 49.4,
+      "n": 1660
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 76.7,
+      "n": 30
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 37.6,
+      "n": 16
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 5.6,
+      "n": 124
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 20.7,
+      "n": 456
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 48.2,
+      "n": 744
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 18.4,
+      "n": 436
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 19.2,
+      "n": 177
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 50.3,
+      "n": 916
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 57.599999999999994,
+      "n": 33
+    },
+    {
+      "school_year": 2020,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 60.5,
+      "n": 1144
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 64.0,
+      "n": 2161
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 82.5,
+      "n": 40
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 41.599999999999994,
+      "n": 24
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 7.0,
+      "n": 142
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 37.6,
+      "n": 524
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 69.1,
+      "n": 1051
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 36.8,
+      "n": 563
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 20.6,
+      "n": 228
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 59.1,
+      "n": 1110
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 82.1,
+      "n": 39
+    },
+    {
+      "school_year": 2021,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 73.6,
+      "n": 1492
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 50.3,
+      "n": 2159
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 67.5,
+      "n": 40
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 41.7,
+      "n": 24
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 6.3,
+      "n": 143
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 21.5,
+      "n": 522
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 49.900000000000006,
+      "n": 1048
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 21.6,
+      "n": 564
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 16.299999999999997,
+      "n": 227
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 50.7,
+      "n": 1111
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 56.400000000000006,
+      "n": 39
+    },
+    {
+      "school_year": 2021,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 60.699999999999996,
+      "n": 1489
+    },
+    {
+      "school_year": 2022,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 61.6,
+      "n": 2180
+    },
+    {
+      "school_year": 2022,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 75.0,
+      "n": 40
+    },
+    {
+      "school_year": 2022,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 50.0,
+      "n": 26
+    },
+    {
+      "school_year": 2022,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 4.8,
+      "n": 166
+    },
+    {
+      "school_year": 2022,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 32.0,
+      "n": 632
+    },
+    {
+      "school_year": 2022,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 31.4,
+      "n": 589
+    },
+    {
+      "school_year": 2022,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 22.6,
+      "n": 261
+    },
+    {
+      "school_year": 2022,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 80.0,
+      "n": 40
+    },
+    {
+      "school_year": 2022,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 72.8,
+      "n": 1484
+    },
+    {
+      "school_year": 2022,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 52.7,
+      "n": 2188
+    },
+    {
+      "school_year": 2022,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 72.5,
+      "n": 40
+    },
+    {
+      "school_year": 2022,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 38.5,
+      "n": 26
+    },
+    {
+      "school_year": 2022,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 8.6,
+      "n": 174
+    },
+    {
+      "school_year": 2022,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 25.3,
+      "n": 640
+    },
+    {
+      "school_year": 2022,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 22.3,
+      "n": 597
+    },
+    {
+      "school_year": 2022,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 21.5,
+      "n": 261
+    },
+    {
+      "school_year": 2022,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 70.0,
+      "n": 40
+    },
+    {
+      "school_year": 2022,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 64.2,
+      "n": 1484
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 61.6,
+      "n": 2167
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 69.0,
+      "n": 42
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 51.6,
+      "n": 31
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 5.5,
+      "n": 181
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 33.8,
+      "n": 680
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 65.1,
+      "n": 1053
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 33.5,
+      "n": 573
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 21.4,
+      "n": 276
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 58.3,
+      "n": 1114
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 64.7,
+      "n": 34
+    },
+    {
+      "school_year": 2023,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 72.3,
+      "n": 1486
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 53.5,
+      "n": 2167
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 73.8,
+      "n": 42
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 33.3,
+      "n": 30
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 5.5,
+      "n": 182
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 24.9,
+      "n": 679
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 51.2,
+      "n": 1054
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 22.1,
+      "n": 574
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 25.2,
+      "n": 274
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 55.7,
+      "n": 1113
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 64.7,
+      "n": 34
+    },
+    {
+      "school_year": 2023,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 65.2,
+      "n": 1486
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 61.4,
+      "n": 2183
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 83.7,
+      "n": 43
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 43.8,
+      "n": 32
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 8.6,
+      "n": 222
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 31.1,
+      "n": 659
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 67.5,
+      "n": 1043
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 31.2,
+      "n": 613
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 23.6,
+      "n": 309
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 55.8,
+      "n": 1140
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 73.3,
+      "n": 45
+    },
+    {
+      "school_year": 2024,
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 73.5,
+      "n": 1447
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 54.9,
+      "n": 2184
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 79.1,
+      "n": 43
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 37.5,
+      "n": 32
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 13.8,
+      "n": 224
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 24.5,
+      "n": 661
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 52.6,
+      "n": 1043
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 24.9,
+      "n": 615
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 24.6,
+      "n": 309
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 57.1,
+      "n": 1141
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 53.3,
+      "n": 45
+    },
+    {
+      "school_year": 2024,
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 67.4,
+      "n": 1446
+    }
+  ],
+  "chester": [
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 80.9,
+      "n": 1646
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 78.6,
+      "n": 3097
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 72.8,
+      "n": 5786
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 69.5,
+      "n": 2303
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 69.0,
+      "n": 2060
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 64.5,
+      "n": 5134
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 61.4,
+      "n": 2183
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 59.4,
+      "n": 1769
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 55.4,
+      "n": 1665
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 51.4,
+      "n": 1333
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 35.3,
+      "n": 795
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "All Students",
+      "pct": 31.6,
+      "n": 2042
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 94.5,
+      "n": 220
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 88.2,
+      "n": 1284
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 88.2,
+      "n": 211
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 85.7,
+      "n": 963
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 83.7,
+      "n": 43
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 83.6,
+      "n": 591
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 79.1,
+      "n": 67
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 78.9,
+      "n": 478
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 78.8,
+      "n": 33
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 64.7,
+      "n": 17
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 2
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 2
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 57.1,
+      "n": 84
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 53.1,
+      "n": 32
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 53.0,
+      "n": 134
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 51.6,
+      "n": 31
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 50.0,
+      "n": 38
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 43.8,
+      "n": 32
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 43.5,
+      "n": 62
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 42.2,
+      "n": 83
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 40.1,
+      "n": 202
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 37.6,
+      "n": 85
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 26.3,
+      "n": 38
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 17.4,
+      "n": 596
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 43.3,
+      "n": 134
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 42.1,
+      "n": 19
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 29.4,
+      "n": 34
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 25.4,
+      "n": 142
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 13.4,
+      "n": 216
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 11.6,
+      "n": 189
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 10.6,
+      "n": 161
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 9.6,
+      "n": 312
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 9.1,
+      "n": 219
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 8.6,
+      "n": 222
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 6.8,
+      "n": 133
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "ELL",
+      "pct": 5.6,
+      "n": 36
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 60.6,
+      "n": 236
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 50.7,
+      "n": 134
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 50.0,
+      "n": 456
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 43.2,
+      "n": 704
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 37.9,
+      "n": 642
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 33.9,
+      "n": 846
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 32.1,
+      "n": 598
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 31.1,
+      "n": 659
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 29.6,
+      "n": 736
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 29.5,
+      "n": 369
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 24.5,
+      "n": 351
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "Economically Disadvantaged",
+      "pct": 23.6,
+      "n": 1332
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 82.9,
+      "n": 1432
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 82.2,
+      "n": 797
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 76.8,
+      "n": 2939
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 75.8,
+      "n": 1122
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 73.0,
+      "n": 1008
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 70.3,
+      "n": 2515
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 67.5,
+      "n": 1043
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 64.5,
+      "n": 844
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 61.2,
+      "n": 818
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 56.8,
+      "n": 648
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 39.7,
+      "n": 380
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "Female",
+      "pct": 35.1,
+      "n": 1011
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 73.2,
+      "n": 142
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 64.6,
+      "n": 79
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 61.9,
+      "n": 139
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 47.7,
+      "n": 352
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 36.9,
+      "n": 536
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 34.0,
+      "n": 479
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 31.2,
+      "n": 613
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 29.7,
+      "n": 748
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 29.6,
+      "n": 372
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 26.3,
+      "n": 251
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 25.8,
+      "n": 194
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "Hispanic (any race)",
+      "pct": 21.7,
+      "n": 516
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 52.3,
+      "n": 329
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 44.8,
+      "n": 547
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 34.7,
+      "n": 954
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 34.0,
+      "n": 473
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 31.9,
+      "n": 370
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 29.0,
+      "n": 338
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 23.6,
+      "n": 309
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 23.2,
+      "n": 711
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 19.5,
+      "n": 302
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 18.4,
+      "n": 283
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 10.6,
+      "n": 132
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "IEP",
+      "pct": 9.2,
+      "n": 654
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 79.6,
+      "n": 849
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 74.8,
+      "n": 1665
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 68.7,
+      "n": 2847
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 65.1,
+      "n": 1052
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 63.4,
+      "n": 1181
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 59.0,
+      "n": 2619
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 55.8,
+      "n": 1140
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 54.7,
+      "n": 925
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 49.7,
+      "n": 847
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 46.3,
+      "n": 685
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 31.3,
+      "n": 415
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "Male",
+      "pct": 28.1,
+      "n": 1031
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 88.0,
+      "n": 75
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 79.3,
+      "n": 58
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 76.2,
+      "n": 202
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 73.3,
+      "n": 45
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 69.9,
+      "n": 123
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 68.2,
+      "n": 302
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 63.5,
+      "n": 304
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 63.1,
+      "n": 103
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 57.0,
+      "n": 100
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 45.2,
+      "n": 62
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 34.8,
+      "n": 46
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 33.1,
+      "n": 139
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 79.7,
+      "n": 1236
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 77.2,
+      "n": 786
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 76.3,
+      "n": 1704
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 73.5,
+      "n": 1447
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 73.2,
+      "n": 1049
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 70.9,
+      "n": 3708
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 69.7,
+      "n": 1143
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 69.1,
+      "n": 1741
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 68.0,
+      "n": 3668
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 62.9,
+      "n": 701
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 48.4,
+      "n": 767
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "ela",
+      "student_group": "White (not Hispanic)",
+      "pct": 39.6,
+      "n": 515
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 73.6,
+      "n": 1644
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 72.9,
+      "n": 3109
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 67.8,
+      "n": 5799
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 63.6,
+      "n": 2308
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 62.9,
+      "n": 2061
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 54.9,
+      "n": 2184
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 54.8,
+      "n": 5135
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 50.6,
+      "n": 1768
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 47.4,
+      "n": 1665
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 40.8,
+      "n": 1340
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 29.1,
+      "n": 796
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "All Students",
+      "pct": 21.8,
+      "n": 2039
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 93.8,
+      "n": 211
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 92.3,
+      "n": 220
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 88.7,
+      "n": 1286
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 86.0,
+      "n": 971
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 84.0,
+      "n": 592
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 79.1,
+      "n": 43
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 78.8,
+      "n": 33
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 77.6,
+      "n": 67
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 76.8,
+      "n": 479
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": 47.1,
+      "n": 17
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 2
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "Asian (not Hispanic)",
+      "pct": null,
+      "n": 2
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 46.9,
+      "n": 32
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 40.7,
+      "n": 135
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 40.5,
+      "n": 84
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 38.5,
+      "n": 39
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 37.5,
+      "n": 32
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 30.5,
+      "n": 82
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 27.4,
+      "n": 62
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 25.8,
+      "n": 31
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 24.8,
+      "n": 202
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 23.5,
+      "n": 85
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 10.0,
+      "n": 589
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "Black or African American (not Hispanic)",
+      "pct": 7.9,
+      "n": 38
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 52.8,
+      "n": 142
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 45.0,
+      "n": 20
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 43.2,
+      "n": 37
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 37.1,
+      "n": 143
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 19.0,
+      "n": 216
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 14.4,
+      "n": 160
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 14.1,
+      "n": 192
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 13.8,
+      "n": 224
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 13.7,
+      "n": 219
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 12.8,
+      "n": 39
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 11.6,
+      "n": 311
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "ELL",
+      "pct": 5.1,
+      "n": 136
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 50.0,
+      "n": 132
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 46.8,
+      "n": 235
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 42.4,
+      "n": 462
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 38.8,
+      "n": 708
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 29.0,
+      "n": 644
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 26.4,
+      "n": 598
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 26.4,
+      "n": 367
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 24.5,
+      "n": 661
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 24.0,
+      "n": 845
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 22.6,
+      "n": 736
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 20.8,
+      "n": 351
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "Economically Disadvantaged",
+      "pct": 15.0,
+      "n": 1331
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 72.2,
+      "n": 795
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 71.3,
+      "n": 1438
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 66.5,
+      "n": 2944
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 62.4,
+      "n": 1126
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 60.8,
+      "n": 1009
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 52.6,
+      "n": 1043
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 52.2,
+      "n": 2514
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 49.8,
+      "n": 844
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 46.0,
+      "n": 817
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 37.8,
+      "n": 649
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 25.9,
+      "n": 379
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "Female",
+      "pct": 19.9,
+      "n": 1010
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 57.0,
+      "n": 79
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 54.2,
+      "n": 142
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 49.3,
+      "n": 142
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 43.9,
+      "n": 353
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 26.7,
+      "n": 539
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 26.5,
+      "n": 475
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 26.1,
+      "n": 372
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 24.9,
+      "n": 615
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 23.7,
+      "n": 249
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 22.1,
+      "n": 747
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 21.1,
+      "n": 194
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "Hispanic (any race)",
+      "pct": 15.3,
+      "n": 518
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 47.6,
+      "n": 328
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 42.2,
+      "n": 547
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 33.1,
+      "n": 956
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 30.5,
+      "n": 475
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 28.2,
+      "n": 369
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 24.6,
+      "n": 309
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 22.7,
+      "n": 339
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 20.6,
+      "n": 712
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 15.5,
+      "n": 284
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 15.2,
+      "n": 302
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 11.4,
+      "n": 132
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "IEP",
+      "pct": 8.4,
+      "n": 654
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 74.9,
+      "n": 849
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 74.2,
+      "n": 1671
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 69.2,
+      "n": 2855
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 65.0,
+      "n": 1052
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 64.6,
+      "n": 1182
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 57.3,
+      "n": 2621
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 57.1,
+      "n": 1141
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 51.4,
+      "n": 924
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 48.7,
+      "n": 848
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 43.7,
+      "n": 691
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 32.1,
+      "n": 417
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "Male",
+      "pct": 23.6,
+      "n": 1029
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 74.1,
+      "n": 58
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 73.3,
+      "n": 202
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 73.0,
+      "n": 74
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 58.2,
+      "n": 304
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 54.6,
+      "n": 302
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 54.4,
+      "n": 103
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 54.0,
+      "n": 124
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 53.3,
+      "n": 45
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 47.0,
+      "n": 100
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 30.6,
+      "n": 62
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 19.6,
+      "n": 46
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "Multi-ethnic (not Hispanic)",
+      "pct": 18.1,
+      "n": 138
+    },
+    {
+      "aun": "124158503",
+      "lea_name": "Unionville-Chadds Ford SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 72.1,
+      "n": 1235
+    },
+    {
+      "aun": "124157802",
+      "lea_name": "Tredyffrin-Easttown SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 68.4,
+      "n": 1708
+    },
+    {
+      "aun": "124154003",
+      "lea_name": "Kennett Consolidated SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 68.4,
+      "n": 786
+    },
+    {
+      "aun": "124150503",
+      "lea_name": "Avon Grove SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 67.4,
+      "n": 1446
+    },
+    {
+      "aun": "124152003",
+      "lea_name": "Downingtown Area SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 64.6,
+      "n": 3715
+    },
+    {
+      "aun": "124153503",
+      "lea_name": "Great Valley SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 63.5,
+      "n": 1051
+    },
+    {
+      "aun": "124156603",
+      "lea_name": "Owen J Roberts SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 63.2,
+      "n": 1743
+    },
+    {
+      "aun": "124157203",
+      "lea_name": "Phoenixville Area SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 59.4,
+      "n": 1142
+    },
+    {
+      "aun": "124159002",
+      "lea_name": "West Chester Area SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 57.3,
+      "n": 3674
+    },
+    {
+      "aun": "124156703",
+      "lea_name": "Oxford Area SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 53.2,
+      "n": 705
+    },
+    {
+      "aun": "124151902",
+      "lea_name": "Coatesville Area SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 35.3,
+      "n": 770
+    },
+    {
+      "aun": "124156503",
+      "lea_name": "Octorara Area SD",
+      "subject": "math",
+      "student_group": "White (not Hispanic)",
+      "pct": 34.5,
+      "n": 516
+    }
+  ]
+}

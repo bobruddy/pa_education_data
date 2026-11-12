@@ -49,6 +49,7 @@ Commands (always use `.venv/bin/python`):
 - Edit `pa_edu/web/`, not the generated `pde_site/` (gitignored).
 - Live URL: https://pdenumbers.org/
 - After JS/CSS changes, bump the `?v=` query on `pa_edu/web/index.html` so browsers pick up the new file (nginx sends no Cache-Control).
+- Keep the source-code footnote in `index.html` (`site-foot`) so every view links to https://github.com/bobruddy/pa_education_data.
 - Sidecar series (Act 1, millage) attach only onto years that already exist from enrollment / budget / actuals. Do not invent years that only have the sidecar.
 
 ## Agent working agreements

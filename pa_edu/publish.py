@@ -31,6 +31,13 @@ PERSONNEL_PAGE = (
 ASSESSMENT_PAGE = (
     "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
 )
+ENROLLMENT_PAGE = (
+    "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
+)
+ADM_PAGE = (
+    "https://www.pa.gov/agencies/education/programs-and-services/schools/"
+    "grants-and-funding/school-finances/financial-data/financial-data-elements"
+)
 SALARY_GROUPS = [
     ("elementary", "Elementary teachers"),
     ("secondary", "Secondary teachers"),
@@ -42,6 +49,12 @@ SALARY_BIN_START = 25_000
 SALARY_BIN_STOP = 200_000
 SALARY_BIN_WIDTH = 5_000
 SALARY_EDGES = list(range(SALARY_BIN_START, SALARY_BIN_STOP + SALARY_BIN_WIDTH, SALARY_BIN_WIDTH))
+# Integer years: under 1, then each year through 39, then 40+.
+EXPERIENCE_EDGES = list(range(1, 41))
+EXPERIENCE_MODES = [
+    ("lea", "Years in this LEA"),
+    ("edu", "Years in education"),
+]
 MASTERS_PLUS = {"1054", "1055", "1057"}
 SALARY_LABEL_GROUPS = {
     "ELEMENTARY TEACHERS": "elementary",
@@ -114,6 +127,7 @@ def lea_document(profile: dict, years: dict) -> dict:
                 "actualDetail",
                 "actualSchool",
                 "salaries",
+                "experience",
                 "retention",
                 "charterTuition",
                 "countyRanks",
@@ -121,6 +135,8 @@ def lea_document(profile: dict, years: dict) -> dict:
                 "act1Base",
                 "mills",
                 "keystone",
+                "charterAdm",
+                "homeEducation",
             )
         ):
             kept[str(year)] = block
@@ -161,18 +177,22 @@ def main() -> None:
     budget_detail = _detail(connection, "budget")
     actual_detail = _detail(connection, "actual")
     actual_school = _school_detail(connection)
-    salaries, retention = _salaries()
+    salaries, experience, retention = _salaries()
     charter = _charter_tuition(connection)
+    charter_adm = _charter_adm(connection)
+    home_education = _home_education(connection)
     act1 = _act1_index(connection)
     act1_base = _act1_base(connection)
     mills = _real_estate_tax(connection)
-    ranks = _county_ranks(profiles, grades, actual, budget, charter, keystone)
+    ranks = _county_ranks(profiles, grades, actual, budget, charter, keystone, pssa)
     enrollment_year = catalog["enrollmentYear"]
     actual_year = catalog["actualYear"]
     budget_year = catalog["budgetYear"]
     catalog["salaryYear"] = max((year for years in salaries.values() for year in years), default=None)
     catalog["salaryGroups"] = [{"id": code, "label": label} for code, label in SALARY_GROUPS]
     catalog["salaryEdges"] = SALARY_EDGES
+    catalog["experienceEdges"] = EXPERIENCE_EDGES
+    catalog["experienceModes"] = [{"id": code, "label": label} for code, label in EXPERIENCE_MODES]
     catalog["sources"]["personnel"] = PERSONNEL_PAGE
 
     if OUT.exists():
@@ -200,6 +220,7 @@ def main() -> None:
                 actual_detail,
                 actual_school,
                 salaries,
+                experience,
                 retention,
                 charter,
                 ranks,
@@ -207,6 +228,8 @@ def main() -> None:
                 act1_base,
                 mills,
                 keystone,
+                charter_adm,
+                home_education,
             ),
         )
         (data_dir / f"{aun}.json").write_text(_dump(document), encoding="utf-8")
@@ -254,18 +277,27 @@ def _years_for(
     actual_detail: dict,
     actual_school: dict,
     salaries: dict,
-    retention: dict,
-    charter: dict,
-    ranks: dict,
+    experience: dict | None = None,
+    retention: dict | None = None,
+    charter: dict | None = None,
+    ranks: dict | None = None,
     act1: dict | None = None,
     act1_base: dict | None = None,
     mills: dict | None = None,
     keystone: dict | None = None,
+    charter_adm: dict | None = None,
+    home_education: dict | None = None,
 ) -> dict:
+    experience = experience or {}
+    retention = retention or {}
+    charter = charter or {}
+    ranks = ranks or {}
     act1 = act1 or {}
     act1_base = act1_base or {}
     mills = mills or {}
     keystone = keystone or {}
+    charter_adm = charter_adm or {}
+    home_education = home_education or {}
     years = (
         set(grades.get(aun, {}))
         | set(schools.get(aun, {}))
@@ -279,6 +311,7 @@ def _years_for(
         | set(actual_detail.get(aun, {}))
         | set(actual_school.get(aun, {}))
         | set(salaries.get(aun, {}))
+        | set(experience.get(aun, {}))
         | set(retention.get(aun, {}))
         | set(ranks.get(aun, {}))
     )
@@ -299,6 +332,7 @@ def _years_for(
             "actualDetail": actual_detail.get(aun, {}).get(year, {}),
             "actualSchool": actual_school.get(aun, {}).get(year, {}),
             "salaries": salaries.get(aun, {}).get(year, {}),
+            "experience": experience.get(aun, {}).get(year, {}),
             "retention": retention.get(aun, {}).get(year),
             "charterTuition": (
                 charter_years.get(year, 0.0) if year in actual_years else charter_years.get(year)
@@ -314,6 +348,12 @@ def _years_for(
         rates = mills.get(aun, {}).get(year)
         if rates:
             block["mills"] = rates
+        charter_count = charter_adm.get(aun, {}).get(year)
+        if charter_count is not None:
+            block["charterAdm"] = charter_count
+        home_count = home_education.get(aun, {}).get(year)
+        if home_count is not None:
+            block["homeEducation"] = home_count
         blocks[year] = block
     return blocks
 
@@ -325,15 +365,17 @@ def _county_ranks(
     budget: dict,
     charter: dict,
     keystone: dict | None = None,
+    pssa: dict | None = None,
 ) -> dict:
     """Rank each LEA against others in its county for the top-card metrics."""
     keystone = keystone or {}
+    pssa = pssa or {}
     by_county: dict[str, list[dict]] = {}
     for profile in profiles:
         by_county.setdefault(profile["county"], []).append(profile)
 
     years: set[int] = set()
-    for nested in (grades, actual, budget, keystone):
+    for nested in (grades, actual, budget, keystone, pssa):
         for lea_years in nested.values():
             years.update(lea_years)
 
@@ -348,6 +390,8 @@ def _county_ranks(
                 "keystone_algebra_i": [],
                 "keystone_literature": [],
                 "keystone_biology": [],
+                "pssa_math": [],
+                "pssa_ela": [],
             }
             for profile in peers:
                 aun = profile["aun"]
@@ -378,6 +422,17 @@ def _county_ranks(
                     pct = None if not cell else cell.get("pct")
                     if pct is not None:
                         buckets[f"keystone_{subject}"].append({**row, "value": float(pct)})
+                for subject in ("math", "ela"):
+                    cell = (
+                        pssa.get(aun, {})
+                        .get(year, {})
+                        .get(subject, {})
+                        .get("total", {})
+                        .get("All Students")
+                    )
+                    pct = None if not cell else cell.get("pct")
+                    if pct is not None:
+                        buckets[f"pssa_{subject}"].append({**row, "value": float(pct)})
             for metric, rows in buckets.items():
                 if len(rows) < 2:
                     continue
@@ -404,6 +459,9 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         "enrollment": {}, "afr": {}, "gfb": {}, "edna": None,
         "act1": None, "act1Base": None, "retax": {},
         "pssa": {}, "keystone": {}, "assessment": ASSESSMENT_PAGE,
+        "enrollmentPage": ENROLLMENT_PAGE,
+        "admPage": ADM_PAGE,
+        "charterAdm": {}, "homeEducation": {},
     }
     frame = connection.sql(f"""
         SELECT parser, school_year, source_url
@@ -413,7 +471,8 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
             FROM '{REFINED / "document.parquet"}'
         )
         WHERE n = 1 AND parser IN (
-            'enrollment', 'afr', 'gfb', 'edna', 'act1', 'act1_base', 'retax', 'pssa', 'keystone'
+            'enrollment', 'afr', 'gfb', 'edna', 'act1', 'act1_base', 'retax', 'pssa', 'keystone',
+            'charter_adm', 'homeschool'
         )
     """).df()
     for row in frame.itertuples(index=False):
@@ -425,6 +484,10 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
             sources["act1Base"] = row.source_url
         elif row.parser == "retax" and row.school_year is not None and not _missing(row.school_year):
             sources["retax"][str(int(row.school_year))] = row.source_url
+        elif row.parser == "charter_adm" and row.school_year is not None and not _missing(row.school_year):
+            sources["charterAdm"][str(int(row.school_year))] = row.source_url
+        elif row.parser == "homeschool" and row.school_year is not None and not _missing(row.school_year):
+            sources["homeEducation"][str(int(row.school_year))] = row.source_url
         elif row.school_year is not None and not _missing(row.school_year):
             sources[row.parser][str(int(row.school_year))] = row.source_url
     functions = {
@@ -635,11 +698,11 @@ def _school_detail(connection: duckdb.DuckDBPyConnection) -> dict:
     return grouped
 
 
-def _salaries() -> tuple[dict, dict]:
-    """Full-time professional staff salary stats and same-LEA retention."""
+def _salaries() -> tuple[dict, dict, dict]:
+    """Full-time professional staff salary + experience stats and same-LEA retention."""
     if not SQLITE.exists():
         print("no data/pde.db; salary panel skipped")
-        return {}, {}
+        return {}, {}, {}
     frame = pd.read_sql_query(
         """
         SELECT aun, school_year, public_id, annual_salary, edf_category,
@@ -651,7 +714,7 @@ def _salaries() -> tuple[dict, dict]:
         sqlite3.connect(SQLITE),
     )
     if frame.empty:
-        return {}, {}
+        return {}, {}, {}
     frame["group"] = frame["edf_category"].map(_salary_group)
     frame = frame.loc[frame["group"].notna()].copy()
     frame["aun"] = frame["aun"].map(str)
@@ -662,7 +725,9 @@ def _salaries() -> tuple[dict, dict]:
         for (aun, year), ids in frame.groupby(["aun", "school_year"])["public_id"]
     }
     edges = np.asarray(SALARY_EDGES, dtype=float)
+    experience_edges = np.asarray(EXPERIENCE_EDGES, dtype=float)
     grouped: dict[str, dict[int, dict]] = {}
+    experience: dict[str, dict[int, dict]] = {}
     retention: dict[str, dict[int, dict]] = {}
     for (aun, year), year_frame in frame.groupby(["aun", "school_year"]):
         stayed_ids = next_ids.get((aun, year + 1))
@@ -699,8 +764,16 @@ def _salaries() -> tuple[dict, dict]:
                 stayed = len(group_ids & stayed_ids)
                 payload["retention"] = _number(stayed / len(group_ids)) if group_ids else None
             grouped.setdefault(aun, {}).setdefault(int(year), {})[str(group)] = payload
+            experience_payload = {
+                "lea": _experience_stats(subset, "years_in_lea", "years_in_education", experience_edges),
+                "edu": _experience_stats(subset, "years_in_education", "years_in_lea", experience_edges),
+            }
+            if experience_payload["lea"] or experience_payload["edu"]:
+                experience.setdefault(aun, {}).setdefault(int(year), {})[str(group)] = {
+                    key: value for key, value in experience_payload.items() if value
+                }
     print(f"salary stats for {len(grouped)} LEAs")
-    return grouped, retention
+    return grouped, experience, retention
 
 
 def _salary_bins(subset: pd.DataFrame, edges: np.ndarray) -> list[dict | None]:
@@ -714,6 +787,56 @@ def _salary_bins(subset: pd.DataFrame, edges: np.ndarray) -> list[dict | None]:
             "n": int(len(members)),
             "leaYears": _optional_mean(members["years_in_lea"]),
             "eduYears": _optional_mean(members["years_in_education"]),
+            "mastersPct": _masters_pct(members["degree_code"]),
+        }
+    return bins
+
+
+def _experience_stats(
+    subset: pd.DataFrame,
+    column: str,
+    other_column: str,
+    edges: np.ndarray,
+) -> dict | None:
+    """Histogram and summary for years_in_lea or years_in_education."""
+    values = pd.to_numeric(subset[column], errors="coerce")
+    usable = subset.loc[values.notna()].copy()
+    if usable.empty:
+        return None
+    years = values.loc[values.notna()].to_numpy(dtype=float)
+    counts, _ = np.histogram(years, bins=edges)
+    under = int(np.sum(years < edges[0]))
+    over = int(np.sum(years >= edges[-1]))
+    hist = [under, *[int(count) for count in counts], over]
+    return {
+        "n": int(len(years)),
+        "min": _number(years.min()),
+        "mean": _number(years.mean()),
+        "median": _number(float(np.median(years))),
+        "max": _number(years.max()),
+        "hist": hist,
+        "bins": _experience_bins(usable, column, other_column, edges),
+    }
+
+
+def _experience_bins(
+    subset: pd.DataFrame,
+    column: str,
+    other_column: str,
+    edges: np.ndarray,
+) -> list[dict | None]:
+    values = pd.to_numeric(subset[column], errors="coerce").to_numpy(dtype=float)
+    indexes = np.digitize(values, edges)
+    bins: list[dict | None] = [None] * (len(edges) + 1)
+    for index in range(len(edges) + 1):
+        members = subset.loc[indexes == index]
+        if members.empty:
+            continue
+        other_key = "eduYears" if other_column == "years_in_education" else "leaYears"
+        bins[index] = {
+            "n": int(len(members)),
+            "meanSalary": _optional_mean(members["annual_salary"]),
+            other_key: _optional_mean(members[other_column]),
             "mastersPct": _masters_pct(members["degree_code"]),
         }
     return bins
@@ -744,6 +867,38 @@ def _charter_tuition(connection: duckdb.DuckDBPyConnection) -> dict:
     grouped: dict[str, dict[int, float]] = {}
     for row in frame.itertuples(index=False):
         grouped.setdefault(str(row.aun), {})[int(row.school_year)] = _number(row.amount)
+    return grouped
+
+
+def _charter_adm(connection: duckdb.DuckDBPyConnection) -> dict:
+    """Resident students of an SD attending charter schools (ADM)."""
+    path = REFINED / "charter_adm.parquet"
+    if not path.exists():
+        return {}
+    frame = connection.sql(f"""
+        SELECT aun, school_year, adm
+        FROM '{path}'
+        WHERE adm IS NOT NULL
+    """).df()
+    grouped: dict[str, dict[int, float]] = {}
+    for row in frame.itertuples(index=False):
+        grouped.setdefault(str(row.aun), {})[int(row.school_year)] = _number(row.adm)
+    return grouped
+
+
+def _home_education(connection: duckdb.DuckDBPyConnection) -> dict:
+    """Home-education student total by resident school district."""
+    path = REFINED / "home_education.parquet"
+    if not path.exists():
+        return {}
+    frame = connection.sql(f"""
+        SELECT aun, school_year, students
+        FROM '{path}'
+        WHERE students IS NOT NULL
+    """).df()
+    grouped: dict[str, dict[int, float]] = {}
+    for row in frame.itertuples(index=False):
+        grouped.setdefault(str(row.aun), {})[int(row.school_year)] = _number(row.students)
     return grouped
 
 

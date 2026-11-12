@@ -1,18 +1,11 @@
-# Files for generating docker image for production runs of this project
+# Production Docker image (legacy)
 
-## I use the following command to build this image
-This assumes you are located in the directory of the Dockerfile
-```
+> **Legacy.** The live site is a static tree built by `python -m pa_edu.publish` and rsynced to elm (`https://pdenumbers.org/`). Jenkins still builds this image as `w3rcr/batch_test`; it is not the deploy path for the LEA browser.
+
+Build from this directory:
+
+```bash
 docker build -t pa_education .
 ```
 
-## I use the following command to run this image
-This assumes you are in your local directory you want to be the base for your jupyter notebook. So normally I start this in my pa_education_data git repo
-
-```
-docker run -p 8888:8888 -v "${PWD}":/home/jovyan/work pa_education
-```
-
-Once started you can navigate to the 127.0.0.1 URL that is printed out
-
-If you use the -d option to run to detach then just use the docker logs to see what the connection is. You need to-do this because you need the key in the URL
+The image clones / expects this repo and is aimed at batch notebook work, not at serving `pde_site/`.

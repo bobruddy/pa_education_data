@@ -1,0 +1,33 @@
+---
+description: Catalog, parsers, refine, and clean ingestion rules
+globs: sources/**/*.toml,pa_edu/parse_*.py,pa_edu/refine.py,pa_edu/storage.py,pa_edu/catalog.py,pa_edu/discover.py,pa_edu/codes.py,sql/model.sql
+alwaysApply: false
+---
+
+# Refined pipeline
+
+## Catalog (`sources/catalog.toml`)
+
+One `[[document]]` per known file: `id`, `source_id`, `source_url`, `page_url`, `parser`, `status` (`stable` | `review`). Set `school_year` when the file is a single year. Multi-year workbooks (e.g. Act 1 history) omit it.
+
+- `stable` → `refine` downloads (if needed) and parses.
+- `review` → download only; do not parse into facts.
+- Add the PDE index page to `pa_edu.discover.PAGES` so uncataloged links surface.
+
+## Parsers (`pa_edu/parse_*.py`)
+
+- Take `(path, document_dict)` and return `{table_name: DataFrame}`.
+- Put `school_year` and `document_id` from the catalog/`document` record onto every fact row.
+- Normalize codes with `pa_edu.codes` (`as_code`, `as_amount`, `as_text`, `read_sheet`, `require_columns`).
+- Match volatile headers by stable substrings or patterns when PDE renames columns year to year; still fail if the required column is missing.
+- Skip non-rate placeholder rows (e.g. blank mills) rather than storing null facts that look like rates.
+
+## Refine / storage
+
+- Raw cache: `data/raw/<source_id>/<sha256>/`. Same URL + new hash keeps both copies.
+- Write every table listed in `refine.COLUMNS` / `SORT`, then apply `sql/model.sql` views.
+- If `pde.duckdb` is locked, parquet may still be good; do not delete the lock or kill the interactive session.
+
+## Grain
+
+Declare an explicit grain (no duplicate keys). Examples: GFB = AUN × year × function × object × program; retax = AUN × year × county × locality. LEA directory comes from EdNA, not from “latest enrollment name.”
