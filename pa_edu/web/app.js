@@ -154,6 +154,28 @@ const ALT_SERIES = [
 ];
 const ALT_SERIES_CODES = ALT_SERIES.map((row) => row.code);
 const ALT_DEFAULT = [...ALT_SERIES_CODES];
+const GRAD_ALL = "all";
+const GRAD_SERIES = [
+  { code: GRAD_ALL, label: "All students", color: "#0c5c56" },
+  { code: "male", label: "Male", color: "#5A6CC0" },
+  { code: "female", label: "Female", color: "#E8C030" },
+  { code: "special_ed", label: "IEP", color: "#C85898" },
+  { code: "el", label: "English learners", color: "#1F8A65" },
+  { code: "econ_disadv", label: "Econ. disadvantaged", color: "#F0A040" },
+  { code: "white", label: "White", color: "#2A9A8A" },
+  { code: "black", label: "Black", color: "#C06028" },
+  { code: "hispanic", label: "Hispanic", color: "#7B64B8" },
+  { code: "asian", label: "Asian", color: "#2E79B5" },
+  { code: "multi_racial", label: "Multi-racial", color: "#A33B6B" },
+  { code: "american_indian", label: "American Indian", color: "#8B6914" },
+  { code: "pacific_islander", label: "Pacific Islander", color: "#5B5FA8" },
+  { code: "migrant", label: "Migrant", color: "#C04848" },
+  { code: "foster", label: "Foster", color: "#4C6A8A" },
+  { code: "homeless", label: "Homeless", color: "#D4783A" },
+  { code: "military", label: "Military", color: "#1F4E79" },
+];
+const GRAD_SERIES_CODES = GRAD_SERIES.map((row) => row.code);
+const GRAD_DEFAULT = [GRAD_ALL];
 
 /** Total is exclusive of grade lines; multiple grades may be on together. */
 function normalizeTrendSelection(codes) {
@@ -167,6 +189,13 @@ function normalizeTrendSelection(codes) {
 function normalizeAltSelection(codes) {
   const selected = ALT_SERIES_CODES.filter((code) => (codes || []).includes(code));
   return selected.length ? selected : [...ALT_DEFAULT];
+}
+
+function normalizeGradSelection(codes, available = GRAD_SERIES_CODES) {
+  const selected = available.filter((code) => (codes || []).includes(code));
+  if (selected.length) return selected;
+  if (available.includes(GRAD_ALL)) return [GRAD_ALL];
+  return available.length ? [available[0]] : [];
 }
 const RACE_ORDER = [
   "White",
@@ -186,6 +215,25 @@ const RACE_COLOR = {
   "Multi-Racial": "#C85898",
   "American Indian / Alaskan Native": "#F0A040",
   "Native Hawaiian or other Pacific Islander(not Hispanic)": "#5A6CC0",
+};
+const DEMO_LOW_INCOME = "Economically Disadvantaged";
+const DEMO_IEP = "IEP";
+const DEMO_GENDER_KEYS = ["Female", "Male"];
+const DEMO_EXTRA_KEYS = [DEMO_LOW_INCOME, DEMO_IEP, ...DEMO_GENDER_KEYS];
+const DEMO_GENDER_COLOR = {
+  Female: "#E8C030",
+  Male: "#5A6CC0",
+};
+const DEMO_EXTRA_COLOR = {
+  [DEMO_LOW_INCOME]: "#F0A040",
+  [DEMO_IEP]: "#C85898",
+  ...DEMO_GENDER_COLOR,
+};
+const DEMO_EXTRA_LABEL = {
+  [DEMO_LOW_INCOME]: "Econ. disadvantaged",
+  [DEMO_IEP]: "IEP",
+  Female: "Female",
+  Male: "Male",
 };
 
 function readState() {
@@ -209,6 +257,12 @@ function readState() {
   const ealt = normalizeAltSelection(
     ealtParam ? ealtParam.split("|") : ALT_DEFAULT,
   );
+  const edemoParam = query.get("edemo");
+  const edemo = edemoParam ? edemoParam.split("|").filter(Boolean) : null;
+  const ggroupsParam = query.get("ggroups");
+  const ggroups = ggroupsParam
+    ? ggroupsParam.split("|").filter((code) => GRAD_SERIES_CODES.includes(code))
+    : [...GRAD_DEFAULT];
   const rawSubject = query.get("subject") || "";
   let subject = "math";
   if (KEYSTONE_SUBJECT_IDS.includes(rawSubject)) subject = rawSubject;
@@ -228,6 +282,8 @@ function readState() {
     egrades: egrades.length ? egrades : [...ENROLL_GRADE_CODES],
     etrend,
     ealt,
+    edemo,
+    ggroups: ggroups.length ? ggroups : [...GRAD_DEFAULT],
     q: query.get("q") || "",
     category: categories ? categories.split(",").filter(Boolean) : CATEGORIES.map(([id]) => id),
     categoryAll: !categories,
@@ -285,6 +341,18 @@ function putAssessmentParams(query, state) {
     const alt = normalizeAltSelection(state.ealt);
     if (alt.join("|") !== ALT_DEFAULT.join("|")) {
       query.set("ealt", alt.join("|"));
+    }
+    if (Array.isArray(state.edemo) && state.edemo.length) {
+      const available = demoSeriesKeys();
+      const selected = state.edemo.filter((key) => available.includes(key));
+      const defaultKeys = demoDefaultKeys(available);
+      if (selected.length && selected.join("|") !== defaultKeys.join("|")) {
+        query.set("edemo", selected.join("|"));
+      }
+    }
+    const gradSelected = normalizeGradSelection(state.ggroups, gradSeriesKeys());
+    if (gradSelected.join("|") !== GRAD_DEFAULT.join("|")) {
+      query.set("ggroups", gradSelected.join("|"));
     }
   } else if (state.tab === "staff") {
     if (state.experience === "edu") query.set("experience", "edu");
@@ -571,6 +639,38 @@ function bindLea() {
         selected = TREND_SERIES_CODES.filter((code) => selected.includes(code));
       }
       state.etrend = normalizeTrendSelection(selected);
+      writeUrl(state, "replace");
+      paintLea(state);
+      return;
+    }
+    const demoSeriesToggle = event.target.closest("[data-demo-series]");
+    if (demoSeriesToggle) {
+      const state = readState();
+      const value = demoSeriesToggle.dataset.demoSeries;
+      const available = demoSeriesKeys();
+      const selected = new Set(normalizeDemoSelection(state.edemo, available));
+      if (selected.has(value)) {
+        if (selected.size > 1) selected.delete(value);
+      } else if (available.includes(value)) {
+        selected.add(value);
+      }
+      state.edemo = available.filter((key) => selected.has(key));
+      writeUrl(state, "replace");
+      paintLea(state);
+      return;
+    }
+    const gradSeriesToggle = event.target.closest("[data-grad-series]");
+    if (gradSeriesToggle) {
+      const state = readState();
+      const value = gradSeriesToggle.dataset.gradSeries;
+      const available = gradSeriesKeys();
+      const selected = new Set(normalizeGradSelection(state.ggroups, available));
+      if (selected.has(value)) {
+        if (selected.size > 1) selected.delete(value);
+      } else if (available.includes(value)) {
+        selected.add(value);
+      }
+      state.ggroups = available.filter((code) => selected.has(code));
       writeUrl(state, "replace");
       paintLea(state);
       return;
@@ -898,10 +998,43 @@ function paintEnrollment(state) {
   const block = blockFor(year);
   const priorYear = String(Number(year) - 1);
   const enrolled = enrollmentOf(block);
+  const gradYearList = gradYears();
+  const gradYear = gradYearList.length ? gradYearList[gradYearList.length - 1] : null;
+  const grad = gradYear == null ? null : gradCell(gradYear);
+  const priorGradYear = gradYearList.length > 1 ? gradYearList[gradYearList.length - 2] : null;
+  const priorGrad = priorGradYear == null ? null : gradCell(priorGradYear);
   app.querySelector("#enrollment-stats").innerHTML = [
     stat("October 1 enrollment", enrolled == null ? "Not published" : count(enrolled), `${yearDelta(enrolled, enrollmentOf(blockFor(priorYear)), priorYear)}${yearNote(year)}`, year, block.countyRanks?.enrollment, "count"),
     stat("Schools reporting", count((block.schools || []).length), yearNote(year)),
+    stat(
+      "4-year graduation",
+      grad ? `${(Number(grad.rate) * 100).toFixed(1)}%` : "Not published",
+      grad ? `<div class="note">${count(grad.grads)} of ${count(grad.cohort)}</div>${yearDeltaPoints(Number(grad.rate) * 100, priorGrad ? Number(priorGrad.rate) * 100 : null, priorGradYear)}${yearNote(gradYear)}` : "",
+      gradYear,
+      gradYear == null ? null : blockFor(gradYear).countyRanks?.graduation,
+      "pct",
+    ),
   ].join("");
+  const gradPanel = app.querySelector("#grad-panel");
+  if (gradPanel) {
+    gradPanel.hidden = gradYearList.length === 0;
+    const gradHeading = app.querySelector("#grad-heading");
+    if (gradHeading && gradYear != null) {
+      gradHeading.textContent = `4-year cohort graduation · through ${yearLabel(gradYear)}`;
+    }
+    const availableGrad = gradSeriesKeys();
+    const selectedGrad = normalizeGradSelection(state.ggroups, availableGrad);
+    state.ggroups = selectedGrad;
+    const gradFilterHost = app.querySelector("#grad-filters");
+    if (gradFilterHost) {
+      gradFilterHost.innerHTML = availableGrad.map((code) => {
+        const row = GRAD_SERIES.find((item) => item.code === code);
+        return `<button type="button" class="chip chip-series" data-grad-series="${escapeAttr(code)}" data-value="${escapeAttr(code)}" style="--series:${row.color}"><i class="swatch" style="background:${row.color}"></i>${escapeHtml(row.label)}</button>`;
+      }).join("");
+    }
+    setPressed("[data-grad-series]", (value) => selectedGrad.includes(value));
+    if (gradYearList.length) drawGradRate(gradYearList, selectedGrad);
+  }
   const trendHeading = app.querySelector("#trend-heading");
   if (trendHeading) trendHeading.textContent = year ? `Enrollment over time · through ${yearLabel(year)}` : "Enrollment over time";
   const cohortHeading = app.querySelector("#cohort-heading");
@@ -956,14 +1089,25 @@ function paintEnrollment(state) {
   drawTrend(selectedTrend);
   drawEnrollmentCohorts(year, selectedGrades);
   drawGrades(block.grades || {});
+  const availableDemo = demoSeriesKeys();
+  const selectedDemo = normalizeDemoSelection(state.edemo, availableDemo);
+  state.edemo = selectedDemo;
+  const demoFilterHost = app.querySelector("#demo-filters");
+  if (demoFilterHost) {
+    demoFilterHost.innerHTML = availableDemo.map((key) => {
+      const color = demoSeriesColor(key);
+      return `<button type="button" class="chip chip-series" data-demo-series="${escapeAttr(key)}" data-value="${escapeAttr(key)}" style="--series:${color}"><i class="swatch" style="background:${color}"></i>${escapeHtml(demoSeriesLabel(key))}</button>`;
+    }).join("");
+  }
+  setPressed("[data-demo-series]", (value) => selectedDemo.includes(value));
   const raceHeading = app.querySelector("#race-heading");
   if (raceHeading) {
-    const raceYearList = raceYears();
-    raceHeading.textContent = raceYearList.length
-      ? `Race / ethnicity · through ${yearLabel(raceYearList[raceYearList.length - 1])}`
-      : "Race / ethnicity";
+    const yearList = demoYears(selectedDemo);
+    raceHeading.textContent = yearList.length
+      ? `Student groups · through ${yearLabel(yearList[yearList.length - 1])}`
+      : "Student groups";
   }
-  drawRaceTrend(app.querySelector("#enrollment-race"));
+  drawRaceTrend(app.querySelector("#enrollment-race"), selectedDemo);
   drawGender(app.querySelector("#enrollment-gender"), block.gender || {}, year ? `Gender · ${yearLabel(year)}` : "Gender");
   drawSchools(block.schools, state.schools);
   const enrollmentSources = app.querySelector("#enrollment-sources");
@@ -1444,6 +1588,61 @@ function raceLabel(name) {
   return name;
 }
 
+function demoSeriesLabel(key) {
+  if (DEMO_EXTRA_LABEL[key]) return DEMO_EXTRA_LABEL[key];
+  return raceLabel(key);
+}
+
+function demoSeriesColor(key, index = 0) {
+  if (DEMO_EXTRA_COLOR[key]) return DEMO_EXTRA_COLOR[key];
+  return RACE_COLOR[key] || COHORT_COLORS[index % COHORT_COLORS.length];
+}
+
+function demoValue(year, key) {
+  const block = leaPack?.years?.[String(year)] || {};
+  if (key === DEMO_LOW_INCOME) {
+    const value = block.lowIncome?.n;
+    if (value == null || value === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+  if (key === DEMO_IEP) {
+    const value = block.iep?.n;
+    if (value == null || value === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+  if (DEMO_GENDER_KEYS.includes(key)) {
+    const value = block.gender?.[key];
+    if (value == null || value === "") return null;
+    const number = Number(value);
+    return Number.isFinite(number) ? number : null;
+  }
+  const value = block.race?.[key];
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function demoPct(year, key) {
+  const block = leaPack?.years?.[String(year)] || {};
+  let value = null;
+  let source = null;
+  if (key === DEMO_LOW_INCOME) {
+    value = block.lowIncome?.pct;
+    source = "low-income report";
+  } else if (key === DEMO_IEP) {
+    value = block.iep?.pct;
+    source = "IEP child count";
+  } else {
+    return null;
+  }
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  if (!Number.isFinite(number)) return null;
+  return { pct: number, source };
+}
+
 function raceYears() {
   return Object.keys(leaPack?.years || {})
     .map(Number)
@@ -1451,6 +1650,36 @@ function raceYears() {
     .filter((year) => {
       const race = leaPack.years[String(year)]?.race || {};
       return Object.keys(race).some((key) => race[key] != null && Number(race[key]) > 0);
+    });
+}
+
+function genderYears() {
+  return Object.keys(leaPack?.years || {})
+    .map(Number)
+    .sort((a, b) => a - b)
+    .filter((year) => {
+      const gender = leaPack.years[String(year)]?.gender || {};
+      return DEMO_GENDER_KEYS.some((key) => gender[key] != null && Number(gender[key]) > 0);
+    });
+}
+
+function lowIncomeYears() {
+  return Object.keys(leaPack?.years || {})
+    .map(Number)
+    .sort((a, b) => a - b)
+    .filter((year) => {
+      const value = leaPack.years[String(year)]?.lowIncome?.n;
+      return value != null && Number(value) >= 0;
+    });
+}
+
+function iepYears() {
+  return Object.keys(leaPack?.years || {})
+    .map(Number)
+    .sort((a, b) => a - b)
+    .filter((year) => {
+      const value = leaPack.years[String(year)]?.iep?.n;
+      return value != null && Number(value) >= 0;
     });
 }
 
@@ -1465,6 +1694,59 @@ function raceKeysForYears(years) {
   const ordered = RACE_ORDER.filter((key) => seen.has(key));
   const extras = [...seen].filter((key) => !RACE_ORDER.includes(key)).sort();
   return [...ordered, ...extras];
+}
+
+function demoSeriesKeys() {
+  const raceKeys = raceKeysForYears(raceYears());
+  const extras = [];
+  if (lowIncomeYears().some((year) => demoValue(year, DEMO_LOW_INCOME) != null)) {
+    extras.push(DEMO_LOW_INCOME);
+  }
+  if (iepYears().some((year) => demoValue(year, DEMO_IEP) != null)) {
+    extras.push(DEMO_IEP);
+  }
+  for (const key of DEMO_GENDER_KEYS) {
+    if (genderYears().some((year) => {
+      const value = demoValue(year, key);
+      return value != null && value > 0;
+    })) {
+      extras.push(key);
+    }
+  }
+  return [...raceKeys, ...extras];
+}
+
+function demoDefaultKeys(available = demoSeriesKeys()) {
+  return available.filter((key) => !DEMO_EXTRA_KEYS.includes(key));
+}
+
+function normalizeDemoSelection(selected, available = demoSeriesKeys()) {
+  const defaults = demoDefaultKeys(available);
+  if (!available.length) return [];
+  if (!Array.isArray(selected) || !selected.length) return defaults.length ? defaults : [...available];
+  const picked = available.filter((key) => selected.includes(key));
+  if (picked.length) return picked;
+  return defaults.length ? defaults : [...available];
+}
+
+function demoYears(selected) {
+  const keys = selected?.length ? selected : demoDefaultKeys();
+  const wantsRace = keys.some((key) => !DEMO_EXTRA_KEYS.includes(key));
+  const wantsGender = keys.some((key) => DEMO_GENDER_KEYS.includes(key));
+  const wantsLowIncome = keys.includes(DEMO_LOW_INCOME);
+  const wantsIep = keys.includes(DEMO_IEP);
+  const years = new Set();
+  if (wantsRace) for (const year of raceYears()) years.add(year);
+  if (wantsGender) for (const year of genderYears()) years.add(year);
+  if (wantsLowIncome) for (const year of lowIncomeYears()) years.add(year);
+  if (wantsIep) for (const year of iepYears()) years.add(year);
+  if (!years.size) {
+    for (const year of raceYears()) years.add(year);
+    for (const year of genderYears()) years.add(year);
+    for (const year of lowIncomeYears()) years.add(year);
+    for (const year of iepYears()) years.add(year);
+  }
+  return [...years].sort((a, b) => a - b);
 }
 
 function raceMetersHtml(race) {
@@ -1496,37 +1778,37 @@ function drawRace(host, race, title) {
   host.innerHTML = `<h3>${escapeHtml(title)}</h3>${body}`;
 }
 
-function drawRaceTrend(host) {
+function drawRaceTrend(host, selectedKeys) {
   if (!host) return;
-  const years = raceYears();
+  const available = demoSeriesKeys();
+  const selected = normalizeDemoSelection(selectedKeys, available);
+  const years = demoYears(selected);
   if (years.length < 2) {
     const year = years[0];
-    const race = year == null ? {} : (leaPack.years[String(year)]?.race || {});
+    const block = year == null ? {} : (leaPack.years[String(year)] || {});
+    const race = block.race || {};
+    const gender = block.gender || {};
     const note = year == null
       ? ""
       : `<p class="note">Only ${yearLabel(year)} is published — not enough years for a trend.</p>`;
-    host.innerHTML = raceMetersHtml(race) + note;
+    const enrolled = enrollmentOf(block);
+    const rowsHtml = demoMetersForYear(year, selected, enrolled);
+    host.innerHTML = rowsHtml + note;
     return;
   }
-  const keys = raceKeysForYears(years);
-  const series = keys.map((key, index) => {
-    const slots = years.map((year) => {
-      const value = leaPack.years[String(year)]?.race?.[key];
-      if (value == null || value === "") return null;
-      const number = Number(value);
-      return Number.isFinite(number) ? number : null;
-    });
+  const series = selected.map((key, index) => {
+    const slots = years.map((year) => demoValue(year, key));
     if (!slots.some((value) => value != null)) return null;
     return {
-      name: raceLabel(key),
-      color: RACE_COLOR[key] || COHORT_COLORS[index % COHORT_COLORS.length],
+      name: demoSeriesLabel(key),
+      color: demoSeriesColor(key, index),
       slots,
       pointYears: years,
       key,
     };
   }).filter(Boolean);
   if (!series.length) {
-    host.innerHTML = `<p class="note">No race counts published.</p>`;
+    host.innerHTML = `<p class="note">No group counts published for the selected series.</p>`;
     return;
   }
   const maxValue = Math.max(...series.flatMap((row) => row.slots.filter((value) => value != null)));
@@ -1535,20 +1817,50 @@ function drawRaceTrend(host) {
   drawMultiLine(host, {
     categories: years.map((year) => String(year).slice(-2)),
     series,
-    ariaLabel: "October 1 enrollment by race and ethnicity",
+    ariaLabel: "October 1 enrollment by student group",
     yMin: 0,
     yMax: maxY,
     yTicks: ticks,
     formatY: (value) => count(value),
-    formatPoint: (row, _category, value, index) => tipLines(yearLabel(row.pointYears[index]), [
-      `${count(value)} students`,
-      `<span class="tip-muted">${escapeHtml(row.name)}</span>`,
-    ]),
+    formatPoint: (row, _category, value, index) => {
+      const year = row.pointYears[index];
+      const enrolled = enrollmentOf(blockFor(year));
+      const published = demoPct(year, row.key);
+      const lines = [`${count(value)} students`];
+      if (published != null) {
+        lines.push(`${Number(published.pct).toFixed(1)}% of enrollment (${published.source})`);
+      } else if (enrolled != null && enrolled > 0) {
+        lines.push(`${((value / enrolled) * 100).toFixed(1)}% of enrollment`);
+      }
+      lines.push(`<span class="tip-muted">${escapeHtml(row.name)}</span>`);
+      return tipLines(yearLabel(year), lines);
+    },
     categoryLabel: (label) => "’" + label,
     left: 58,
     labelEvery: years.length > 16 ? 3 : years.length > 8 ? 2 : 1,
     showLegend: true,
   });
+}
+
+function demoMetersForYear(year, selected, enrolled) {
+  if (year == null) return `<p class="note">No group counts published.</p>`;
+  const block = leaPack.years[String(year)] || {};
+  const rows = selected
+    .map((key) => [key, demoValue(year, key)])
+    .filter(([, value]) => value != null && value > 0);
+  if (!rows.length) return `<p class="note">No group counts published.</p>`;
+  const max = Math.max(...rows.map(([, value]) => value)) || 1;
+  const shareBase = enrolled != null && enrolled > 0
+    ? enrolled
+    : rows.reduce((sum, [, value]) => sum + value, 0) || 1;
+  return rows.map(([key, value]) => {
+    const width = Math.max(2, (value / max) * 100);
+    const tip = tipLines(demoSeriesLabel(key), [
+      `${count(value)} students`,
+      `${((value / shareBase) * 100).toFixed(1)}% of ${enrolled != null && enrolled > 0 ? "enrollment" : "reported groups"}`,
+    ]);
+    return `<div class="grade-row" data-tip="${escapeAttr(tip)}"><span>${escapeHtml(demoSeriesLabel(key))}</span><div class="meter"><span style="width:${width}%"></span></div><b>${count(value)}</b></div>`;
+  }).join("");
 }
 
 function drawGender(host, gender, title = "Gender") {
@@ -1689,6 +2001,89 @@ function trendSeriesLabel(code) {
   if (code === "K") return "Kindergarten";
   const grade = ENROLL_LADDER.find((row) => row.code === code);
   return grade ? `Grade ${grade.label}` : code;
+}
+
+function gradCell(year) {
+  const cell = blockFor(year).graduation?.["4"];
+  if (!cell || cell.rate == null || cell.grads == null || cell.cohort == null) return null;
+  return cell;
+}
+
+function gradYears() {
+  return Object.keys(leaPack.years || {})
+    .map(Number)
+    .sort((a, b) => a - b)
+    .filter((year) => gradCell(year));
+}
+
+function gradGroupRate(year, code) {
+  const value = blockFor(year).graduation?.groups?.["4"]?.[code];
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function gradSeriesKeys() {
+  if (!leaPack?.years) return [...GRAD_SERIES_CODES];
+  const years = gradYears();
+  return GRAD_SERIES.filter((row) => {
+    if (row.code === GRAD_ALL) return years.length > 0;
+    return years.some((year) => gradGroupRate(year, row.code) != null);
+  }).map((row) => row.code);
+}
+
+function drawGradRate(years, selectedCodes = GRAD_DEFAULT) {
+  const host = app.querySelector("#grad-trend");
+  if (!host) return;
+  const selected = normalizeGradSelection(selectedCodes, gradSeriesKeys());
+  const series = selected.map((code) => {
+    const meta = GRAD_SERIES.find((row) => row.code === code);
+    const slots = years.map((year) => {
+      if (code === GRAD_ALL) {
+        const cell = gradCell(year);
+        return cell ? Number(cell.rate) * 100 : null;
+      }
+      const rate = gradGroupRate(year, code);
+      return rate == null ? null : rate * 100;
+    });
+    if (!slots.some((value) => value != null)) return null;
+    return {
+      name: meta.label,
+      color: meta.color,
+      slots,
+      pointYears: years,
+      code,
+      emphasis: code === GRAD_ALL,
+    };
+  }).filter(Boolean);
+  if (!series.length) {
+    host.innerHTML = `<p class="note">No selected group has a published 4-year rate.</p>`;
+    return;
+  }
+  series.sort((a, b) => Number(a.emphasis) - Number(b.emphasis));
+  drawMultiLine(host, {
+    categories: years.map((year) => String(year).slice(-2)),
+    series,
+    ariaLabel: "4-year cohort graduation rate by student group",
+    yMin: 0,
+    yMax: 100,
+    yTicks: [0, 25, 50, 75, 100],
+    formatY: (value) => Number(value).toFixed(0) + "%",
+    formatPoint: (row, _category, value, index) => {
+      const year = row.pointYears[index];
+      const lines = [`${Number(value).toFixed(1)}%`];
+      if (row.code === GRAD_ALL) {
+        const cell = gradCell(year);
+        if (cell) lines.push(`${count(cell.grads)} of ${count(cell.cohort)}`);
+      }
+      if (series.length > 1) lines.push(`<span class="tip-muted">${escapeHtml(row.name)}</span>`);
+      return tipLines(yearLabel(year), lines);
+    },
+    categoryLabel: (label) => "’" + label,
+    left: 48,
+    labelEvery: years.length > 8 ? 2 : 1,
+    showLegend: series.length > 1,
+  });
 }
 
 function drawTrend(selectedCodes = TREND_DEFAULT) {
@@ -2422,10 +2817,31 @@ function enrollmentSourceLinks(year) {
       items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(homeYear))} home education</a>`);
     }
   }
+  const lowYear = year && sources.lowIncome?.[String(year)] ? String(year) : null;
+  if (lowYear) {
+    items.push(`<a href="${escapeAttr(sources.lowIncome[lowYear])}" target="_blank" rel="noopener">${escapeHtml(yearLabel(lowYear))} percent low income</a>`);
+  } else {
+    const lowYears = Object.keys(sources.lowIncome || {}).sort((a, b) => Number(b) - Number(a));
+    if (lowYears[0]) {
+      items.push(`<a href="${escapeAttr(sources.lowIncome[lowYears[0]])}" target="_blank" rel="noopener">${escapeHtml(yearLabel(lowYears[0]))} percent low income</a>`);
+    }
+  }
+  if (sources.iep) {
+    items.push(`<a href="${escapeAttr(sources.iep)}" target="_blank" rel="noopener">Special education by LEA (PennData)</a>`);
+  }
+  if (sources.graduationPage) {
+    items.push(`<a href="${escapeAttr(sources.graduationPage)}" target="_blank" rel="noopener">Cohort graduation rates</a>`);
+  }
+  const gradFileYears = Object.keys(sources.cohortGrad || {}).sort((a, b) => Number(a) - Number(b));
+  for (const gradFileYear of gradFileYears) {
+    const url = sources.cohortGrad[gradFileYear]?.["4"];
+    if (!url) continue;
+    items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(gradFileYear))} 4-year cohort graduation</a>`);
+  }
   const lead = items.length
     ? `Source: ${items.join(" · ")}`
     : "Source: PDE enrollment files listed in the catalog";
-  return `<p class="sources note">${lead}. October 1 public-school counts come from the yearly enrollment workbooks. Charter is average daily membership of resident students in charter schools from the ADM release. Homeschool is PDE’s home-education student total.</p>`;
+  return `<p class="sources note">${lead}. October 1 public-school counts come from the yearly enrollment workbooks. Economically disadvantaged is PDE’s percent-low-income LEA count. IEP is December 1 school-age child count from PennData. Charter is average daily membership of resident students in charter schools from the ADM release. Homeschool is PDE’s home-education student total. The 4-year graduation rate is the published cohort rate for a regular diploma.</p>`;
 }
 
 function homeHtml() {
@@ -2496,7 +2912,13 @@ function leaHtml() {
     </div>
 
     <div data-tab-panel="enrollment" hidden>
-      <div class="stats" id="enrollment-stats"></div>
+      <div class="stats stats-3" id="enrollment-stats"></div>
+      <section class="panel" id="grad-panel" hidden>
+        <h2 id="grad-heading">4-year cohort graduation</h2>
+        <div class="chips" id="grad-filters" aria-label="Graduation series"></div>
+        <div id="grad-trend"></div>
+        <p class="note">Share of students who entered 9th grade four years earlier and earned a regular diploma by the end of that school year. A GED is not counted as a graduate. All students is on by default. Other lines are the rate PDE published for that group. A gap is a year with no published rate. A printed zero stays on the chart.</p>
+      </section>
       <section class="panel">
         <h2 id="trend-heading">Enrollment over time</h2>
         <div class="chips" id="trend-filters" aria-label="Enrollment series"></div>
@@ -2516,9 +2938,10 @@ function leaHtml() {
         <p class="note">Anchored on the latest October 1 enrollment file. One line per selected current class from kindergarten through grade 12. Grade 12 walks back through all thirteen points; kindergarten is only this year’s count. Up = the class grew; down = it shrank. Kindergarten combines half-day and full-day. Pre-kindergarten is not included — membership changes year to year, so these are approximate cohorts.</p>
       </section>
       <section class="panel">
-        <h2 id="race-heading">Race / ethnicity</h2>
+        <h2 id="race-heading">Student groups</h2>
+        <div class="chips" id="demo-filters" aria-label="Student group series"></div>
         <div id="enrollment-race"></div>
-        <p class="note">One line per PDE race / ethnicity group across October 1 files. A gap is unpublished or suppressed, not zero.</p>
+        <p class="note">Race lines stay on by default. Toggle Male, Female, Economically disadvantaged, or IEP onto the same chart. IEP is December 1 school-age child count from PennData; low-income is PDE’s October 1 percent-low-income LEA count. Hover a point for headcount and share. A gap is unpublished or suppressed, not zero.</p>
       </section>
       <div class="panels">
         <section class="panel"><h2 id="grades-heading">Grades</h2><div id="grades"></div></section>

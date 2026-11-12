@@ -22,6 +22,8 @@ FACT_TABLES = [
     "enrollment",
     "enrollment_gender",
     "enrollment_race",
+    "enrollment_low_income",
+    "enrollment_iep",
     "assessment_result",
     "school",
     "act1_index",
@@ -29,6 +31,8 @@ FACT_TABLES = [
     "real_estate_tax",
     "charter_adm",
     "home_education",
+    "cohort_graduation",
+    "cohort_graduation_group",
 ]
 GRAIN = {
     "gfb_expenditure": ["aun", "school_year", "function_code", "object_code", "program_code"],
@@ -39,6 +43,8 @@ GRAIN = {
     "enrollment": ["aun", "school_number", "school_year", "grade_code"],
     "enrollment_gender": ["aun", "school_number", "school_year", "gender", "grade_code"],
     "enrollment_race": ["aun", "school_year", "race", "grade_code"],
+    "enrollment_low_income": ["aun", "school_year"],
+    "enrollment_iep": ["aun", "school_year"],
     "assessment_result": [
         "aun", "school_year", "assessment", "subject", "grade", "student_group",
     ],
@@ -47,6 +53,8 @@ GRAIN = {
     "real_estate_tax": ["aun", "school_year", "county", "locality"],
     "charter_adm": ["aun", "school_year"],
     "home_education": ["aun", "school_year"],
+    "cohort_graduation": ["aun", "school_year", "span"],
+    "cohort_graduation_group": ["aun", "school_year", "span", "student_group"],
 }
 MONEY = 0.01
 
@@ -150,6 +158,12 @@ def _cells(tables: dict[str, pd.DataFrame], index: dict, checks: dict) -> list[s
         errors.extend(_charter_adm_cell(tables, index, cell))
     for cell in checks.get("homeschool_cell", []):
         errors.extend(_homeschool_cell(tables, index, cell))
+    for cell in checks.get("low_income_cell", []):
+        errors.extend(_low_income_cell(tables, index, cell))
+    for cell in checks.get("iep_cell", []):
+        errors.extend(_iep_cell(tables, index, cell))
+    for cell in checks.get("cohort_grad_cell", []):
+        errors.extend(_cohort_grad_cell(tables, index, cell))
     return errors
 
 
@@ -703,6 +717,179 @@ def _homeschool_cell(tables: dict[str, pd.DataFrame], index: dict, cell: dict) -
         found = None if fact.empty else fact.iloc[0]["students"]
         return [f"home education for {cell['aun']} {cell['school_year']} is {found} in parquet and {source} in the workbook"]
     return []
+
+
+def _low_income_cell(tables: dict[str, pd.DataFrame], index: dict, cell: dict) -> list[str]:
+    record = _record(index, "low_income", int(cell["school_year"]))
+    if record is None:
+        return [f"no low-income file for {cell['school_year']}"]
+    from pa_edu.parse_low_income import parse_low_income
+
+    parsed = parse_low_income(Path(record["path"]), record)["enrollment_low_income"]
+    source = parsed.loc[parsed["aun"] == cell["aun"]]
+    if source.empty:
+        return [f"low income {cell['aun']} is not on {record['catalog_id']}"]
+    source_count = int(source.iloc[0]["low_income_enrollment"])
+    fact = _match(
+        tables["enrollment_low_income"],
+        {"aun": cell["aun"], "school_year": int(cell["school_year"])},
+    )
+    if fact.empty or int(fact.iloc[0]["low_income_enrollment"]) != source_count:
+        found = None if fact.empty else fact.iloc[0]["low_income_enrollment"]
+        return [
+            f"low income for {cell['aun']} {cell['school_year']} is {found} in parquet "
+            f"and {source_count} in the workbook"
+        ]
+    return []
+
+
+def _iep_cell(tables: dict[str, pd.DataFrame], index: dict, cell: dict) -> list[str]:
+    records = _records(index, "iep")
+    if len(records) != 1:
+        return [f"expected one IEP-by-LEA file, found {len(records)}"]
+    record = records[0]
+    from pa_edu.parse_iep import parse_iep
+
+    parsed = parse_iep(Path(record["path"]), record)["enrollment_iep"]
+    source = parsed.loc[
+        (parsed["aun"] == cell["aun"]) & (parsed["school_year"].astype(int) == int(cell["school_year"]))
+    ]
+    if source.empty:
+        return [f"IEP {cell['aun']} {cell['school_year']} is not on {record['catalog_id']}"]
+    source_count = int(source.iloc[0]["iep_enrollment"])
+    fact = _match(
+        tables["enrollment_iep"],
+        {"aun": cell["aun"], "school_year": int(cell["school_year"])},
+    )
+    if fact.empty or int(fact.iloc[0]["iep_enrollment"]) != source_count:
+        found = None if fact.empty else fact.iloc[0]["iep_enrollment"]
+        return [
+            f"IEP for {cell['aun']} {cell['school_year']} is {found} in parquet "
+            f"and {source_count} in the workbook"
+        ]
+    return []
+
+
+_COHORT_COLUMNS = {
+    "lea type": "lea_type",
+    "aun": "aun",
+    "lea": "lea_name",
+    "grads": "graduates",
+    "cohort": "cohort",
+    "cohort grad rate": "rate",
+    "male grad rate": "male",
+    "female grad rate": "female",
+    "aian grad rate": "american_indian",
+    "native hawaiian or pacific islander grad rate": "pacific_islander",
+    "asian grad rate": "asian",
+    "black grad rate": "black",
+    "hispanic grad rate": "hispanic",
+    "white grad rate": "white",
+    "multi-racial grad rate": "multi_racial",
+    "special ed grad rate": "special_ed",
+    "el grad rate": "el",
+    "econ disadv grad rate": "econ_disadv",
+    "migrant grad rate": "migrant",
+    "foster grad rate": "foster",
+    "homeless grad rate": "homeless",
+    "military grad rate": "military",
+}
+_COHORT_FACTS = {"lea_type", "aun", "lea_name", "graduates", "cohort", "rate"}
+
+
+def _cohort_grad_cell(tables: dict[str, pd.DataFrame], index: dict, cell: dict) -> list[str]:
+    catalog_id = f"cohort-grad-{int(cell['school_year'])}-{int(cell['span'])}"
+    record = _by_catalog(index, catalog_id)
+    if record is None or record.get("status") != "stable":
+        return [f"no cohort graduation file {catalog_id}"]
+    frame = _cohort_lea_table(Path(record["path"]))
+    if "aun" not in frame.columns:
+        return [f"{catalog_id} LEA sheet has no AUN column"]
+    rows = frame.loc[as_code(frame["aun"], 9) == cell["aun"]]
+    if len(rows) != 1:
+        return [f"cohort graduation {cell['aun']} on {catalog_id} matched {len(rows)} rows"]
+    source = rows.iloc[0]
+    label = f"{cell['aun']} {cell['school_year']} span {cell['span']}"
+    fact = _match(
+        tables["cohort_graduation"],
+        {"aun": cell["aun"], "school_year": int(cell["school_year"]), "span": int(cell["span"])},
+    )
+    if fact.empty:
+        return [f"cohort graduation {label} is missing from parquet"]
+    got = fact.iloc[0]
+    errors = []
+    for column in ("graduates", "cohort"):
+        source_count = int(round(float(source[column])))
+        if int(got[column]) != source_count:
+            errors.append(f"cohort graduation {column} for {label} is {got[column]} in parquet and {source_count} in the workbook")
+    source_rate = float(source["rate"])
+    if abs(float(got["rate"]) - source_rate) > 1e-9:
+        errors.append(f"cohort graduation rate for {label} is {got['rate']} in parquet and {source_rate} in the workbook")
+    published: dict[str, float] = {}
+    for column in frame.columns:
+        if column in _COHORT_FACTS:
+            continue
+        value = source[column]
+        if _cohort_unpublished(value):
+            continue
+        published[str(column)] = float(value)
+    group_rows = _match(
+        tables["cohort_graduation_group"],
+        {"aun": cell["aun"], "school_year": int(cell["school_year"]), "span": int(cell["span"])},
+    )
+    found = {str(row.student_group): float(row.rate) for row in group_rows.itertuples(index=False)}
+    if set(found) != set(published):
+        errors.append(f"cohort graduation groups for {label} are {sorted(found)} in parquet and {sorted(published)} in the workbook")
+    for group, rate in published.items():
+        if group not in found:
+            continue
+        if abs(found[group] - rate) > 1e-9:
+            errors.append(f"cohort graduation {group} for {label} is {found[group]} in parquet and {rate} in the workbook")
+    return errors
+
+
+def _cohort_lea_table(path: Path) -> pd.DataFrame:
+    matches = [name for name in sheet_names(path) if "by lea" in name.casefold()]
+    if len(matches) != 1:
+        raise ValueError(f"{path.name} has LEA sheets {matches}")
+    engine = "xlrd" if path.suffix.lower() == ".xls" else "openpyxl"
+    raw = pd.read_excel(path, sheet_name=matches[0], header=None, engine=engine)
+    header_index = None
+    for index, row in raw.iterrows():
+        if any(_cohort_norm(value) == "aun" for value in row.tolist()):
+            header_index = int(index)
+            break
+    if header_index is None:
+        raise ValueError(f"{path.name} LEA sheet has no AUN header")
+    columns: dict[str, int] = {}
+    for position, value in enumerate(raw.iloc[header_index].tolist()):
+        name = _cohort_norm(value)
+        if not name:
+            continue
+        field = _COHORT_COLUMNS.get(name)
+        if field is None or field in columns:
+            continue
+        columns[field] = position
+    data = raw.iloc[header_index + 1 :]
+    return pd.DataFrame(
+        {field: data.iloc[:, position].reset_index(drop=True) for field, position in columns.items()}
+    )
+
+
+def _cohort_norm(value: object) -> str:
+    if value is None or pd.isna(value):
+        return ""
+    return " ".join(str(value).replace("\n", " ").split()).casefold()
+
+
+def _cohort_unpublished(value: object) -> bool:
+    if value is None or pd.isna(value):
+        return True
+    text = str(value).strip()
+    if not text:
+        return True
+    folded = text.casefold()
+    return "ferpa" in folded and "supress" in folded.replace("pp", "p")
 
 
 def _named_column(columns, needle: str) -> str | None:

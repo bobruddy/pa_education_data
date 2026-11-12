@@ -9,7 +9,10 @@ from openpyxl import Workbook
 from pa_edu.check import _grain, GRAIN
 from pa_edu.parse_act1 import base_from_text, parse_act1
 from pa_edu.parse_charter_adm import parse_charter_adm
+from pa_edu.parse_cohort_grad import parse_cohort_grad
 from pa_edu.parse_homeschool import parse_homeschool
+from pa_edu.parse_iep import parse_iep
+from pa_edu.parse_low_income import parse_low_income
 from pa_edu.parse_retax import parse_retax
 from pa_edu.parse_assessment import parse_keystone, parse_pssa
 from pa_edu.parse_chart import titles_from_text
@@ -449,6 +452,103 @@ def test_charter_adm_by_sd_keeps_aun_text(tmp_path: Path) -> None:
     assert float(frame.loc[frame["aun"] == "124150503", "adm"].iloc[0]) == 0.0
 
 
+def test_iep_multi_year_skips_suppressed_and_wards(tmp_path: Path) -> None:
+    path = tmp_path / "iep.xlsx"
+    _save(
+        path,
+        {
+            "2024-2025": [
+                ["Number of Special Education Students and Total Enrollment by LEA"],
+                ["2024-2025 School Year"],
+                [],
+                [],
+                [],
+                ["Created: 6/6/2025"],
+                [],
+                ["vw"],
+                ["AGG"],
+                [],
+                [],
+                [
+                    "IU", "AUN", "School Name", "Number of Special Education Students",
+                    "Total Enrollment", "Special Ed % of Total Public SD Enrollment",
+                ],
+                [1, 101260303.0, "Albert Gallatin Area SD", 858, 2903, 0.295556],
+                [1, 101999999, "Wards of State", "*", 10, None],
+                [1, 110143120, "Nittany Valley CS", "*", 50, None],
+            ],
+            "2008-2009": [
+                ["Number of Special Education Students and Total Enrollment by LEA"],
+                ["2008-2009 School Year"],
+                [],
+                [],
+                [],
+                ["Created: 1/1/2009"],
+                [],
+                ["vw"],
+                ["RAW"],
+                [],
+                [],
+                [
+                    "IU", "AUN", "School Name", "Number of Special Education Students",
+                    "Total Enrollment", "Special Ed % of Total Public SD Enrollment",
+                ],
+                [1, "101260303", "Albert Gallatin Area SD", 742, 3785, 19.6037],
+            ],
+        },
+    )
+    frame = parse_iep(path, {"document_id": "iep-test"})["enrollment_iep"]
+    assert set(frame["aun"]) == {"101260303"}
+    assert set(frame["school_year"]) == {2024, 2008}
+    recent = frame.loc[frame["school_year"] == 2024].iloc[0]
+    assert recent["iep_enrollment"] == 858
+    assert recent["total_enrollment"] == 2903
+    assert abs(recent["pct_iep"] - 29.5556) < 0.001
+    assert recent["document_id"] == "iep-test"
+    older = frame.loc[frame["school_year"] == 2008].iloc[0]
+    assert older["iep_enrollment"] == 742
+    assert abs(older["pct_iep"] - 19.6037) < 0.001
+
+
+def test_low_income_lea_keeps_aun_text_and_percent(tmp_path: Path) -> None:
+    path = tmp_path / "low_income.xlsx"
+    _save(
+        path,
+        {
+            "2025 LIP by LEA": [
+                ["Percent Of Enrollments from Low-Income Families"],
+                [],
+                ["LEA Level"],
+                ["Year: 2024-2025"],
+                [
+                    "SUBMITTING AUN", "LEA NAME", "LEA TYPE", "TOTAL ENROLLMENT",
+                    "LOW INCOME ENROLLMENT", "PERCENT OF ENROLLMENT FROM LOW INCOME FAMILIES",
+                ],
+                [124150002.0, "21st Century Cyber CS", "Cyber CS", 996, 71, 0.0712],
+                [112011103, "Bermudian Springs SD", "SD", 2000, 0, 0.0],
+            ],
+            "2025 LIP by School": [
+                ["School Level"],
+                [
+                    "SUBMITTING AUN", "LEA NAME", "LEA TYPE", "SCHOOL NUMBER", "SCHOOL NAME",
+                    "TOTAL ENROLLMENT", "LOW-INCOME ENROLLMENT",
+                    "PERCENT OF ENROLLMENT FROM LOW INCOME FAMILIES",
+                ],
+                [124150002, "21st Century Cyber CS", "Cyber CS", "7691", "Campus", 996, 71, 0.0712],
+            ],
+        },
+    )
+    frame = parse_low_income(path, {"school_year": 2024, "document_id": "li-test"})["enrollment_low_income"]
+    assert set(frame["aun"]) == {"124150002", "112011103"}
+    cyber = frame.loc[frame["aun"] == "124150002"].iloc[0]
+    assert cyber["low_income_enrollment"] == 71
+    assert cyber["total_enrollment"] == 996
+    assert cyber["pct_low_income"] == 7.12
+    assert int(cyber["school_year"]) == 2024
+    assert cyber["document_id"] == "li-test"
+    assert int(frame.loc[frame["aun"] == "112011103", "low_income_enrollment"].iloc[0]) == 0
+
+
 def test_homeschool_skips_county_totals(tmp_path: Path) -> None:
     path = tmp_path / "homeschool.xlsx"
     _save(
@@ -474,3 +574,109 @@ def test_homeschool_skips_county_totals(tmp_path: Path) -> None:
     assert row["age_5_11"] == 69
     assert row["age_12_plus"] == 51
     assert row["document_id"] == "hs-test"
+
+
+_COHORT_GROUPS = [
+    "Male Grad Rate", "Female Grad Rate", "AIAN Grad Rate",
+    "Native Hawaiian or Pacific Islander Grad Rate", "Asian Grad Rate",
+    "Black Grad Rate", "Hispanic Grad Rate", "White Grad Rate",
+    "Multi-Racial Grad Rate", "Special Ed Grad Rate", "EL\nGrad Rate",
+    "Econ Disadv Grad Rate", "Migrant Grad Rate",
+]
+
+
+def _cohort_book(path: Path, rows: list[list], *, extra: list[str] | None = None) -> None:
+    header = ["LEA Type", "AUN", "LEA", "Grads", "Cohort", "Cohort Grad Rate", *_COHORT_GROUPS]
+    if extra:
+        header.extend(extra)
+    _save(
+        path,
+        {
+            "Notes": [["SY 1999-00 4-Year Cohort Graduation Rate"]],
+            "Grad Rate by LEA": [["SY 1999-00 4-Year Cohort Graduation Rate by LEA"], [], header, *rows],
+            "Grad Rate by School": [["School Number"], [7691]],
+        },
+    )
+
+
+def _cohort_rates(*values: object) -> list:
+    rates = list(values) + [None] * (len(_COHORT_GROUPS) - len(values))
+    return rates[: len(_COHORT_GROUPS)]
+
+
+def test_cohort_grad_keeps_published_rate_and_skips_blanks(tmp_path: Path) -> None:
+    path = tmp_path / "cohort.xlsx"
+    _cohort_book(
+        path,
+        [
+            ["CS", 124150002.0, "21st Century Cyber CS", 180, 301, 0.598006644518272, *_cohort_rates(0.576923076923077, "Due to cohort size demographic information has been supressed to comply with FERPA regulations."), None, None, 0],
+            ["Summary", None, "Statewide", 10, 10, 1, *_cohort_rates(1)],
+            ["The LEA graduation rates include students attributed to the district.", None, None, None, None, None, *_cohort_rates()],
+            ["SD", "112011103", "Bermudian Springs SD", 0, 10, 0, *_cohort_rates()],
+        ],
+        extra=["Foster Grad Rate", "Homeless Grad Rate", "Military Grad Rate"],
+    )
+    parsed = parse_cohort_grad(path, {"school_year": 2024, "span": 4, "document_id": "cohort-test"})
+    facts = parsed["cohort_graduation"]
+    assert list(facts["aun"]) == ["124150002", "112011103"]
+    cyber = facts.loc[facts["aun"] == "124150002"].iloc[0]
+    assert int(cyber["school_year"]) == 2024
+    assert int(cyber["span"]) == 4
+    assert int(cyber["graduates"]) == 180
+    assert int(cyber["cohort"]) == 301
+    assert cyber["rate"] == 0.598006644518272
+    assert cyber["document_id"] == "cohort-test"
+    assert int(facts.loc[facts["aun"] == "112011103", "graduates"].iloc[0]) == 0
+    groups = parsed["cohort_graduation_group"]
+    cyber_groups = groups.loc[groups["aun"] == "124150002"].set_index("student_group")["rate"]
+    assert cyber_groups["male"] == 0.576923076923077
+    assert cyber_groups["military"] == 0
+    assert "female" not in cyber_groups.index
+    assert "migrant" not in cyber_groups.index
+    assert groups.loc[groups["aun"] == "112011103"].empty
+
+
+def test_cohort_grad_accepts_the_layout_without_later_groups(tmp_path: Path) -> None:
+    path = tmp_path / "cohort-core.xlsx"
+    _cohort_book(
+        path,
+        [["SD", 101260303.0, "Albert Gallatin Area SD", 262, 327, 0.80122324159, *_cohort_rates(0.811764705882)]],
+    )
+    facts = parse_cohort_grad(path, {"school_year": 2017, "span": 6, "document_id": "cohort-2017"})["cohort_graduation"]
+    assert list(facts["aun"]) == ["101260303"]
+    assert int(facts.iloc[0]["span"]) == 6
+    assert int(facts.iloc[0]["school_year"]) == 2017
+
+
+def test_cohort_grad_rejects_an_unknown_column(tmp_path: Path) -> None:
+    path = tmp_path / "cohort-unknown.xlsx"
+    _cohort_book(
+        path,
+        [["SD", 101260303, "Albert Gallatin Area SD", 1, 2, 0.5, *_cohort_rates(0.5)]],
+        extra=["Mystery Grad Rate"],
+    )
+    try:
+        parse_cohort_grad(path, {"school_year": 2024, "span": 4, "document_id": "cohort-test"})
+    except ValueError as error:
+        assert "Mystery" in str(error)
+    else:
+        raise AssertionError("unknown column was accepted")
+
+
+def test_cohort_grad_rejects_the_older_total_grads_layout(tmp_path: Path) -> None:
+    path = tmp_path / "cohort-old.xlsx"
+    _save(
+        path,
+        {
+            "Grad Rate by LEA": [[
+                "LEA Type", "AUN", "LEA", "Total Grads", "Total Cohort", "Total Grad Rate",
+                "Male Grad Rate", "ELL Grad Rate",
+            ]],
+        },
+    )
+    try:
+        parse_cohort_grad(path, {"school_year": 2010, "span": 4, "document_id": "cohort-old"})
+    except ValueError as error:
+        assert "unrecognized" in str(error) or "missing" in str(error)
+    else:
+        raise AssertionError("older layout was accepted")

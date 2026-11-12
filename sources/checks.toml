@@ -41,6 +41,24 @@ aun = "112011103"
 school_year = 2024
 aun = "112011103"
 
+[[low_income_cell]]
+school_year = 2024
+aun = "124150002"
+
+[[iep_cell]]
+school_year = 2024
+aun = "101260303"
+
+[[cohort_grad_cell]]
+school_year = 2024
+span = 4
+aun = "124150002"
+
+[[cohort_grad_cell]]
+school_year = 2017
+span = 4
+aun = "124150002"
+
 [[assessment_cell]]
 school_year = 2024
 aun = "124150503"

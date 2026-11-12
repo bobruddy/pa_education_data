@@ -34,6 +34,12 @@ SELECT * FROM read_parquet('data/refined/enrollment_gender.parquet');
 CREATE OR REPLACE VIEW enrollment_race AS
 SELECT * FROM read_parquet('data/refined/enrollment_race.parquet');
 
+CREATE OR REPLACE VIEW enrollment_low_income AS
+SELECT * FROM read_parquet('data/refined/enrollment_low_income.parquet');
+
+CREATE OR REPLACE VIEW enrollment_iep AS
+SELECT * FROM read_parquet('data/refined/enrollment_iep.parquet');
+
 CREATE OR REPLACE VIEW assessment_result AS
 SELECT * FROM read_parquet('data/refined/assessment_result.parquet');
 
@@ -51,6 +57,12 @@ SELECT * FROM read_parquet('data/refined/charter_adm.parquet');
 
 CREATE OR REPLACE VIEW home_education AS
 SELECT * FROM read_parquet('data/refined/home_education.parquet');
+
+CREATE OR REPLACE VIEW cohort_graduation AS
+SELECT * FROM read_parquet('data/refined/cohort_graduation.parquet');
+
+CREATE OR REPLACE VIEW cohort_graduation_group AS
+SELECT * FROM read_parquet('data/refined/cohort_graduation_group.parquet');
 
 CREATE OR REPLACE VIEW afr_general_fund AS
 SELECT * FROM afr_expenditure WHERE fund_code = '10';

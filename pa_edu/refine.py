@@ -15,10 +15,13 @@ from pa_edu.parse_afr import parse_afr
 from pa_edu.parse_assessment import parse_keystone, parse_pssa
 from pa_edu.parse_chart import parse_chart
 from pa_edu.parse_charter_adm import parse_charter_adm
+from pa_edu.parse_cohort_grad import parse_cohort_grad
 from pa_edu.parse_edna import parse_edna
 from pa_edu.parse_enrollment import grade_table, parse_enrollment
 from pa_edu.parse_gfb import parse_gfb
 from pa_edu.parse_homeschool import parse_homeschool
+from pa_edu.parse_iep import parse_iep
+from pa_edu.parse_low_income import parse_low_income
 from pa_edu.parse_retax import parse_retax
 from pa_edu.storage import load_index, materialize
 
@@ -35,6 +38,9 @@ PARSERS = {
     "retax": parse_retax,
     "charter_adm": parse_charter_adm,
     "homeschool": parse_homeschool,
+    "low_income": parse_low_income,
+    "iep": parse_iep,
+    "cohort_grad": parse_cohort_grad,
 }
 
 COLUMNS = {
@@ -69,6 +75,14 @@ COLUMNS = {
         "aun", "school_year", "race", "grade_code", "enrollment",
         "lea_name", "lea_type", "county", "document_id",
     ],
+    "enrollment_low_income": [
+        "aun", "school_year", "lea_name", "lea_type",
+        "low_income_enrollment", "total_enrollment", "pct_low_income", "document_id",
+    ],
+    "enrollment_iep": [
+        "aun", "school_year", "lea_name",
+        "iep_enrollment", "total_enrollment", "pct_iep", "document_id",
+    ],
     "assessment_result": [
         "aun", "school_year", "assessment", "subject", "grade", "student_group",
         "number_scored", "pct_advanced", "pct_proficient", "pct_basic",
@@ -90,6 +104,13 @@ COLUMNS = {
     "home_education": [
         "aun", "school_year", "lea_name", "county", "students",
         "private_tutor", "age_5_11", "age_12_plus", "document_id",
+    ],
+    "cohort_graduation": [
+        "aun", "school_year", "span", "lea_name", "lea_type",
+        "graduates", "cohort", "rate", "document_id",
+    ],
+    "cohort_graduation_group": [
+        "aun", "school_year", "span", "student_group", "rate", "document_id",
     ],
     "school": ["aun", "school_number", "school_name"],
     "grade": ["grade_code", "label", "band", "session"],
@@ -114,6 +135,8 @@ SORT = {
     "enrollment": ["school_year", "aun", "school_number", "grade_code"],
     "enrollment_gender": ["school_year", "aun", "school_number", "gender", "grade_code"],
     "enrollment_race": ["school_year", "aun", "race", "grade_code"],
+    "enrollment_low_income": ["school_year", "aun"],
+    "enrollment_iep": ["school_year", "aun"],
     "assessment_result": [
         "school_year", "assessment", "aun", "subject", "grade", "student_group",
     ],
@@ -122,6 +145,8 @@ SORT = {
     "real_estate_tax": ["school_year", "aun", "county", "locality"],
     "charter_adm": ["school_year", "aun"],
     "home_education": ["school_year", "aun"],
+    "cohort_graduation": ["school_year", "span", "aun"],
+    "cohort_graduation_group": ["school_year", "span", "aun", "student_group"],
     "school": ["aun", "school_number"],
     "grade": ["grade_code"],
     "account": ["function_code", "object_code"],
@@ -185,6 +210,9 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
         frames["lea_year"],
         frames["enrollment"],
         frames["assessment_result"],
+        frames["enrollment_iep"],
+        frames["enrollment_low_income"],
+        frames["cohort_graduation"],
     )
     frames["school"] = _school(frames["enrollment"])
     frames["grade"] = grade_table()
@@ -212,6 +240,7 @@ def _lea(
     finance: pd.DataFrame,
     enrollment: pd.DataFrame,
     assessment: pd.DataFrame | None = None,
+    *extras: pd.DataFrame,
 ) -> pd.DataFrame:
     base = directory.copy() if not directory.empty else empty_frame(COLUMNS["lea"])
     known = set(base["aun"].dropna().astype(str)) if "aun" in base.columns else set()
@@ -231,6 +260,19 @@ def _lea(
         assess["category"] = "unknown"
         assess["rank"] = 2
         candidates.append(assess)
+    for rank, extra in enumerate(extras, start=3):
+        if extra is None or extra.empty or "aun" not in extra.columns:
+            continue
+        cols = ["aun", "school_year", "document_id"]
+        if "lea_name" in extra.columns:
+            cols.insert(2, "lea_name")
+        work = extra.loc[:, [column for column in cols if column in extra.columns]].copy()
+        if "lea_name" not in work.columns:
+            work["lea_name"] = pd.NA
+        work["county"] = pd.NA
+        work["category"] = "unknown"
+        work["rank"] = rank
+        candidates.append(work)
     if not candidates:
         return base
     extra = pd.concat(candidates, ignore_index=True)

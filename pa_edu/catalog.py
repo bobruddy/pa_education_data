@@ -16,6 +16,7 @@ class CatalogEntry:
     parser: str
     status: str
     school_year: int | None = None
+    span: int | None = None
     fetch: str = "http"
     filename: str | None = None
 

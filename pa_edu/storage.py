@@ -66,6 +66,7 @@ def store_bytes(
         "sha256": digest,
         "retrieved_at": retrieved_at or _now(),
         "school_year": entry.school_year,
+        "span": entry.span,
         "parser": entry.parser,
         "status": entry.status,
         "path": str(destination),

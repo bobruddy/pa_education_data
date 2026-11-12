@@ -190,6 +190,52 @@ def test_charter_and_homeschool_ride_along_on_enrollment_years() -> None:
     assert document["years"]["2024"]["charterAdm"] == 116.7
 
 
+def test_graduation_rides_along_on_an_existing_year() -> None:
+    years = _years_for(
+        "124150002",
+        {"124150002": {2024: {"012": 100}}},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        graduation={
+            "124150002": {
+                2024: {"4": {"grads": 180, "cohort": 301, "rate": 0.598}},
+                2027: {"4": {"grads": 1, "cohort": 2, "rate": 0.5}},
+            }
+        },
+    )
+    assert years[2024]["graduation"]["4"]["grads"] == 180
+    assert 2027 not in years
+
+
+def test_graduation_rank_uses_the_four_year_rate() -> None:
+    profiles = [
+        {"aun": "1", "name": "Low", "county": "Adams"},
+        {"aun": "2", "name": "High", "county": "Adams"},
+    ]
+    ranks = _county_ranks(
+        profiles,
+        {},
+        {},
+        {},
+        {},
+        graduation={
+            "1": {2024: {"4": {"rate": 0.5}}},
+            "2": {2024: {"4": {"rate": 0.9}}},
+        },
+    )
+    assert ranks["2"][2024]["graduation"]["rank"] == 1
+    assert ranks["1"][2024]["graduation"]["rank"] == 2
+    assert ranks["2"][2024]["graduation"]["peers"][0]["value"] == 90
+
+
 def test_keystone_year_is_kept_on_its_own() -> None:
     years = _years_for(
         "124150503",

@@ -34,6 +34,9 @@ ASSESSMENT_PAGE = (
 ENROLLMENT_PAGE = (
     "https://www.pa.gov/agencies/education/data-and-reporting/enrollment"
 )
+GRADUATION_PAGE = (
+    "https://www.pa.gov/agencies/education/data-and-reporting/high-school-graduation"
+)
 ADM_PAGE = (
     "https://www.pa.gov/agencies/education/programs-and-services/schools/"
     "grants-and-funding/school-finances/financial-data/financial-data-elements"
@@ -181,10 +184,13 @@ def main() -> None:
     charter = _charter_tuition(connection)
     charter_adm = _charter_adm(connection)
     home_education = _home_education(connection)
+    low_income = _low_income(connection)
+    iep = _iep(connection)
+    graduation = _cohort_graduation(connection)
     act1 = _act1_index(connection)
     act1_base = _act1_base(connection)
     mills = _real_estate_tax(connection)
-    ranks = _county_ranks(profiles, grades, actual, budget, charter, keystone, pssa)
+    ranks = _county_ranks(profiles, grades, actual, budget, charter, keystone, pssa, graduation)
     enrollment_year = catalog["enrollmentYear"]
     actual_year = catalog["actualYear"]
     budget_year = catalog["budgetYear"]
@@ -230,6 +236,9 @@ def main() -> None:
                 keystone,
                 charter_adm,
                 home_education,
+                low_income,
+                iep,
+                graduation,
             ),
         )
         (data_dir / f"{aun}.json").write_text(_dump(document), encoding="utf-8")
@@ -287,6 +296,9 @@ def _years_for(
     keystone: dict | None = None,
     charter_adm: dict | None = None,
     home_education: dict | None = None,
+    low_income: dict | None = None,
+    iep: dict | None = None,
+    graduation: dict | None = None,
 ) -> dict:
     experience = experience or {}
     retention = retention or {}
@@ -298,6 +310,9 @@ def _years_for(
     keystone = keystone or {}
     charter_adm = charter_adm or {}
     home_education = home_education or {}
+    low_income = low_income or {}
+    iep = iep or {}
+    graduation = graduation or {}
     years = (
         set(grades.get(aun, {}))
         | set(schools.get(aun, {}))
@@ -354,6 +369,15 @@ def _years_for(
         home_count = home_education.get(aun, {}).get(year)
         if home_count is not None:
             block["homeEducation"] = home_count
+        low = low_income.get(aun, {}).get(year)
+        if low is not None:
+            block["lowIncome"] = low
+        iep_cell = iep.get(aun, {}).get(year)
+        if iep_cell is not None:
+            block["iep"] = iep_cell
+        grad = graduation.get(aun, {}).get(year)
+        if grad:
+            block["graduation"] = grad
         blocks[year] = block
     return blocks
 
@@ -366,16 +390,18 @@ def _county_ranks(
     charter: dict,
     keystone: dict | None = None,
     pssa: dict | None = None,
+    graduation: dict | None = None,
 ) -> dict:
     """Rank each LEA against others in its county for the top-card metrics."""
     keystone = keystone or {}
     pssa = pssa or {}
+    graduation = graduation or {}
     by_county: dict[str, list[dict]] = {}
     for profile in profiles:
         by_county.setdefault(profile["county"], []).append(profile)
 
     years: set[int] = set()
-    for nested in (grades, actual, budget, keystone, pssa):
+    for nested in (grades, actual, budget, keystone, pssa, graduation):
         for lea_years in nested.values():
             years.update(lea_years)
 
@@ -392,6 +418,7 @@ def _county_ranks(
                 "keystone_biology": [],
                 "pssa_math": [],
                 "pssa_ela": [],
+                "graduation": [],
             }
             for profile in peers:
                 aun = profile["aun"]
@@ -433,6 +460,9 @@ def _county_ranks(
                     pct = None if not cell else cell.get("pct")
                     if pct is not None:
                         buckets[f"pssa_{subject}"].append({**row, "value": float(pct)})
+                grad = graduation.get(aun, {}).get(year, {}).get("4")
+                if grad and grad.get("rate") is not None:
+                    buckets["graduation"].append({**row, "value": float(grad["rate"]) * 100})
             for metric, rows in buckets.items():
                 if len(rows) < 2:
                     continue
@@ -461,18 +491,19 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         "pssa": {}, "keystone": {}, "assessment": ASSESSMENT_PAGE,
         "enrollmentPage": ENROLLMENT_PAGE,
         "admPage": ADM_PAGE,
-        "charterAdm": {}, "homeEducation": {},
+        "charterAdm": {}, "homeEducation": {}, "lowIncome": {}, "iep": None,
+        "cohortGrad": {}, "graduationPage": GRADUATION_PAGE,
     }
     frame = connection.sql(f"""
-        SELECT parser, school_year, source_url
+        SELECT parser, school_year, source_url, catalog_id
         FROM (
-            SELECT parser, school_year, source_url,
+            SELECT parser, school_year, source_url, catalog_id,
                    row_number() OVER (PARTITION BY catalog_id ORDER BY retrieved_at DESC) AS n
             FROM '{REFINED / "document.parquet"}'
         )
         WHERE n = 1 AND parser IN (
             'enrollment', 'afr', 'gfb', 'edna', 'act1', 'act1_base', 'retax', 'pssa', 'keystone',
-            'charter_adm', 'homeschool'
+            'charter_adm', 'homeschool', 'low_income', 'iep', 'cohort_grad'
         )
     """).df()
     for row in frame.itertuples(index=False):
@@ -482,12 +513,20 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
             sources["act1"] = row.source_url
         elif row.parser == "act1_base":
             sources["act1Base"] = row.source_url
+        elif row.parser == "iep":
+            sources["iep"] = row.source_url
         elif row.parser == "retax" and row.school_year is not None and not _missing(row.school_year):
             sources["retax"][str(int(row.school_year))] = row.source_url
         elif row.parser == "charter_adm" and row.school_year is not None and not _missing(row.school_year):
             sources["charterAdm"][str(int(row.school_year))] = row.source_url
         elif row.parser == "homeschool" and row.school_year is not None and not _missing(row.school_year):
             sources["homeEducation"][str(int(row.school_year))] = row.source_url
+        elif row.parser == "low_income" and row.school_year is not None and not _missing(row.school_year):
+            sources["lowIncome"][str(int(row.school_year))] = row.source_url
+        elif row.parser == "cohort_grad" and row.school_year is not None and not _missing(row.school_year):
+            span = str(row.catalog_id).rsplit("-", 1)[-1]
+            if span in {"4", "5", "6"}:
+                sources["cohortGrad"].setdefault(str(int(row.school_year)), {})[span] = row.source_url
         elif row.school_year is not None and not _missing(row.school_year):
             sources[row.parser][str(int(row.school_year))] = row.source_url
     functions = {
@@ -899,6 +938,82 @@ def _home_education(connection: duckdb.DuckDBPyConnection) -> dict:
     grouped: dict[str, dict[int, float]] = {}
     for row in frame.itertuples(index=False):
         grouped.setdefault(str(row.aun), {})[int(row.school_year)] = _number(row.students)
+    return grouped
+
+
+def _low_income(connection: duckdb.DuckDBPyConnection) -> dict:
+    """LEA-level economically disadvantaged (low-income) October 1 counts."""
+    path = REFINED / "enrollment_low_income.parquet"
+    if not path.exists():
+        return {}
+    frame = connection.sql(f"""
+        SELECT aun, school_year, low_income_enrollment, total_enrollment, pct_low_income
+        FROM '{path}'
+        WHERE low_income_enrollment IS NOT NULL
+    """).df()
+    grouped: dict[str, dict[int, dict]] = {}
+    for row in frame.itertuples(index=False):
+        cell = {"n": int(row.low_income_enrollment)}
+        if row.total_enrollment is not None and not _missing(row.total_enrollment):
+            cell["total"] = int(row.total_enrollment)
+        if row.pct_low_income is not None and not _missing(row.pct_low_income):
+            cell["pct"] = _number(row.pct_low_income)
+        grouped.setdefault(str(row.aun), {})[int(row.school_year)] = cell
+    return grouped
+
+
+def _iep(connection: duckdb.DuckDBPyConnection) -> dict:
+    """LEA-level December 1 school-age special education (IEP) counts."""
+    path = REFINED / "enrollment_iep.parquet"
+    if not path.exists():
+        return {}
+    frame = connection.sql(f"""
+        SELECT aun, school_year, iep_enrollment, total_enrollment, pct_iep
+        FROM '{path}'
+        WHERE iep_enrollment IS NOT NULL
+    """).df()
+    grouped: dict[str, dict[int, dict]] = {}
+    for row in frame.itertuples(index=False):
+        cell = {"n": int(row.iep_enrollment)}
+        if row.total_enrollment is not None and not _missing(row.total_enrollment):
+            cell["total"] = int(row.total_enrollment)
+        if row.pct_iep is not None and not _missing(row.pct_iep):
+            cell["pct"] = _number(row.pct_iep)
+        grouped.setdefault(str(row.aun), {})[int(row.school_year)] = cell
+    return grouped
+
+
+def _cohort_graduation(connection: duckdb.DuckDBPyConnection) -> dict:
+    """LEA cohort rates. `rate` is the published fraction, including a real zero."""
+    path = REFINED / "cohort_graduation.parquet"
+    if not path.exists():
+        return {}
+    frame = connection.sql(f"""
+        SELECT aun, school_year, span, graduates, cohort, rate
+        FROM '{path}'
+        WHERE graduates IS NOT NULL AND cohort IS NOT NULL AND rate IS NOT NULL
+    """).df()
+    grouped: dict[str, dict[int, dict]] = {}
+    for row in frame.itertuples(index=False):
+        grouped.setdefault(str(row.aun), {}).setdefault(int(row.school_year), {})[str(int(row.span))] = {
+            "grads": int(row.graduates),
+            "cohort": int(row.cohort),
+            "rate": float(row.rate),
+        }
+    groups_path = REFINED / "cohort_graduation_group.parquet"
+    if not groups_path.exists():
+        return grouped
+    groups = connection.sql(f"""
+        SELECT aun, school_year, span, student_group, rate
+        FROM '{groups_path}'
+        WHERE rate IS NOT NULL
+    """).df()
+    for row in groups.itertuples(index=False):
+        block = grouped.setdefault(str(row.aun), {}).setdefault(int(row.school_year), {})
+        (
+            block.setdefault("groups", {})
+            .setdefault(str(int(row.span)), {})[str(row.student_group)]
+        ) = float(row.rate)
     return grouped
 
 
