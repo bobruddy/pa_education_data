@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest a change to the site or the published data.
+title: "Feature: "
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe what you want and why it would help. A free GitHub account is required to submit this.
+  - type: textarea
+    id: what
+    attributes:
+      label: What do you want?
+      description: The change you would like on pdenumbers.org or in the published tables.
+      placeholder: Show school-level enrollment next to the LEA total.
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why?
+      description: The problem this solves, or who it helps.
+    validations:
+      required: true

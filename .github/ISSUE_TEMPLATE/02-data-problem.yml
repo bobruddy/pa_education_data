@@ -1,0 +1,55 @@
+name: Data problem / correction
+description: A published number is wrong or missing.
+title: "Data: "
+labels: ["data"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Name the LEA so we can check that district’s workbook. A free GitHub account is required to submit this.
+  - type: input
+    id: aun
+    attributes:
+      label: LEA / AUN number
+      description: Nine-digit AUN of the LEA. This is required so we can look at that LEA specifically.
+      placeholder: "123456789"
+    validations:
+      required: true
+  - type: input
+    id: school-year
+    attributes:
+      label: School year
+      description: The year on the page, such as 2024–25.
+      placeholder: "2024–25"
+    validations:
+      required: false
+  - type: dropdown
+    id: series
+    attributes:
+      label: Which series
+      description: The table or tab where the number looks wrong.
+      options:
+        - Enrollment
+        - Financials — budget
+        - Financials — actuals
+        - Staff
+        - PSSA
+        - Keystone
+        - Other
+    validations:
+      required: false
+  - type: textarea
+    id: description
+    attributes:
+      label: What looks wrong or missing?
+      description: The figure you saw, and what you expected if you know it.
+    validations:
+      required: true
+  - type: input
+    id: page
+    attributes:
+      label: Link to the page
+      description: The pdenumbers.org URL, if you have it.
+      placeholder: "https://pdenumbers.org/"
+    validations:
+      required: false

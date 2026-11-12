@@ -404,6 +404,7 @@ table.schools td.num, table.schools th.num { text-align: right; }
   max-width: 1120px;
   margin: 0 auto;
 }
+.site-foot p + p { margin-top: 6px; }
 .site-foot a { color: var(--muted); text-underline-offset: 2px; }
 .site-foot a:hover { color: var(--teal); }
 

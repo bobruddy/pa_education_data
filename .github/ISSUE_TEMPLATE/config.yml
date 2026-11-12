@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: PDE data
+    url: https://pdenumbers.org/
+    about: Browse published LEA numbers. Opening an issue needs a free GitHub account.
