@@ -9,14 +9,15 @@ CODE_LINE = re.compile(r"^(\d{3,4})\s+\*?\s*(.+)$")
 
 
 def parse_chart(path: Path, document: dict) -> dict[str, pd.DataFrame]:
-    functions, objects = titles_from_text(_pdf_text(path))
+    functions, objects, revenue = titles_from_text(_pdf_text(path))
     return {
         "function": _frame(functions, "function_code"),
         "object": _frame(objects, "object_code"),
+        "revenue": _frame(revenue, "account_code"),
     }
 
 
-def titles_from_text(text: str) -> tuple[dict[str, str], dict[str, str]]:
+def titles_from_text(text: str) -> tuple[dict[str, str], dict[str, str], dict[str, str]]:
     functions = _section_codes(
         text, "Expenditure Function Codes", "Object Codes", width=4, minimum=10
     )
@@ -35,7 +36,38 @@ def titles_from_text(text: str) -> tuple[dict[str, str], dict[str, str]]:
         objects = _section_codes(
             text, "100 PERSONNEL SERVICES", "REVENUE FROM LOCAL", width=3, minimum=1
         )
-    return functions, objects
+    return functions, objects, _revenue_codes(text)
+
+
+def _revenue_codes(text: str) -> dict[str, str]:
+    """Titles from the revenue section, not the table of contents.
+
+    A year such as 1965 in the prose is not a revenue account. Revenue codes
+    start at 6000.
+    """
+    marker = "REVENUE FROM LOCAL SOURCES"
+    begin = 0
+    fallback: dict[str, str] = {}
+    while True:
+        begin = text.find(marker, begin)
+        if begin < 0:
+            return fallback
+        line_start = text.rfind("\n", 0, begin) + 1
+        if "...." in text[line_start:begin]:
+            begin += len(marker)
+            continue
+        finish = text.find("SECTION H", begin + len(marker))
+        window = text[line_start:] if finish < 0 else text[line_start:finish]
+        found = {
+            code: title
+            for code, title in _codes_in(window, 4).items()
+            if code[0] in "6789"
+        }
+        if len(found) >= 10:
+            return found
+        if len(found) > len(fallback):
+            fallback = found
+        begin += len(marker)
 
 
 def _pdf_text(path: Path) -> str:

@@ -1,4 +1,8 @@
-"""Annual Financial Report EXP, including the building split when PDE published one."""
+"""Annual Financial Report expenditures and revenue.
+
+EXP is the expenditure ledger, including the building split when PDE published
+one. REV is revenue. There is no building-level revenue sheet.
+"""
 
 from __future__ import annotations
 
@@ -49,6 +53,7 @@ def parse_afr(path: Path, document: dict) -> dict[str, pd.DataFrame]:
     return {
         "afr_expenditure": expense,
         "afr_expenditure_school": school,
+        "afr_revenue": _revenue(path, year, document_id),
         "lea_year": _names(raw, year, document_id),
     }
 
@@ -164,6 +169,99 @@ def _drop_redundant_leaw(school: pd.DataFrame, expense: pd.DataFrame) -> pd.Data
     keys = pd.MultiIndex.from_frame(school.loc[:, ACCOUNT_KEYS])
     drop = leaw.to_numpy() & keys.isin(matched.index)
     return school.loc[~drop].copy()
+
+
+REVENUE_COLUMNS = [
+    "InstCat",
+    "AUN",
+    "InstName",
+    "CountyName",
+    "FundCode",
+    "RollupFundCode",
+    "AccountCode",
+    "Rollup1AccountCode",
+    "Rollup2AccountCode",
+    "Rollup3AccountCode",
+    "ProgramCode",
+    "Amount1",
+    "Amount2",
+    "Amount3",
+    "TotalAmount",
+]
+
+
+def reported_revenue(amount_1: pd.Series, total: pd.Series) -> pd.Series:
+    """The revenue figure PDE published for the account.
+
+    Where TotalAmount is filled, it equals Amount1 − Amount2 + Amount3. That
+    is the chart's net tax: face, less discounts, plus interest and penalties.
+    Amount2 and Amount3 show up on current and delinquent tax accounts. Most
+    other rows fill only Amount1 and leave TotalAmount blank. Use TotalAmount
+    when PDE filled it; otherwise use Amount1. Do not add the two together.
+    """
+    return total.where(total.notna(), amount_1)
+
+
+def _revenue(path: Path, year: int, document_id: str) -> pd.DataFrame:
+    sheet = find_sheet(path, "REV")
+    frame = read_sheet(path, sheet)
+    found = {str(column).strip().casefold(): column for column in frame.columns}
+    required = {name.casefold() for name in REVENUE_COLUMNS}
+    missing = [name for name in REVENUE_COLUMNS if name.casefold() not in found]
+    extra = [str(column) for column in frame.columns if str(column).strip().casefold() not in required]
+    if missing or extra:
+        raise ValueError(f"{path.name} sheet {sheet} missing {missing} unexpected {extra}")
+
+    def source(name: str) -> pd.Series:
+        return frame[found[name.casefold()]]
+
+    amount_1 = as_amount(source("Amount1"))
+    amount_2 = as_amount(source("Amount2"))
+    amount_3 = as_amount(source("Amount3"))
+    total = as_amount(source("TotalAmount"))
+    output = pd.DataFrame(
+        {
+            "aun": as_code(source("AUN"), 9),
+            "school_year": year,
+            "fund_code": as_code(source("FundCode")),
+            "account_code": as_code(source("AccountCode"), 4),
+            "program_code": as_code(source("ProgramCode")).fillna(""),
+            "rollup_fund_code": as_code(source("RollupFundCode")),
+            "rollup1_account_code": as_code(source("Rollup1AccountCode"), 4),
+            "rollup2_account_code": as_code(source("Rollup2AccountCode"), 4),
+            "rollup3_account_code": as_code(source("Rollup3AccountCode"), 4),
+            "amount_1": amount_1,
+            "amount_2": amount_2,
+            "amount_3": amount_3,
+            "total_amount": total,
+            "amount": reported_revenue(amount_1, total),
+            "document_id": document_id,
+        }
+    )
+    output["program_code"] = output["program_code"].fillna("").astype("string")
+    output = output.dropna(subset=["aun", "fund_code", "account_code"])
+    output = output.loc[output["amount"].notna()].copy()
+    bad = sorted(output.loc[~output["account_code"].str.fullmatch(r"\d{4}"), "account_code"].dropna().unique())
+    if bad:
+        raise ValueError(f"{path.name} sheet {sheet} has account codes {bad[:8]}")
+    keep = [
+        "aun",
+        "school_year",
+        "fund_code",
+        "account_code",
+        "program_code",
+        "rollup_fund_code",
+        "rollup1_account_code",
+        "rollup2_account_code",
+        "rollup3_account_code",
+        "amount_1",
+        "amount_2",
+        "amount_3",
+        "total_amount",
+        "amount",
+        "document_id",
+    ]
+    return output.loc[:, keep]
 
 
 def _names(frame: pd.DataFrame, year: int, document_id: str) -> pd.DataFrame:

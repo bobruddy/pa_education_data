@@ -17,6 +17,32 @@ function_code = "1110"
 object_code = "120"
 program_code = ""
 
+# Current real estate taxes. Amount1 and TotalAmount are the same number.
+[[afr_revenue_cell]]
+school_year = 2024
+aun = "124150503"
+fund_code = "10"
+account_code = "6111"
+
+# Earnings on investments. TotalAmount is blank; the figure is Amount1.
+[[afr_revenue_cell]]
+school_year = 2024
+aun = "124150503"
+fund_code = "10"
+account_code = "6500"
+
+# Current real estate taxes with a discount. The figure is TotalAmount, not Amount1.
+[[afr_revenue_cell]]
+school_year = 2024
+aun = "102027451"
+fund_code = "10"
+account_code = "6111"
+
+[[gfb_revenue_cell]]
+school_year = 2024
+aun = "124150503"
+account_code = "6111"
+
 [[enrollment_cell]]
 school_year = 2024
 aun = "124150002"

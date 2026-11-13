@@ -19,6 +19,8 @@ FACT_TABLES = [
     "gfb_expenditure",
     "afr_expenditure",
     "afr_expenditure_school",
+    "afr_revenue",
+    "gfb_revenue",
     "enrollment",
     "enrollment_gender",
     "enrollment_race",
@@ -40,6 +42,8 @@ GRAIN = {
     "afr_expenditure_school": [
         "aun", "school_number", "school_year", "fund_code", "function_code", "object_code", "program_code",
     ],
+    "afr_revenue": ["aun", "school_year", "fund_code", "account_code", "program_code"],
+    "gfb_revenue": ["aun", "school_year", "account_code"],
     "enrollment": ["aun", "school_number", "school_year", "grade_code"],
     "enrollment_gender": ["aun", "school_number", "school_year", "gender", "grade_code"],
     "enrollment_race": ["aun", "school_year", "race", "grade_code"],
@@ -73,12 +77,17 @@ def run_checks(data_dir: Path | None = None) -> list[str]:
     refined = data_dir / "refined"
     index = load_index(data_dir)
     checks = load_checks(ROOT / "sources" / "checks.toml")
-    tables = {name: pd.read_parquet(refined / f"{name}.parquet") for name in ["lea", "document", *FACT_TABLES]}
+    tables = {
+        name: pd.read_parquet(refined / f"{name}.parquet")
+        for name in ["lea", "document", "revenue_account", *FACT_TABLES]
+    }
     errors: list[str] = []
     errors.extend(_lea_coverage(tables, index, checks))
     errors.extend(_identity(tables))
     errors.extend(_grain(tables))
     errors.extend(_cells(tables, index, checks))
+    errors.extend(_revenue_title(tables))
+    errors.extend(_revenue_not_doubled(tables))
     errors.extend(_published_totals(tables, index, checks))
     errors.extend(_school_rollup(tables, checks))
     errors.extend(_enrollment(tables, index))
@@ -145,6 +154,10 @@ def _cells(tables: dict[str, pd.DataFrame], index: dict, checks: dict) -> list[s
         errors.extend(_gfb_cell(tables, index, cell))
     for cell in checks.get("afr_cell", []):
         errors.extend(_afr_cell(tables, index, cell))
+    for cell in checks.get("afr_revenue_cell", []):
+        errors.extend(_afr_revenue_cell(tables, index, cell))
+    for cell in checks.get("gfb_revenue_cell", []):
+        errors.extend(_gfb_revenue_cell(tables, index, cell))
     for cell in checks.get("enrollment_cell", []):
         errors.extend(_enrollment_cell(tables, index, cell))
     for cell in checks.get("assessment_cell", []):
@@ -235,6 +248,146 @@ def _afr_cell(tables, index, cell) -> list[str]:
     if found is None or not _money(found, source):
         return [f"AFR {cell['function_code']}-{cell['object_code']} for {cell['aun']} is {found} in parquet and {source} in EXP"]
     return []
+
+
+def _afr_revenue_cell(tables, index, cell) -> list[str]:
+    from pa_edu.parse_afr import reported_revenue
+
+    record = _record(index, "afr", int(cell["school_year"]))
+    if record is None:
+        return [f"no AFR file for {cell['school_year']}"]
+    frame = read_sheet(Path(record["path"]), find_sheet(Path(record["path"]), "REV"))
+    frame["aun"] = as_code(frame["AUN"], 9)
+    frame["fund"] = as_code(frame["FundCode"])
+    frame["account_code"] = as_code(frame["AccountCode"])
+    row = frame.loc[
+        (frame["aun"] == cell["aun"])
+        & (frame["fund"] == str(cell["fund_code"]))
+        & (frame["account_code"] == cell["account_code"])
+    ]
+    if row.empty:
+        return [f"AFR revenue {cell['aun']} {cell['account_code']} is not on {record['catalog_id']}"]
+    amount_1 = pd.to_numeric(row["Amount1"], errors="coerce")
+    total = pd.to_numeric(row["TotalAmount"], errors="coerce")
+    if amount_1.isna().all() and total.isna().all():
+        return [f"AFR revenue {cell['account_code']} for {cell['aun']} is blank in the workbook"]
+    source = float(reported_revenue(amount_1, total).sum())
+    fact = _match(
+        tables["afr_revenue"],
+        {
+            "aun": cell["aun"],
+            "school_year": int(cell["school_year"]),
+            "fund_code": str(cell["fund_code"]),
+            "account_code": cell["account_code"],
+        },
+    )
+    found = None if fact.empty else float(fact["amount"].sum())
+    if found is None or not _money(found, source):
+        return [
+            f"AFR revenue {cell['account_code']} for {cell['aun']} is {found} in parquet and {source} in REV"
+        ]
+    return []
+
+
+def _gfb_revenue_cell(tables, index, cell) -> list[str]:
+    from pa_edu.parse_gfb import revenue_budget_sheet
+
+    record = _record(index, "gfb", int(cell["school_year"]))
+    if record is None:
+        return [f"no GFB file for {cell['school_year']}"]
+    path = Path(record["path"])
+    frame = read_sheet(path, revenue_budget_sheet(path))
+    frame.columns = [str(column).strip() for column in frame.columns]
+    header = cell["account_code"]
+    if header not in frame.columns:
+        return [f"GFB revenue column {header} is not on {record['catalog_id']}"]
+    row = frame.loc[as_code(frame["AUN"], 9) == cell["aun"]]
+    if row.empty:
+        return [f"GFB revenue {cell['aun']} is not on {record['catalog_id']}"]
+    source = float(row.iloc[0][header])
+    fact = _match(
+        tables["gfb_revenue"],
+        {
+            "aun": cell["aun"],
+            "school_year": int(cell["school_year"]),
+            "account_code": header,
+        },
+    )
+    if fact.empty or not _money(fact.iloc[0]["amount"], source):
+        found = None if fact.empty else fact.iloc[0]["amount"]
+        return [f"GFB revenue {header} for {cell['aun']} is {found} in parquet and {source} in the workbook"]
+    return []
+
+
+def _revenue_title(tables: dict[str, pd.DataFrame]) -> list[str]:
+    frame = tables["revenue_account"]
+    row = frame.loc[frame["account_code"].astype(str) == "6111"]
+    if row.empty:
+        return ["revenue account 6111 is missing from the chart"]
+    name = str(row.iloc[0]["name"])
+    if "real estate" not in name.casefold():
+        return [f"revenue account 6111 title is {name!r}"]
+    return []
+
+
+def _revenue_not_doubled(tables: dict[str, pd.DataFrame]) -> list[str]:
+    """A posted account that is also another row's rollup must not be summed twice.
+
+    7500, 7900, 8530, and 9200 are both a posted account and someone else's
+    rollup. No single LEA currently posts both. Fail if one does, instead of
+    inventing a rule that adds the parent on top of its children.
+    """
+    errors = []
+    actual = tables["afr_revenue"]
+    if not actual.empty:
+        fund = actual.loc[actual["fund_code"].astype(str) == "10"]
+        posted = fund.loc[fund["amount"].abs() > MONEY, ["aun", "school_year", "account_code"]]
+        long = fund.melt(
+            id_vars=["aun", "school_year", "account_code", "amount"],
+            value_vars=["rollup1_account_code", "rollup2_account_code", "rollup3_account_code"],
+            value_name="parent",
+        )
+        long = long.loc[long["parent"].notna() & (long["amount"].abs() > MONEY)]
+        both = long.merge(
+            posted,
+            left_on=["aun", "school_year", "parent"],
+            right_on=["aun", "school_year", "account_code"],
+            suffixes=("", "_parent"),
+        )
+        both = both.loc[both["account_code"].astype(str) != both["parent"].astype(str)]
+        if not both.empty:
+            sample = both.iloc[0]
+            errors.append(
+                "AFR revenue posts "
+                f"{sample['parent']} and {sample['account_code']} for {sample['aun']} "
+                f"{int(sample['school_year'])}; a parent account is not added to its children"
+            )
+    budget = tables["gfb_revenue"]
+    chains = tables["revenue_account"]
+    if budget.empty or chains.empty:
+        return errors
+    lookup = {}
+    for row in chains.itertuples(index=False):
+        parents = [
+            str(value)
+            for value in (row.rollup1_account_code, row.rollup2_account_code, row.rollup3_account_code)
+            if pd.notna(value) and str(value) not in {"", "None", "<NA>"}
+        ]
+        lookup[str(row.account_code)] = parents
+    nonzero = budget.loc[budget["amount"].abs() > MONEY, ["aun", "school_year", "account_code"]]
+    posted_budget = {
+        (str(row.aun), int(row.school_year), str(row.account_code))
+        for row in nonzero.itertuples(index=False)
+    }
+    for aun, year, account in posted_budget:
+        for parent in lookup.get(account, []):
+            if parent != account and (aun, year, parent) in posted_budget:
+                errors.append(
+                    f"GFB revenue posts {parent} and {account} for {aun} {year}; "
+                    "a parent account is not added to its children"
+                )
+                return errors
+    return errors
 
 
 def _assessment_cell(tables, index, cell) -> list[str]:

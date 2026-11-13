@@ -48,6 +48,10 @@ def _gfb_book(path: Path) -> None:
                 ["InstCat", "AUN", "InstName", "CountyName", "1100-100-1", "1100-100-2"],
                 [2, 101000000, "Intermediate Unit 1", "Washington", 4, 5],
             ],
+            "Rev_BegFB": [
+                ["InstCat", "AUN", "InstName", "CountyName", "6111", "6112", "0810"],
+                [1, 101260303.0, "Albert Gallatin Area SD", "Fayette", 12, 0, 99],
+            ],
         },
     )
 
@@ -74,6 +78,14 @@ def _afr_book(path: Path) -> None:
             "SLFS_EXP_2": [
                 ["SchoolName", "BranchNumber", *header],
                 ["Other", "9999", 1, 101260303, "Albert Gallatin Area SD", "Fayette", 23, None, 1110, 1000, 1100, None, 120, 100, None, None, 0, 0, 7, 7, None],
+            ],
+            "REV": [
+                [
+                    "InstCat", "AUN", "InstName", "CountyName", "FundCode", "RollupFundCode",
+                    "AccountCode", "Rollup1AccountCode", "Rollup2AccountCode", "Rollup3AccountCode",
+                    "ProgramCode", "Amount1", "Amount2", "Amount3", "TotalAmount",
+                ],
+                [1, 101260303, "Albert Gallatin Area SD", "Fayette", 10, None, 6111, 6000, 6100, 6110, None, 8, None, None, 8],
             ],
         },
     )
@@ -150,6 +162,88 @@ def test_gfb_keeps_zeros_and_splits_program(tmp_path: Path) -> None:
     assert sorted(unit["program_code"]) == ["1", "2"]
     assert unit["amount"].sum() == 9
     assert "Notes" not in set(frame["function_code"])
+
+
+def test_gfb_revenue_keeps_a_zero_and_skips_fund_balance(tmp_path: Path) -> None:
+    book = tmp_path / "gfb.xlsx"
+    _gfb_book(book)
+    frame = parse_gfb(book, {"school_year": 2019, "document_id": "gfb-test"})["gfb_revenue"]
+    assert set(frame["school_year"]) == {2019}
+    assert set(frame["account_code"]) == {"6111", "6112"}
+    district = frame.loc[frame["aun"] == "101260303"].set_index("account_code")
+    assert district.loc["6111", "amount"] == 12
+    assert district.loc["6112", "amount"] == 0
+    assert set(frame["fund_code"]) == {"10"}
+    assert set(frame["document_id"]) == {"gfb-test"}
+
+
+def test_gfb_revenue_rejects_an_unknown_column(tmp_path: Path) -> None:
+    book = tmp_path / "gfb.xlsx"
+    _save(
+        book,
+        {
+            "Exp": [
+                ["InstCat", "AUN", "InstName", "CountyName", "1100-100"],
+                [1, 101260303, "Albert Gallatin Area SD", "Fayette", 1],
+            ],
+            "Rev_BegFB": [
+                ["InstCat", "AUN", "InstName", "CountyName", "6111", "Notes"],
+                [1, 101260303, "Albert Gallatin Area SD", "Fayette", 1, 2],
+            ],
+        },
+    )
+    try:
+        parse_gfb(book, {"school_year": 2019, "document_id": "gfb-test"})
+    except ValueError as error:
+        assert "Notes" in str(error)
+    else:
+        raise AssertionError("unknown revenue column was melted")
+
+
+def test_afr_revenue_uses_the_filled_total_or_amount1(tmp_path: Path) -> None:
+    from pa_edu.parse_afr import parse_afr
+
+    book = tmp_path / "afr.xlsx"
+    header = [
+        "InstCat", "AUN", "InstName", "CountyName", "FundCode", "RollupFundCode",
+        "AccountCode", "Rollup1AccountCode", "Rollup2AccountCode", "Rollup3AccountCode",
+        "ProgramCode", "Amount1", "Amount2", "Amount3", "TotalAmount",
+    ]
+    _save(
+        book,
+        {
+            "EXP": [[
+                "InstCat", "AUN", "InstName", "CountyName", "FundCode", "RollupFundCode",
+                "AccountCode", "Rollup1AccountCode", "Rollup2AccountCode", "Rollup3AccountCode",
+                "ObjectCode", "Rollup1ObjectCode", "Rollup2ObjectCode", "ProgramCode",
+                "ElementaryAmount", "SecondaryAmount", "FederalAmount", "TotalAmount",
+            ]],
+            "REV": [
+                header,
+                [1, 124150503.0, "Avon Grove SD", "Chester", 10, None, 6111, 6000, 6100, 6110, None, 12, 3, 1, 10],
+                [1, 124150503.0, "Avon Grove SD", "Chester", 10, None, 6500, 6000, None, None, None, 5, None, None, None],
+                [1, 124150503.0, "Avon Grove SD", "Chester", 10, None, 6120, 6000, None, None, None, 0, None, None, None],
+                [1, 124150503.0, "Avon Grove SD", "Chester", 23, None, 6111, 6000, 6100, 6110, 9, 4, None, None, 4],
+                [1, 124150503.0, "Avon Grove SD", "Chester", 10, None, 6990, 6000, None, None, None, None, None, None, None],
+            ],
+        },
+    )
+    frame = parse_afr(book, {"school_year": 2024, "document_id": "afr-test"})["afr_revenue"]
+    assert set(frame["school_year"]) == {2024}
+    assert frame["aun"].tolist() == ["124150503"] * 4
+    tax = frame.loc[(frame["fund_code"] == "10") & (frame["account_code"] == "6111")].iloc[0]
+    assert tax["amount"] == 10
+    assert tax["amount"] != 12 + 10
+    assert list(tax[["rollup1_account_code", "rollup2_account_code", "rollup3_account_code"]]) == ["6000", "6100", "6110"]
+    earnings = frame.loc[frame["account_code"] == "6500"].iloc[0]
+    assert earnings["amount"] == 5
+    assert pd.isna(earnings["total_amount"])
+    zero = frame.loc[frame["account_code"] == "6120"].iloc[0]
+    assert zero["amount"] == 0
+    other = frame.loc[frame["fund_code"] == "23"].iloc[0]
+    assert other["program_code"] == "9"
+    assert other["amount"] == 4
+    assert "6990" not in set(frame["account_code"])
 
 
 def test_enrollment_grain_and_total_row(tmp_path: Path) -> None:
@@ -231,10 +325,13 @@ def test_chart_titles_stop_at_the_description() -> None:
 6000 REVENUE FROM LOCAL SOURCES
 6111 Current Real Estate Taxes Revenue received.
 """
-    functions, objects = titles_from_text(text)
+    functions, objects, revenue = titles_from_text(text)
     assert functions["1110"] == "REGULAR PROGRAMS"
     assert objects["120"] == "PROFESSIONAL – TEACHERS"
     assert "6111" not in objects
+    assert "6111" not in functions
+    assert revenue["6111"] == "Current Real Estate Taxes"
+    assert revenue["6000"] == "REVENUE FROM LOCAL SOURCES"
 
 
 def test_review_is_downloaded_and_not_parsed(tmp_path: Path) -> None:

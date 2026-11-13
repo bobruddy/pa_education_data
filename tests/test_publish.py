@@ -10,6 +10,7 @@ from pa_edu.publish import (
     _short_title,
     _years_for,
     directory_row,
+    _revenue_chain,
     lea_document,
 )
 
@@ -204,6 +205,49 @@ def test_act1_rides_along_on_a_year_that_already_exists() -> None:
     assert _percent_points(0.078) == 7.8
     document = lea_document({"aun": "101260303"}, {2024: {"act1": 7.8}})
     assert document["years"]["2024"]["act1"] == 7.8
+
+
+def test_revenue_chain_keeps_filled_rollups_in_order() -> None:
+    assert _revenue_chain("6000", None, "") == ["6000"]
+    assert _revenue_chain("6000", "6100", "6110") == ["6000", "6100", "6110"]
+
+
+def test_income_rides_along_on_a_year_that_already_exists() -> None:
+    income_actual = {
+        "124150503": {
+            2024: {"6111": {"a": 10, "p": ["6000", "6100", "6110"]}},
+            2027: {"6111": {"a": 1}},
+        }
+    }
+    income_budget = {
+        "124150503": {
+            2024: {"6111": {"a": 8, "p": ["6000", "6100", "6110"]}},
+            2026: {"6111": {"a": 3}},
+        }
+    }
+    years = _years_for(
+        "124150503",
+        {},
+        {},
+        {},
+        {},
+        {},
+        {"124150503": {2024: {"1000": 5}}},
+        {"124150503": {2024: {"1000": 4}, 2026: {"1000": 1}}},
+        {},
+        {},
+        {},
+        {},
+        income_actual=income_actual,
+        income_budget=income_budget,
+    )
+    assert years[2024]["incomeActual"]["6111"]["a"] == 10
+    assert years[2024]["incomeBudget"]["6111"]["a"] == 8
+    assert years[2026]["incomeBudget"]["6111"]["a"] == 3
+    assert "incomeActual" not in years[2026]
+    assert 2027 not in years
+    document = lea_document({"aun": "124150503"}, {2024: {"incomeActual": {"6111": {"a": 10}}}})
+    assert document["years"]["2024"]["incomeActual"]["6111"]["a"] == 10
 
 
 def test_mills_ride_along_on_a_budget_year() -> None:

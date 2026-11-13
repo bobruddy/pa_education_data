@@ -63,6 +63,14 @@ COLUMNS = {
         "rollup1_object_code", "rollup2_object_code",
         "elementary_amount", "secondary_amount", "federal_amount", "total_amount", "document_id",
     ],
+    "afr_revenue": [
+        "aun", "school_year", "fund_code", "account_code", "program_code",
+        "rollup_fund_code", "rollup1_account_code", "rollup2_account_code", "rollup3_account_code",
+        "amount_1", "amount_2", "amount_3", "total_amount", "amount", "document_id",
+    ],
+    "gfb_revenue": [
+        "aun", "school_year", "account_code", "amount", "fund_code", "document_id",
+    ],
     "enrollment": [
         "aun", "school_number", "school_name", "school_year", "grade_code", "enrollment",
         "lea_name", "lea_type", "county", "document_id",
@@ -118,6 +126,10 @@ COLUMNS = {
         "function_code", "object_code", "function_name", "object_name",
         "major_function", "major_object",
     ],
+    "revenue_account": [
+        "account_code", "name",
+        "rollup1_account_code", "rollup2_account_code", "rollup3_account_code",
+    ],
 }
 COLUMNS["afr_expenditure_school"] = [
     "aun", "school_number", "school_name", *COLUMNS["afr_expenditure"][1:],
@@ -129,6 +141,8 @@ SORT = {
     "lea_year": ["school_year", "aun", "document_id"],
     "gfb_expenditure": ["school_year", "aun", "function_code", "object_code", "program_code"],
     "afr_expenditure": ["school_year", "aun", "fund_code", "function_code", "object_code", "program_code"],
+    "afr_revenue": ["school_year", "aun", "fund_code", "account_code", "program_code"],
+    "gfb_revenue": ["school_year", "aun", "account_code"],
     "afr_expenditure_school": [
         "school_year", "aun", "school_number", "fund_code", "function_code", "object_code", "program_code",
     ],
@@ -150,6 +164,7 @@ SORT = {
     "school": ["aun", "school_number"],
     "grade": ["grade_code"],
     "account": ["function_code", "object_code"],
+    "revenue_account": ["account_code"],
 }
 
 INST_CATEGORY = {
@@ -183,6 +198,7 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
     collected: dict[str, list[pd.DataFrame]] = {name: [] for name in COLUMNS if name != "document"}
     functions: dict[str, str] = {}
     objects: dict[str, str] = {}
+    revenues: dict[str, str] = {}
     for entry in entries:
         record = materialize(entry, data_dir, index)
         print(f"{entry.status:6} {entry.id}: {Path(record['path']).name}")
@@ -198,7 +214,11 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
         if entry.parser == "chart":
             functions = dict(zip(parsed["function"]["function_code"], parsed["function"]["name"], strict=True))
             objects = dict(zip(parsed["object"]["object_code"], parsed["object"]["name"], strict=True))
-            print(f"         chart titles: {len(functions)} functions, {len(objects)} objects")
+            revenues = dict(zip(parsed["revenue"]["account_code"], parsed["revenue"]["name"], strict=True))
+            print(
+                f"         chart titles: {len(functions)} functions, "
+                f"{len(objects)} objects, {len(revenues)} revenue"
+            )
             continue
         for table, frame in parsed.items():
             if frame is None or frame.empty:
@@ -217,6 +237,7 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
     frames["school"] = _school(frames["enrollment"])
     frames["grade"] = grade_table()
     frames["account"] = _account(frames, functions, objects)
+    frames["revenue_account"] = _revenue_account(frames, revenues)
     frames["document"] = _documents(index)
     refined = data_dir / "refined"
     refined.mkdir(parents=True, exist_ok=True)
@@ -319,6 +340,40 @@ def _account(frames: dict[str, pd.DataFrame], functions: dict[str, str], objects
     account["major_function"] = account["function_code"].map(lambda code: functions.get(_major_function(code)))
     account["major_object"] = account["object_code"].map(lambda code: objects.get(_major_object(code)))
     return account
+
+
+def _revenue_account(frames: dict[str, pd.DataFrame], titles: dict[str, str]) -> pd.DataFrame:
+    chains: dict[str, tuple] = {}
+    revenue = frames["afr_revenue"]
+    if not revenue.empty:
+        fund10 = revenue.loc[revenue["fund_code"].astype(str) == "10"]
+        source = fund10 if not fund10.empty else revenue
+        rollups = ["rollup1_account_code", "rollup2_account_code", "rollup3_account_code"]
+        for account, group in source.groupby("account_code", dropna=False):
+            distinct = group.loc[:, rollups].drop_duplicates()
+            if len(distinct) > 1:
+                raise RuntimeError(f"revenue account {account} has more than one rollup chain")
+            row = distinct.iloc[0]
+            chains[str(account)] = tuple(row[column] for column in rollups)
+    for code in titles:
+        chains.setdefault(str(code), (pd.NA, pd.NA, pd.NA))
+    budget = frames["gfb_revenue"]
+    if not budget.empty:
+        for code in budget["account_code"].dropna().unique():
+            chains.setdefault(str(code), (pd.NA, pd.NA, pd.NA))
+    if not chains:
+        return empty_frame(COLUMNS["revenue_account"])
+    rows = []
+    for code in sorted(chains):
+        first, second, third = chains[code]
+        rows.append({
+            "account_code": code,
+            "name": titles.get(code, pd.NA),
+            "rollup1_account_code": first,
+            "rollup2_account_code": second,
+            "rollup3_account_code": third,
+        })
+    return pd.DataFrame(rows)
 
 
 def _major_function(code: object) -> str:

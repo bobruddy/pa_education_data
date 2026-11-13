@@ -76,6 +76,12 @@ MAJORS = [
     ("4000", "Facilities"),
     ("5000", "Other financing uses"),
 ]
+REVENUE_MAJORS = [
+    ("6000", "Local"),
+    ("7000", "State"),
+    ("8000", "Federal"),
+    ("9000", "Other financing sources"),
+]
 MAJOR_OBJECTS = [
     ("100", "Salaries"),
     ("200", "Benefits"),
@@ -126,6 +132,8 @@ def lea_document(profile: dict, years: dict) -> dict:
                 "schools",
                 "actual",
                 "budget",
+                "incomeActual",
+                "incomeBudget",
                 "budgetDetail",
                 "actualDetail",
                 "actualSchool",
@@ -180,6 +188,8 @@ def main() -> None:
     budget_detail = _detail(connection, "budget")
     actual_detail = _detail(connection, "actual")
     actual_school = _school_detail(connection)
+    income_actual = _income_actual(connection)
+    income_budget = _income_budget(connection)
     salaries, experience, retention = _salaries()
     charter = _charter_tuition(connection)
     charter_adm = _charter_adm(connection)
@@ -239,6 +249,8 @@ def main() -> None:
                 low_income,
                 iep,
                 graduation,
+                income_actual,
+                income_budget,
             ),
         )
         (data_dir / f"{aun}.json").write_text(_dump(document), encoding="utf-8")
@@ -299,6 +311,8 @@ def _years_for(
     low_income: dict | None = None,
     iep: dict | None = None,
     graduation: dict | None = None,
+    income_actual: dict | None = None,
+    income_budget: dict | None = None,
 ) -> dict:
     experience = experience or {}
     retention = retention or {}
@@ -313,6 +327,8 @@ def _years_for(
     low_income = low_income or {}
     iep = iep or {}
     graduation = graduation or {}
+    income_actual = income_actual or {}
+    income_budget = income_budget or {}
     years = (
         set(grades.get(aun, {}))
         | set(schools.get(aun, {}))
@@ -378,6 +394,13 @@ def _years_for(
         grad = graduation.get(aun, {}).get(year)
         if grad:
             block["graduation"] = grad
+        # Revenue rides on a year that already exists. It does not open a year.
+        actual_income = income_actual.get(aun, {}).get(year)
+        if actual_income:
+            block["incomeActual"] = actual_income
+        budget_income = income_budget.get(aun, {}).get(year)
+        if budget_income:
+            block["incomeBudget"] = budget_income
         blocks[year] = block
     return blocks
 
@@ -587,9 +610,94 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         "objects": [{"code": code, "label": label} for code, label in MAJOR_OBJECTS],
         "functions": functions,
         "objectNames": objects,
+        "revenueMajors": [{"code": code, "label": label} for code, label in REVENUE_MAJORS],
+        "revenueNames": _revenue_names(connection),
         "categories": [{"id": code, "label": label} for code, label in CATEGORIES],
         "sources": sources,
     }
+
+
+def _revenue_names(connection: duckdb.DuckDBPyConnection) -> dict[str, str]:
+    frame = connection.sql(f"""
+        SELECT account_code, name
+        FROM '{REFINED / "revenue_account.parquet"}'
+        WHERE name IS NOT NULL
+    """).df()
+    return {
+        str(row.account_code): _short_title(row.name)
+        for row in frame.itertuples(index=False)
+        if not _missing(row.name)
+    }
+
+
+def _revenue_chain(*codes: object) -> list[str]:
+    chain = []
+    for value in codes:
+        if _missing(value):
+            continue
+        text = str(value)
+        if text not in chain:
+            chain.append(text)
+    return chain
+
+
+def _income_cell(amount: object, *rollups: object) -> dict:
+    cell: dict = {"a": _number(amount)}
+    chain = _revenue_chain(*rollups)
+    if chain:
+        cell["p"] = chain
+    return cell
+
+
+def _income_actual(connection: duckdb.DuckDBPyConnection) -> dict:
+    frame = connection.sql(f"""
+        SELECT aun, school_year, account_code,
+               round(sum(amount), 2) AS amount,
+               any_value(rollup1_account_code) AS rollup1_account_code,
+               any_value(rollup2_account_code) AS rollup2_account_code,
+               any_value(rollup3_account_code) AS rollup3_account_code
+        FROM '{REFINED / "afr_revenue.parquet"}'
+        WHERE fund_code = '10'
+        GROUP BY 1, 2, 3
+        HAVING round(sum(amount), 2) != 0
+    """).df()
+    grouped: dict[str, dict[int, dict]] = {}
+    for row in frame.itertuples(index=False):
+        grouped.setdefault(str(row.aun), {}).setdefault(int(row.school_year), {})[str(row.account_code)] = (
+            _income_cell(
+                row.amount,
+                row.rollup1_account_code,
+                row.rollup2_account_code,
+                row.rollup3_account_code,
+            )
+        )
+    return grouped
+
+
+def _income_budget(connection: duckdb.DuckDBPyConnection) -> dict:
+    frame = connection.sql(f"""
+        SELECT budget.aun, budget.school_year, budget.account_code,
+               round(sum(budget.amount), 2) AS amount,
+               any_value(names.rollup1_account_code) AS rollup1_account_code,
+               any_value(names.rollup2_account_code) AS rollup2_account_code,
+               any_value(names.rollup3_account_code) AS rollup3_account_code
+        FROM '{REFINED / "gfb_revenue.parquet"}' AS budget
+        LEFT JOIN '{REFINED / "revenue_account.parquet"}' AS names
+          ON budget.account_code = names.account_code
+        GROUP BY 1, 2, 3
+        HAVING round(sum(budget.amount), 2) != 0
+    """).df()
+    grouped: dict[str, dict[int, dict]] = {}
+    for row in frame.itertuples(index=False):
+        grouped.setdefault(str(row.aun), {}).setdefault(int(row.school_year), {})[str(row.account_code)] = (
+            _income_cell(
+                row.amount,
+                row.rollup1_account_code,
+                row.rollup2_account_code,
+                row.rollup3_account_code,
+            )
+        )
+    return grouped
 
 
 def _profiles(connection: duckdb.DuckDBPyConnection) -> list[dict]:

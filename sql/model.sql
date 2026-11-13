@@ -25,6 +25,15 @@ SELECT * FROM read_parquet('data/refined/afr_expenditure.parquet');
 CREATE OR REPLACE VIEW afr_expenditure_school AS
 SELECT * FROM read_parquet('data/refined/afr_expenditure_school.parquet');
 
+CREATE OR REPLACE VIEW afr_revenue AS
+SELECT * FROM read_parquet('data/refined/afr_revenue.parquet');
+
+CREATE OR REPLACE VIEW gfb_revenue AS
+SELECT * FROM read_parquet('data/refined/gfb_revenue.parquet');
+
+CREATE OR REPLACE VIEW revenue_account AS
+SELECT * FROM read_parquet('data/refined/revenue_account.parquet');
+
 CREATE OR REPLACE VIEW enrollment AS
 SELECT * FROM read_parquet('data/refined/enrollment.parquet');
 
