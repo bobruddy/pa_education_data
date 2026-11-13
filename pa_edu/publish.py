@@ -382,6 +382,18 @@ def _years_for(
     return blocks
 
 
+def _charter_as_of(amounts: dict, year: int) -> float:
+    """Object 562 for this year, or the latest earlier year when that AFR is not in yet."""
+    if not amounts:
+        return 0.0
+    if year in amounts and amounts[year] is not None:
+        return amounts[year] or 0.0
+    earlier = [item for item in amounts if item < year and amounts[item] is not None]
+    if not earlier:
+        return 0.0
+    return amounts[max(earlier)] or 0.0
+
+
 def _county_ranks(
     profiles: list[dict],
     grades: dict,
@@ -412,7 +424,6 @@ def _county_ranks(
                 "enrollment": [],
                 "actual": [],
                 "budget": [],
-                "perStudent": [],
                 "keystone_algebra_i": [],
                 "keystone_literature": [],
                 "keystone_biology": [],
@@ -420,6 +431,8 @@ def _county_ranks(
                 "pssa_ela": [],
                 "graduation": [],
             }
+            actual_per_student: list[dict] = []
+            budget_per_student: list[dict] = []
             for profile in peers:
                 aun = profile["aun"]
                 enrolled = _total(grades.get(aun, {}).get(year))
@@ -432,12 +445,19 @@ def _county_ranks(
                     buckets["actual"].append({**row, "value": spent})
                 if adopted is not None:
                     buckets["budget"].append({**row, "value": adopted})
-                if spent is not None and enrolled:
-                    charter_amount = charter.get(aun, {}).get(year, 0.0) or 0.0
-                    buckets["perStudent"].append({
-                        **row,
-                        "value": _number((spent - charter_amount) / enrolled),
-                    })
+                if enrolled:
+                    if spent is not None:
+                        charter_amount = charter.get(aun, {}).get(year, 0.0) or 0.0
+                        actual_per_student.append({
+                            **row,
+                            "value": _number((spent - charter_amount) / enrolled),
+                        })
+                    elif adopted is not None:
+                        charter_amount = _charter_as_of(charter.get(aun, {}), year)
+                        budget_per_student.append({
+                            **row,
+                            "value": _number((adopted - charter_amount) / enrolled),
+                        })
                 for subject in ("algebra_i", "literature", "biology"):
                     cell = (
                         keystone.get(aun, {})
@@ -463,6 +483,9 @@ def _county_ranks(
                 grad = graduation.get(aun, {}).get(year, {}).get("4")
                 if grad and grad.get("rate") is not None:
                     buckets["graduation"].append({**row, "value": float(grad["rate"]) * 100})
+            # A year with any AFR stays on actuals. Budget per student ranks only
+            # when nobody in the county has actuals yet, so the two are never mixed.
+            buckets["perStudent"] = actual_per_student or budget_per_student
             for metric, rows in buckets.items():
                 if len(rows) < 2:
                     continue
@@ -493,6 +516,7 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         "admPage": ADM_PAGE,
         "charterAdm": {}, "homeEducation": {}, "lowIncome": {}, "iep": None,
         "cohortGrad": {}, "graduationPage": GRADUATION_PAGE,
+        "chart": None,
     }
     frame = connection.sql(f"""
         SELECT parser, school_year, source_url, catalog_id
@@ -503,9 +527,10 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         )
         WHERE n = 1 AND parser IN (
             'enrollment', 'afr', 'gfb', 'edna', 'act1', 'act1_base', 'retax', 'pssa', 'keystone',
-            'charter_adm', 'homeschool', 'low_income', 'iep', 'cohort_grad'
+            'charter_adm', 'homeschool', 'low_income', 'iep', 'cohort_grad', 'chart'
         )
     """).df()
+    chart_year = -1
     for row in frame.itertuples(index=False):
         if row.parser == "edna":
             sources["edna"] = row.source_url
@@ -515,6 +540,11 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
             sources["act1Base"] = row.source_url
         elif row.parser == "iep":
             sources["iep"] = row.source_url
+        elif row.parser == "chart" and row.source_url:
+            year = -1 if _missing(row.school_year) else int(row.school_year)
+            if sources["chart"] is None or year >= chart_year:
+                sources["chart"] = row.source_url
+                chart_year = year
         elif row.parser == "retax" and row.school_year is not None and not _missing(row.school_year):
             sources["retax"][str(int(row.school_year))] = row.source_url
         elif row.parser == "charter_adm" and row.school_year is not None and not _missing(row.school_year):
@@ -1223,9 +1253,15 @@ def _missing(value: object) -> bool:
 
 
 def _short_title(value: object) -> str:
-    text = " ".join(str(value).replace("–", "-").split())
+    text = " ".join(str(value).replace("–", "-").replace("—", "-").split())
     if " - " in text:
-        text = text.split(" - ", 1)[0]
+        head, tail = text.split(" - ", 1)
+        # "SUPPORT SERVICES – STUDENTS" is the chart heading. The words before
+        # the dash repeat the 2000 major; the words after are the account.
+        if head.casefold() == "support services" and tail.strip():
+            text = tail.strip()
+        else:
+            text = head
     if len(text) > 48:
         text = text[:45].rstrip() + "…"
     return text

@@ -292,6 +292,7 @@ function readState() {
     dir: query.get("dir") || "asc",
     schools: query.get("schools") || "enrollment",
     budget: query.get("budget") || "",
+    spend: query.get("spend") === "budget" ? "budget" : query.get("spend") === "actual" ? "actual" : "",
   };
 }
 
@@ -309,6 +310,7 @@ function writeUrl(state, mode) {
   if (state.dir !== "asc") query.set("dir", state.dir);
   if (state.schools !== "enrollment") query.set("schools", state.schools);
   if (state.budget) query.set("budget", state.budget);
+  if (state.spend === "actual" || state.spend === "budget") query.set("spend", state.spend);
   const next = location.pathname + (query.toString() ? "?" + query : "");
   if (next === location.pathname + location.search) return;
   if (mode === "push") history.pushState(null, "", next);
@@ -558,8 +560,19 @@ function bindLea() {
   if (app.dataset.leaBound) return;
   app.dataset.leaBound = "1";
   app.addEventListener("click", (event) => {
+    const spendMode = event.target.closest("#spend [data-spend]");
+    if (spendMode) {
+      hideTip();
+      const state = readState();
+      state.tab = "financials";
+      state.spend = spendMode.dataset.spend;
+      writeUrl(state, "replace");
+      paintLea(state);
+      return;
+    }
     const spend = event.target.closest("#spend [data-budget]");
     if (spend) {
+      hideTip();
       const state = readState();
       state.budget = spend.dataset.budget;
       writeUrl(state, "replace");
@@ -701,6 +714,16 @@ function bindLea() {
 
 function bindTips(root) {
   root.addEventListener("pointerover", (event) => {
+    const host = root.querySelector("#spend");
+    if (host) {
+      host.querySelectorAll(".is-hot").forEach((el) => el.classList.remove("is-hot"));
+      const hit = event.target.closest("#spend [data-slice]");
+      if (hit) {
+        for (const el of host.querySelectorAll("[data-slice]")) {
+          if (el.dataset.slice === hit.dataset.slice) el.classList.add("is-hot");
+        }
+      }
+    }
     const node = event.target.closest("[data-tip]");
     if (!node) return;
     showTip(node.dataset.tip, event.clientX, event.clientY);
@@ -903,21 +926,17 @@ function financeStats(block, priorBlock, priorYear, year) {
   const priorEnrolled = enrollmentOf(priorBlock);
   const priorActual = sumMap(priorBlock.actual);
   const priorBudget = sumMap(priorBlock.budget);
-  const spending = operatingActual(block);
-  const priorSpending = operatingActual(priorBlock);
-  const perPupil = enrolled && spending != null ? spending / enrolled : null;
-  const priorPerPupil = priorEnrolled && priorSpending != null ? priorSpending / priorEnrolled : null;
-  const perPupilNote = spending != null && actual != null && block.charterTuition
-    ? `<div class="note">Charter tuition removed</div>`
-    : spending != null
-      ? `<div class="note">Excludes charter tuition</div>`
-      : "";
+  const currentCost = perStudentCost(block, year);
+  const priorCost = perStudentCost(priorBlock, priorYear);
+  const perPupil = currentCost?.value ?? null;
+  const priorPerPupil = priorCost?.value ?? null;
+  const perLabel = currentCost?.basis === "budget" ? "Budget per student" : "Actual per student";
   const ranks = block.countyRanks || {};
   return [
     stat("October 1 enrollment", enrolled == null ? "Not published" : count(enrolled), yearDelta(enrolled, priorEnrolled, priorYear), year, ranks.enrollment, "count"),
     stat("General fund actual", money(actual), yearDelta(actual, priorActual, priorYear), "", ranks.actual, "money"),
     stat("General fund budget", money(budget), `${yearDelta(budget, priorBudget, priorYear)}${act1Note(block)}${millNote(block, priorBlock, priorYear)}`, "", ranks.budget, "money"),
-    stat("Actual per student", perPupil == null ? "Not published" : money(perPupil, 0), `${yearDelta(perPupil, priorPerPupil, priorYear)}${perPupilNote}`, "", ranks.perStudent, "money0"),
+    stat(perLabel, perPupil == null ? "Not published" : money(perPupil, 0), `${yearDelta(perPupil, priorPerPupil, priorYear)}${currentCost?.note || ""}`, "", ranks.perStudent, "money0"),
   ].join("");
 }
 
@@ -971,7 +990,7 @@ function yearNote(year) {
 
 function paintFinancials(block, priorBlock, priorYear, year, state) {
   app.querySelector("#finance-stats").innerHTML = financeStats(block, priorBlock, priorYear, year);
-  drawSpend(block, state.budget || "");
+  drawSpend(block, state);
   app.querySelector("#sources").innerHTML = sourceLinks(year);
 }
 
@@ -1885,6 +1904,51 @@ function operatingActual(block) {
   return actual - charter;
 }
 
+/** Actuals minus charter tuition when the AFR is in. Otherwise the general fund budget
+ * minus the latest published object 562, which is what makes it comparable to last year. */
+function perStudentCost(block, year) {
+  const enrolled = enrollmentOf(block);
+  if (!enrolled) return null;
+  const spending = operatingActual(block);
+  if (spending != null) {
+    return {
+      value: spending / enrolled,
+      basis: "actual",
+      note: block?.charterTuition
+        ? `<div class="note">Charter tuition removed</div>`
+        : `<div class="note">Excludes charter tuition</div>`,
+    };
+  }
+  const budget = sumMap(block?.budget);
+  if (budget == null) return null;
+  const charter = latestCharter(year);
+  const amount = charter?.amount || 0;
+  let note = "Budget";
+  if (charter?.amount) {
+    note = String(charter.year) === String(year)
+      ? "Charter tuition removed"
+      : "Estimated charter tuition removed";
+  }
+  return {
+    value: (budget - amount) / enrolled,
+    basis: "budget",
+    note: `<div class="note">${note}</div>`,
+  };
+}
+
+function latestCharter(year) {
+  const current = blockFor(year);
+  if (current?.charterTuition != null) {
+    return { year: String(year), amount: Number(current.charterTuition) || 0 };
+  }
+  const earlier = Object.keys(leaPack?.years || {})
+    .filter((candidate) => Number(candidate) < Number(year) && blockFor(candidate).charterTuition != null)
+    .sort((a, b) => Number(a) - Number(b));
+  const found = earlier.at(-1);
+  if (!found) return null;
+  return { year: found, amount: Number(blockFor(found).charterTuition) || 0 };
+}
+
 function yearDelta(current, prior, priorYear) {
   if (current == null || prior == null || prior === 0) return "";
   const change = (current - prior) / prior;
@@ -2402,166 +2466,717 @@ function amountOf(value) {
   return Number(value.t || 0);
 }
 
-function sumObjects(map) {
-  if (!map) return 0;
-  return Object.values(map).reduce((sum, value) => sum + amountOf(value), 0);
+const SPEND_COLORS = {
+  "1000": "#0c5c56",
+  "2000": "#2f5f8a",
+  "3000": "#8a6a2f",
+  "4000": "#6b5344",
+  "5000": "#a1622a",
+};
+
+function majorObjectCode(code) {
+  return String(code).slice(0, 1) + "00";
 }
 
-function parseFocus(focus) {
-  if (!focus) return { kind: "majors" };
-  const [functionCode, objectCode, school] = focus.split("/");
-  if (school) return { kind: "school", functionCode, objectCode, school };
-  if (objectCode) return { kind: "buildings", functionCode, objectCode };
-  if (functionCode.endsWith("000") && functionCode.length === 4) return { kind: "major", code: functionCode };
-  return { kind: "function", code: functionCode };
+function freshSpendTotals() {
+  return { budget: 0, actual: 0, elem: 0, sec: 0, fed: 0, credits: [], sources: [] };
 }
 
-function spendRows(block, focus) {
-  const path = parseFocus(focus);
-  const budgetDetail = block.budgetDetail || {};
-  const actualDetail = block.actualDetail || {};
-  const actualSchool = block.actualSchool || {};
-
-  if (path.kind === "majors") {
-    return catalog.majors
-      .map((major) => ({
-        code: major.code,
-        label: major.label,
-        budget: block.budget?.[major.code] || 0,
-        actual: block.actual?.[major.code] || 0,
-        next: major.code,
-        tipExtra: [],
-      }))
-      .filter((row) => row.budget || row.actual);
-  }
-
-  if (path.kind === "major") {
-    const codes = new Set([...Object.keys(budgetDetail), ...Object.keys(actualDetail)]);
-    return [...codes]
-      .filter((code) => majorOf(code) === path.code)
-      .sort()
-      .map((code) => {
-        const budget = sumObjects(budgetDetail[code]);
-        const actual = sumObjects(actualDetail[code]);
-        const grain = budgetDetail[code] ? "Budget function" : "Actual subfunction";
-        return {
-          code,
-          label: functionName(code),
-          budget,
-          actual,
-          next: code,
-          tipExtra: [`<span class="tip-muted">${grain} ${escapeHtml(code)}</span>`],
-        };
-      })
-      .filter((row) => row.budget || row.actual);
-  }
-
-  if (path.kind === "function") {
-    const budgetObjects = budgetDetail[path.code] || {};
-    const actualObjects = actualDetail[path.code] || {};
-    const codes = new Set([...Object.keys(budgetObjects), ...Object.keys(actualObjects)]);
-    const hasBuildings = Object.keys(actualSchool[path.code] || {}).length > 0;
-    return [...codes]
-      .sort()
-      .map((code) => {
-        const cell = actualObjects[code];
-        const budget = amountOf(budgetObjects[code]);
-        const actual = amountOf(cell);
-        const tipExtra = [`<span class="tip-muted">Object ${escapeHtml(code)}</span>`];
-        if (cell && typeof cell === "object") {
-          if (cell.e) tipExtra.push(`Elementary ${moneyFull(cell.e)}`);
-          if (cell.s) tipExtra.push(`Secondary ${moneyFull(cell.s)}`);
-          if (cell.f) tipExtra.push(`Federal ${moneyFull(cell.f)}`);
-        }
-        const next = hasBuildings && actualSchool[path.code]?.[code] ? `${path.code}/${code}` : "";
-        if (next) tipExtra.push(`<span class="tip-muted">Click for buildings</span>`);
-        return {
-          code,
-          label: objectName(code),
-          budget,
-          actual,
-          next,
-          tipExtra,
-        };
-      })
-      .filter((row) => row.budget || row.actual);
-  }
-
-  if (path.kind === "buildings") {
-    const buildings = actualSchool[path.functionCode]?.[path.objectCode] || {};
-    return Object.entries(buildings)
-      .map(([number, value]) => ({
-        code: number,
-        label: schoolName(block, number),
-        budget: 0,
-        actual: amountOf(value),
-        next: "",
-        tipExtra: [`School ${escapeHtml(number)}`, `<span class="tip-muted">${escapeHtml(path.functionCode)}-${escapeHtml(path.objectCode)}</span>`],
-      }))
-      .filter((row) => row.actual)
-      .sort((a, b) => b.actual - a.actual || a.label.localeCompare(b.label));
-  }
-
-  return [];
-}
-
-function drawSpend(block, focus) {
-  const host = app.querySelector("#spend");
-  const rows = spendRows(block, focus);
-  if (!rows.length) {
-    host.innerHTML = `${budgetCrumb(block, focus)}<p class="note">No general-fund budget or actual is published for this view.</p>`;
+function addSpendAmount(bucket, series, value, source) {
+  if (series === "actual" && source && !bucket.sources.includes(source)) bucket.sources.push(source);
+  const amount = amountOf(value);
+  if (amount < 0) {
+    bucket.credits.push({ series, amount, source });
     return;
   }
-  const width = 520;
-  const labelWidth = 168;
-  const barMax = 250;
-  const rowHeight = 34;
-  const height = rows.length * rowHeight + 16;
-  const max = Math.max(...rows.flatMap((row) => [row.actual, row.budget])) || 1;
-  const path = parseFocus(focus);
-  const showBudget = path.kind !== "buildings";
-  const bars = rows.map((row, index) => {
-    const y = 8 + index * rowHeight;
-    const actualWidth = (row.actual / max) * barMax;
-    const budgetWidth = showBudget ? (row.budget / max) * barMax : 0;
-    const tip = tipLines(row.label, [
-      showBudget ? `Budget ${moneyFull(row.budget)}` : null,
-      `Actual ${moneyFull(row.actual)}`,
-      ...(row.tipExtra || []),
-      row.next && path.kind !== "buildings" ? `<span class="tip-muted">Click to open</span>` : null,
-    ].filter(Boolean));
-    const hit = row.next
-      ? `class="bar-hit" data-budget="${escapeAttr(row.next)}" data-tip="${escapeAttr(tip)}"`
-      : `data-tip="${escapeAttr(tip)}"`;
-    return `<g ${hit}>
-      <text class="bar-label" x="0" y="${y + 16}">${escapeHtml(row.label)}</text>
-      <rect x="${labelWidth}" y="${y}" width="${actualWidth.toFixed(1)}" height="${showBudget ? 10 : 16}" fill="#0c5c56"></rect>
-      ${showBudget ? `<rect x="${labelWidth}" y="${y + 12}" width="${budgetWidth.toFixed(1)}" height="10" fill="#c9843d"></rect>` : ""}
-    </g>`;
-  }).join("");
-  const note = path.kind === "buildings"
-    ? `<p class="note"><span style="color:#0c5c56">■</span> Actual by building</p>`
-    : `<p class="note"><span style="color:#0c5c56">■</span> Actual &nbsp; <span style="color:#c9843d">■</span> Budget · click a bar to drill in</p>`;
-  host.innerHTML = `${budgetCrumb(block, focus)}
-    <svg class="chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="Spending drill-down">${bars}</svg>
-    ${note}`;
+  if (!amount) return;
+  bucket[series] += amount;
+  if (series === "actual" && value && typeof value === "object") {
+    bucket.elem += Number(value.e || 0);
+    bucket.sec += Number(value.s || 0);
+    bucket.fed += Number(value.f || 0);
+  }
 }
 
-function budgetCrumb(block, focus) {
-  const path = parseFocus(focus);
-  if (path.kind === "majors") return `<div class="drill"><span class="here">All functions</span></div>`;
-  const parts = [`<button type="button" data-budget="">All functions</button>`];
-  if (path.kind === "major") {
-    parts.push(`<span class="here">${escapeHtml(functionName(path.code))}</span>`);
-  } else if (path.kind === "function") {
-    parts.push(`<button type="button" data-budget="${escapeAttr(majorOf(path.code))}">${escapeHtml(functionName(majorOf(path.code)))}</button>`);
-    parts.push(`<span class="here">${escapeHtml(functionName(path.code))}</span>`);
-  } else if (path.kind === "buildings") {
-    parts.push(`<button type="button" data-budget="${escapeAttr(majorOf(path.functionCode))}">${escapeHtml(functionName(majorOf(path.functionCode)))}</button>`);
-    parts.push(`<button type="button" data-budget="${escapeAttr(path.functionCode)}">${escapeHtml(functionName(path.functionCode))}</button>`);
-    parts.push(`<span class="here">${escapeHtml(objectName(path.objectCode))}</span>`);
+function absorbSpend(into, from) {
+  into.budget += from.budget;
+  into.actual += from.actual;
+  into.elem += from.elem;
+  into.sec += from.sec;
+  into.fed += from.fed;
+  into.credits.push(...from.credits);
+  for (const source of from.sources || []) {
+    if (!into.sources.includes(source)) into.sources.push(source);
   }
+}
+
+function signedSpend(node, series) {
+  const credit = (node.credits || []).filter((row) => row.series === series).reduce((sum, row) => sum + row.amount, 0);
+  return (node[series] || 0) + credit;
+}
+
+function hasSpend(node, series) {
+  if ((node[series] || 0) > 0) return true;
+  return (node.credits || []).some((row) => row.series === series);
+}
+
+function wedgeValue(node, measure) {
+  const amount = node[measure] || 0;
+  return amount > 0 ? amount : 0;
+}
+
+function makeSpendNode(kind, fields) {
+  return {
+    kind,
+    code: fields.code,
+    segment: fields.segment,
+    path: fields.path,
+    parentPath: fields.parentPath || "",
+    label: fields.label,
+    account: fields.account || "",
+    major: fields.major || "",
+    budget: fields.budget || 0,
+    actual: fields.actual || 0,
+    elem: fields.elem || 0,
+    sec: fields.sec || 0,
+    fed: fields.fed || 0,
+    credits: fields.credits || [],
+    sources: fields.sources || [],
+    children: fields.children || [],
+    parent: null,
+  };
+}
+
+function linkSpend(node) {
+  for (const child of node.children) {
+    child.parent = node;
+    linkSpend(child);
+  }
+  return node;
+}
+
+function spendAlive(row) {
+  return row.budget > 0 || row.actual > 0 || (row.credits || []).length > 0;
+}
+
+function schoolSpendNodes(schools, parentPath, major) {
+  return [...schools.values()].filter(spendAlive).map((row) => makeSpendNode("school", {
+    code: row.code,
+    segment: `s:${row.code}`,
+    path: `${parentPath}/s:${row.code}`,
+    parentPath,
+    label: row.name,
+    account: `School ${row.code}`,
+    major,
+    actual: row.actual,
+    credits: row.credits,
+    sources: row.sources,
+  }));
+}
+
+function detailSpendNode(row, pathPrefix, objectCode, major, accountFunction) {
+  const path = `${pathPrefix}/${objectCode}/${row.code}`;
+  return makeSpendNode("detail", {
+    code: row.code,
+    segment: row.code,
+    path,
+    parentPath: `${pathPrefix}/${objectCode}`,
+    label: objectName(row.code),
+    account: `${accountFunction}-${row.code}`,
+    major,
+    budget: row.budget,
+    actual: row.actual,
+    elem: row.elem,
+    sec: row.sec,
+    fed: row.fed,
+    credits: row.credits,
+    sources: row.sources,
+    children: schoolSpendNodes(row.schools, path, major),
+  });
+}
+
+function objectSpendChildren(row, pathPrefix, major, accountFunction) {
+  const details = [...row.details.values()].filter(spendAlive);
+  const path = `${pathPrefix}/${row.code}`;
+  const split = details.length > 1 || (details.length === 1 && details[0].code !== row.code);
+  if (split) return details.map((detail) => detailSpendNode(detail, pathPrefix, row.code, major, accountFunction));
+  if (!details.length) return [];
+  return schoolSpendNodes(details[0].schools, path, major);
+}
+
+function objectSpendNode(row, pathPrefix, major, accountFunction) {
+  return makeSpendNode("object", {
+    code: row.code,
+    segment: row.code,
+    path: `${pathPrefix}/${row.code}`,
+    parentPath: pathPrefix,
+    label: objectName(row.code),
+    account: `${accountFunction}-${row.code}`,
+    major,
+    budget: row.budget,
+    actual: row.actual,
+    elem: row.elem,
+    sec: row.sec,
+    fed: row.fed,
+    credits: row.credits,
+    sources: row.sources,
+    children: objectSpendChildren(row, pathPrefix, major, accountFunction),
+  });
+}
+
+function subfunctionSpendNode(row, family, major) {
+  const path = `${family}/${row.code}`;
+  return makeSpendNode("function", {
+    code: row.code,
+    segment: row.code,
+    path,
+    parentPath: family,
+    label: functionName(row.code),
+    account: row.code,
+    major,
+    budget: row.budget,
+    actual: row.actual,
+    elem: row.elem,
+    sec: row.sec,
+    fed: row.fed,
+    credits: row.credits,
+    sources: row.sources,
+    children: [...row.objects.values()].filter(spendAlive).map((object) => objectSpendNode(object, path, major, row.code)),
+  });
+}
+
+function familySpendNode(row, major) {
+  const subs = [...row.subs.values()].filter(spendAlive).map((sub) => subfunctionSpendNode(sub, row.code, major));
+  const objects = [...row.objects.values()].filter(spendAlive).map((object) => objectSpendNode(object, row.code, major, row.code));
+  return makeSpendNode("family", {
+    code: row.code,
+    segment: row.code,
+    path: row.code,
+    parentPath: major,
+    label: functionName(row.code),
+    account: row.code,
+    major,
+    budget: row.budget,
+    actual: row.actual,
+    elem: row.elem,
+    sec: row.sec,
+    fed: row.fed,
+    credits: row.credits,
+    sources: row.sources,
+    children: [...subs, ...objects],
+  });
+}
+
+function majorSpendLabel(code) {
+  return catalog.majors.find((major) => major.code === code)?.label || functionName(code);
+}
+
+// Budget stays at the published function and major object. Actual keeps the
+// posted subfunction (1110, 2823) under that function, then the posted object.
+// A parent account is not added on top of those leaves.
+function buildSpendTree(block) {
+  const families = new Map();
+  const ensureFamily = (fn) => {
+    const code = summaryOf(fn);
+    let row = families.get(code);
+    if (!row) {
+      row = { ...freshSpendTotals(), code, objects: new Map(), subs: new Map() };
+      families.set(code, row);
+    }
+    return row;
+  };
+  const ensureSub = (family, fn) => {
+    let row = family.subs.get(fn);
+    if (!row) {
+      row = { ...freshSpendTotals(), code: fn, objects: new Map() };
+      family.subs.set(fn, row);
+    }
+    return row;
+  };
+  const ensureObject = (owner, objectCode) => {
+    const code = majorObjectCode(objectCode);
+    let row = owner.objects.get(code);
+    if (!row) {
+      row = { ...freshSpendTotals(), code, details: new Map() };
+      owner.objects.set(code, row);
+    }
+    return row;
+  };
+  const ensureDetail = (object, objectCode) => {
+    let row = object.details.get(objectCode);
+    if (!row) {
+      row = { ...freshSpendTotals(), code: objectCode, schools: new Map() };
+      object.details.set(objectCode, row);
+    }
+    return row;
+  };
+  const take = (fn, objectCode, series, value) => {
+    const family = ensureFamily(fn);
+    const postedAtFamily = summaryOf(fn) === String(fn);
+    const owner = series === "actual" && !postedAtFamily ? ensureSub(family, String(fn)) : family;
+    const object = ensureObject(owner, objectCode);
+    const detail = ensureDetail(object, objectCode);
+    addSpendAmount(family, series, value, fn);
+    if (owner !== family) addSpendAmount(owner, series, value, fn);
+    addSpendAmount(object, series, value, fn);
+    addSpendAmount(detail, series, value, fn);
+    return detail;
+  };
+
+  for (const [fn, objects] of Object.entries(block.budgetDetail || {})) {
+    for (const [objectCode, value] of Object.entries(objects)) take(fn, objectCode, "budget", value);
+  }
+  for (const [fn, objects] of Object.entries(block.actualDetail || {})) {
+    for (const [objectCode, value] of Object.entries(objects)) {
+      const detail = take(fn, objectCode, "actual", value);
+      const schools = (block.actualSchool || {})[fn]?.[objectCode] || {};
+      for (const [number, schoolValue] of Object.entries(schools)) {
+        let school = detail.schools.get(number);
+        if (!school) {
+          school = { ...freshSpendTotals(), code: number, name: schoolName(block, number) };
+          detail.schools.set(number, school);
+        }
+        addSpendAmount(school, "actual", schoolValue, fn);
+      }
+    }
+  }
+
+  const majorRows = new Map();
+  for (const family of families.values()) {
+    if (!spendAlive(family)) continue;
+    const majorCode = majorOf(family.code);
+    let major = majorRows.get(majorCode);
+    if (!major) {
+      major = { ...freshSpendTotals(), code: majorCode, families: [] };
+      majorRows.set(majorCode, major);
+    }
+    absorbSpend(major, family);
+    major.families.push(family);
+  }
+
+  const root = makeSpendNode("root", {
+    code: "",
+    segment: "",
+    path: "",
+    label: "General fund",
+    account: "Fund 10",
+    children: [...majorRows.values()].map((row) => makeSpendNode("major", {
+      code: row.code,
+      segment: row.code,
+      path: row.code,
+      label: majorSpendLabel(row.code),
+      account: row.code,
+      major: row.code,
+      budget: row.budget,
+      actual: row.actual,
+      elem: row.elem,
+      sec: row.sec,
+      fed: row.fed,
+      credits: row.credits,
+      sources: row.sources,
+      children: row.families.map((family) => familySpendNode(family, row.code)),
+    })),
+  });
+  for (const major of root.children) absorbSpend(root, major);
+  return linkSpend(root);
+}
+
+function findSpendNode(root, focus) {
+  const parts = String(focus || "").split("/").filter(Boolean);
+  if (!parts.length) return root;
+  let node = root;
+  if (parts[0].endsWith("000") && parts[0].length === 4) {
+    node = root.children.find((child) => child.segment === parts[0]) || root;
+    if (node === root) return root;
+    parts.shift();
+  } else {
+    const major = root.children.find((child) => child.code === majorOf(parts[0]));
+    const family = major?.children.find((child) => child.segment === parts[0]);
+    if (family) {
+      node = family;
+      parts.shift();
+    } else {
+      const sub = major?.children
+        .flatMap((child) => child.children)
+        .find((child) => child.kind === "function" && child.segment === parts[0]);
+      if (!sub) return root;
+      node = sub;
+      parts.shift();
+    }
+  }
+  for (const part of parts) {
+    const next = node.children.find((child) => child.segment === part);
+    if (!next) return node;
+    node = next;
+  }
+  return node;
+}
+
+function visibleSpendNode(node, measure) {
+  let current = node;
+  while (current && current.kind !== "root" && !hasSpend(current, measure)) current = current.parent;
+  return current || node;
+}
+
+function orderedChildren(node, measure) {
+  const kids = node.children.filter((child) => wedgeValue(child, measure) > 0);
+  if (kids.length === 1 && kids[0].code === node.code && Math.abs(wedgeValue(kids[0], measure) - wedgeValue(node, measure)) < 1) {
+    return [];
+  }
+  if (node.kind === "root") {
+    const order = new Map((catalog.majors || []).map((major, index) => [major.code, index]));
+    kids.sort((a, b) => (order.get(a.code) ?? 99) - (order.get(b.code) ?? 99) || a.label.localeCompare(b.label));
+    return kids;
+  }
+  kids.sort((a, b) => wedgeValue(b, measure) - wedgeValue(a, measure) || a.label.localeCompare(b.label));
+  return kids;
+}
+
+function spendDepth(node) {
+  let depth = 0;
+  let current = node;
+  while (current?.parent && current.parent.kind !== "root") {
+    depth += 1;
+    current = current.parent;
+  }
+  return depth;
+}
+
+function mixHex(hex, toward, amount) {
+  const read = (value) => {
+    const n = value.slice(1);
+    return [0, 2, 4].map((index) => parseInt(n.slice(index, index + 2), 16));
+  };
+  const start = read(hex);
+  const end = read(toward);
+  const mixed = start.map((channel, index) => Math.round(channel + (end[index] - channel) * amount));
+  return `#${mixed.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+}
+
+function sliceFill(node, index) {
+  const base = SPEND_COLORS[node.major] || "#5e574c";
+  const depth = spendDepth(node);
+  if (depth <= 0) return base;
+  const step = (index % 4) * 0.1;
+  const start = depth === 1 ? 0.12 : 0.38;
+  return mixHex(base, "#f4efe4", Math.min(0.78, start + step));
+}
+
+function fillOf(node, measure) {
+  if (!node.parent) return SPEND_COLORS[node.major] || "#0c5c56";
+  const siblings = orderedChildren(node.parent, measure);
+  const index = Math.max(0, siblings.findIndex((child) => child.path === node.path));
+  return sliceFill(node, index);
+}
+
+function inkFor(fill) {
+  const channels = [0, 2, 4].map((index) => parseInt(fill.slice(1 + index, 3 + index), 16));
+  const lum = (0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2]) / 255;
+  return lum > 0.64 ? "#1c1915" : "#fffdf8";
+}
+
+function seriesPublished(block, series) {
+  const map = block[series];
+  if (map && Object.keys(map).some((key) => amountOf(map[key]))) return true;
+  const detail = series === "budget" ? block.budgetDetail : block.actualDetail;
+  return Object.keys(detail || {}).length > 0;
+}
+
+function spendMeasure(block, state) {
+  const yearActual = seriesPublished(block, "actual");
+  const yearBudget = seriesPublished(block, "budget");
+  if (state.spend === "budget" && yearBudget) return "budget";
+  if (state.spend === "actual" && yearActual) return "actual";
+  if (yearActual) return "actual";
+  return "budget";
+}
+
+function pctText(part, whole) {
+  if (!whole) return "";
+  const pct = (Math.abs(part) / Math.abs(whole)) * 100;
+  if (pct >= 10) return `${Math.round(pct)}%`;
+  if (pct >= 0.1) return `${pct.toFixed(1)}%`;
+  return "<0.1%";
+}
+
+function spendLines(text, max) {
+  const words = String(text || "").split(/\s+/).filter(Boolean);
+  const lines = [];
+  let line = "";
+  for (const word of words) {
+    const next = line ? `${line} ${word}` : word;
+    if (line && next.length > max) {
+      lines.push(line);
+      line = word;
+    } else {
+      line = next;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function ringPath(cx, cy, r0, r1, a0, a1) {
+  const span = a1 - a0;
+  if (span >= Math.PI * 2 - 0.0001) {
+    return `M ${cx - r1} ${cy} A ${r1} ${r1} 0 1 1 ${cx + r1} ${cy} A ${r1} ${r1} 0 1 1 ${cx - r1} ${cy} M ${cx - r0} ${cy} A ${r0} ${r0} 0 1 0 ${cx + r0} ${cy} A ${r0} ${r0} 0 1 0 ${cx - r0} ${cy} Z`;
+  }
+  const point = (radius, angle) => [cx + radius * Math.cos(angle), cy + radius * Math.sin(angle)];
+  const [x0, y0] = point(r1, a0);
+  const [x1, y1] = point(r1, a1);
+  const [x2, y2] = point(r0, a1);
+  const [x3, y3] = point(r0, a0);
+  const large = span > Math.PI ? 1 : 0;
+  const n = (value) => value.toFixed(2);
+  return `M ${n(x0)} ${n(y0)} A ${r1} ${r1} 0 ${large} 1 ${n(x1)} ${n(y1)} L ${n(x2)} ${n(y2)} A ${r0} ${r0} 0 ${large} 0 ${n(x3)} ${n(y3)} Z`;
+}
+
+function layoutRing(nodes, measure, a0, a1) {
+  const total = nodes.reduce((sum, node) => sum + wedgeValue(node, measure), 0);
+  if (!total) return [];
+  let angle = a0;
+  return nodes.map((node, index) => {
+    const span = (wedgeValue(node, measure) / total) * (a1 - a0);
+    const start = angle;
+    const end = index === nodes.length - 1 ? a1 : angle + span;
+    angle = end;
+    return { node, index, start, end, fill: sliceFill(node, index) };
+  });
+}
+
+function spendAmountText(node, series, published) {
+  if (!published) return "Not published";
+  if (!hasSpend(node, series)) return series === "budget" ? "Not in the budget" : "Not in the actual";
+  return moneyFull(signedSpend(node, series));
+}
+
+function seriesPhrase(label, node, series, published) {
+  if (!published) return `${label} not published`;
+  if (!hasSpend(node, series)) return series === "budget" ? "Not in the budget" : "Not in the actual";
+  return `${label} ${moneyFull(signedSpend(node, series))}`;
+}
+
+function spendTip(node, measure, yearActual, yearBudget) {
+  const lines = [];
+  if (node.account) lines.push(`<span class="tip-muted">${escapeHtml(node.account)}</span>`);
+  lines.push(seriesPhrase("Actual", node, "actual", yearActual));
+  lines.push(seriesPhrase("Budget", node, "budget", yearBudget));
+  if (node.parent) {
+    const share = pctText(wedgeValue(node, measure), wedgeValue(node.parent, measure));
+    if (share) lines.push(`${share} of ${escapeHtml(node.parent.label)}`);
+  }
+  if (orderedChildren(node, measure).length) lines.push(`<span class="tip-muted">Click to open</span>`);
+  return tipLines(node.label, lines);
+}
+
+let sunLabelId = 0;
+
+function wedgeName(label) {
+  const text = String(label || "").replace(/\s+/g, " ").trim();
+  const letters = text.replace(/[^A-Za-z]/g, "");
+  if (!(letters.length > 3 && letters === letters.toUpperCase())) return text;
+  return text.toLowerCase().replace(/\b([a-z])([a-z]*)/g, (_, first, rest) => (
+    rest.length <= 1 ? (first + rest).toUpperCase() : first.toUpperCase() + rest
+  ));
+}
+
+function fitSpendLabel(label, maxChars) {
+  if (maxChars < 3) return "";
+  if (label.length <= maxChars) return label;
+  return `${label.slice(0, maxChars - 1).trimEnd()}…`;
+}
+
+function wedgeLabel(slice, radius, fontSize) {
+  const span = slice.end - slice.start;
+  const arcPx = radius * span * 0.9;
+  const size = arcPx < 78 ? Math.min(fontSize, 9.5) : fontSize;
+  const maxChars = Math.floor(arcPx / (size * 0.5));
+  const name = fitSpendLabel(wedgeName(slice.node.label), maxChars);
+  if (!name) return "";
+  const mid = (slice.start + slice.end) / 2;
+  const half = Math.min(span * 0.46, 1.15);
+  let start = mid - half;
+  let end = mid + half;
+  const below = Math.sin(mid) > 0;
+  if (below) [start, end] = [end, start];
+  const point = (angle) => [210 + radius * Math.cos(angle), 210 + radius * Math.sin(angle)];
+  const [x0, y0] = point(start);
+  const [x1, y1] = point(end);
+  const id = `sun-arc-${sunLabelId += 1}`;
+  const sweep = below ? 0 : 1;
+  const arc = `M ${x0.toFixed(2)} ${y0.toFixed(2)} A ${radius} ${radius} 0 0 ${sweep} ${x1.toFixed(2)} ${y1.toFixed(2)}`;
+  const cls = size < 11 ? "sun-label sun-label-sm" : "sun-label";
+  return `<path id="${id}" class="sun-arc" d="${arc}"></path><text class="${cls}" fill="${inkFor(slice.fill)}"><textPath href="#${id}" startOffset="50%" text-anchor="middle">${escapeHtml(name)}</textPath></text>`;
+}
+
+function wedgeMarkup(slice, r0, r1, measure, yearActual, yearBudget) {
+  const path = ringPath(210, 210, r0, r1, slice.start, slice.end);
+  const tip = spendTip(slice.node, measure, yearActual, yearBudget);
+  const radius = (r0 + r1) / 2;
+  const fontSize = r1 - r0 > 50 ? 12 : 10.5;
+  return `<path class="sun-wedge" fill="${slice.fill}" fill-rule="evenodd" stroke="#f3efe6" stroke-width="1.5" d="${path}" data-budget="${escapeAttr(slice.node.path)}" data-slice="${escapeAttr(slice.node.path)}" data-tip="${escapeAttr(tip)}"></path>${wedgeLabel(slice, radius, fontSize)}`;
+}
+
+function centerMarkup(node, measure, diskFill) {
+  const lines = spendLines(node.label, 18).slice(0, 2);
+  const amount = money(signedSpend(node, measure));
+  const rows = [...lines, amount];
+  const start = 210 - ((rows.length - 1) * 20) / 2;
+  const ink = diskFill ? inkFor(diskFill) : "#1c1915";
+  const muted = diskFill ? ink : "#5e574c";
+  const text = rows.map((row, index) => {
+    const y = start + index * 20;
+    const isValue = index === lines.length;
+    const cls = isValue ? "sun-value" : "sun-center-label";
+    const fill = isValue ? ink : muted;
+    return `<text class="${cls}" x="210" y="${y.toFixed(1)}" fill="${fill}" text-anchor="middle" dominant-baseline="middle">${escapeHtml(row)}</text>`;
+  }).join("");
+  const parent = node.parent;
+  const backTip = tipLines(parent?.label || "All functions", [`<span class="tip-muted">Click to go back</span>`]);
+  const back = parent
+    ? ` class="sun-back" data-budget="${escapeAttr(parent.path || "")}" data-tip="${escapeAttr(backTip)}"`
+    : "";
+  const radius = diskFill ? 168 : 74;
+  const fill = diskFill || "#fffdf8";
+  return `<circle cx="210" cy="210" r="${radius}" fill="${fill}"${back}></circle>${text}`;
+}
+
+function spendCrumb(node) {
+  const chain = [];
+  let current = node;
+  while (current && current.kind !== "root") {
+    chain.unshift(current);
+    current = current.parent;
+  }
+  if (!chain.length) return `<div class="drill"><span class="here">All functions</span></div>`;
+  const parts = [`<button type="button" data-budget="">All functions</button>`];
+  chain.forEach((item, index) => {
+    if (index === chain.length - 1) parts.push(`<span class="here">${escapeHtml(item.label)}</span>`);
+    else parts.push(`<button type="button" data-budget="${escapeAttr(item.path)}">${escapeHtml(item.label)}</button>`);
+  });
   return `<div class="drill">${parts.join(" / ")}</div>`;
+}
+
+function spendCard(node, measure, root, yearActual, yearBudget) {
+  const amount = money(signedSpend(node, measure));
+  const parentShare = node.parent ? pctText(signedSpend(node, measure), signedSpend(node.parent, measure)) : "";
+  const fundShare = node.kind === "root" ? "" : pctText(signedSpend(node, measure), signedSpend(root, measure));
+  let share = "The whole general fund";
+  if (node.parent && node.parent.kind !== "root" && parentShare && fundShare) {
+    share = `${parentShare} of ${node.parent.label} · ${fundShare} of the general fund`;
+  } else if (parentShare) {
+    share = `${parentShare} of the general fund`;
+  }
+  const pair = (label, series, published) => `<div><span>${label}</span><b>${escapeHtml(spendAmountText(node, series, published))}</b></div>`;
+  let gap = "";
+  if (yearActual && yearBudget && hasSpend(node, "actual") && hasSpend(node, "budget")) {
+    const diff = signedSpend(node, "actual") - signedSpend(node, "budget");
+    gap = Math.abs(diff) < 1
+      ? "Actual matches the budget"
+      : `Actual is ${money(Math.abs(diff))} ${diff > 0 ? "above" : "below"} the budget`;
+  }
+  const splitBits = [];
+  if (node.elem) splitBits.push(`Elementary ${money(node.elem)}`);
+  if (node.sec) splitBits.push(`Secondary ${money(node.sec)}`);
+  if (node.fed) splitBits.push(`Federal ${money(node.fed)}`);
+  const extraSources = [...new Set(node.sources || [])].filter((code) => code !== node.code).sort();
+  const source = node.kind !== "root" && node.kind !== "major" && node.kind !== "school" && extraSources.length
+    ? `Actual lines ${extraSources.slice(0, 4).join(", ")}${extraSources.length > 4 ? `, and ${extraSources.length - 4} more` : ""}.`
+    : "";
+  return `<div class="sun-card">
+    <p class="sun-kicker">${measure === "actual" ? "Actual" : "Budget"}${node.account ? ` · ${escapeHtml(node.account)}` : ""}</p>
+    <p class="sun-figure">${escapeHtml(amount)}</p>
+    <p class="sun-shareline">${escapeHtml(share)}</p>
+    <div class="sun-pair">
+      ${pair("Actual", "actual", yearActual)}
+      ${pair("Budget", "budget", yearBudget)}
+    </div>
+    ${gap ? `<p class="sun-gap">${escapeHtml(gap)}</p>` : ""}
+    ${splitBits.length ? `<p class="sun-split">${escapeHtml(splitBits.join(" · "))}</p>` : ""}
+    ${source ? `<p class="sun-source">${escapeHtml(source)}</p>` : ""}
+  </div>`;
+}
+
+function spendList(nodes, measure, yearActual, yearBudget) {
+  if (!nodes.length) return `<p class="note">No further breakdown is published under this slice.</p>`;
+  const total = nodes.reduce((sum, node) => sum + wedgeValue(node, measure), 0);
+  return `<div class="sun-list">${nodes.map((node, index) => {
+    const fill = sliceFill(node, index);
+    const tip = spendTip(node, measure, yearActual, yearBudget);
+    return `<button type="button" class="sun-row" data-budget="${escapeAttr(node.path)}" data-slice="${escapeAttr(node.path)}" data-tip="${escapeAttr(tip)}">
+      <span class="sun-swatch" style="background:${fill}"></span>
+      <span class="sun-name">${escapeHtml(node.label)}<small>${escapeHtml(node.account || node.code)}</small></span>
+      <span class="sun-pct">${pctText(wedgeValue(node, measure), total)}</span>
+      <span class="sun-amt">${escapeHtml(money(wedgeValue(node, measure)))}</span>
+    </button>`;
+  }).join("")}</div>`;
+}
+
+function creditNote(node, measure) {
+  const credits = (node.credits || []).filter((row) => row.series === measure);
+  if (!credits.length) return "";
+  const total = credits.reduce((sum, row) => sum + row.amount, 0);
+  if (Math.abs(total) < 100) return "";
+  return `A published ${measure} credit of ${moneyFull(total)} is left off the wedges.`;
+}
+
+function childGapNote(node, measure) {
+  const kids = node.children.filter((child) => wedgeValue(child, measure) > 0);
+  if (!kids.length) return "";
+  const sum = kids.reduce((total, child) => total + wedgeValue(child, measure), 0);
+  const parent = wedgeValue(node, measure);
+  if (!parent || Math.abs(parent - sum) < 1) return "";
+  return `These pieces add to ${moneyFull(sum)}. This level is ${moneyFull(parent)}.`;
+}
+
+function reconcileNote(block, node, measure) {
+  const published = node.kind === "root"
+    ? sumMap(block[measure])
+    : node.kind === "major" ? block[measure]?.[node.code] : null;
+  if (published == null) return "";
+  const built = signedSpend(node, measure);
+  if (Math.abs(published - built) < 1) return "";
+  return `The published total for this level is ${moneyFull(published)}.`;
+}
+
+function drawSpend(block, state) {
+  const host = app.querySelector("#spend");
+  if (!host) return;
+  const measure = spendMeasure(block, state);
+  const yearActual = seriesPublished(block, "actual");
+  const yearBudget = seriesPublished(block, "budget");
+  if (!yearActual && !yearBudget) {
+    host.innerHTML = `<p class="note">No general-fund budget or actual is published for this year.</p>`;
+    return;
+  }
+  const root = buildSpendTree(block);
+  const focus = visibleSpendNode(findSpendNode(root, state.budget || ""), measure);
+  if ((state.budget || "") !== focus.path) {
+    state.budget = focus.path;
+    writeUrl(state, "replace");
+  }
+  sunLabelId = 0;
+  const innerNodes = orderedChildren(focus, measure);
+  const inner = layoutRing(innerNodes, measure, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2);
+  const outer = inner.flatMap((slice) => layoutRing(orderedChildren(slice.node, measure), measure, slice.start, slice.end));
+  const wedges = [
+    ...outer.map((slice) => wedgeMarkup(slice, 160, 198, measure, yearActual, yearBudget)),
+    ...inner.map((slice) => wedgeMarkup(slice, 86, 152, measure, yearActual, yearBudget)),
+  ].join("");
+  const disk = inner.length ? "" : fillOf(focus, measure);
+  const chart = `<svg class="sun-chart" viewBox="0 0 420 420" role="img" aria-label="${escapeAttr(`${focus.label}, ${measure}`)}">${wedges}${centerMarkup(focus, measure, inner.length ? "" : disk)}</svg>`;
+  const measures = yearActual && yearBudget
+    ? `<div class="chips sun-measures" aria-label="Amounts to draw">${[["actual", "Actual"], ["budget", "Budget"]].map(([id, label]) => `<button type="button" class="chip" data-spend="${id}" data-value="${id}" aria-pressed="${measure === id ? "true" : "false"}">${label}</button>`).join("")}</div>`
+    : "";
+  const notes = [reconcileNote(block, focus, measure), childGapNote(focus, measure), creditNote(focus, measure)].filter(Boolean);
+  const footnote = measure === "budget"
+    ? "Wedge size is the share of this view in the adopted general-fund budget. The budget stops at the function and the major object. Actual opens each published subfunction and object, then the building when PDE reported one."
+    : "Wedge size is the share of this view in the general-fund actual. Each step is a published account: subfunction, then object, then building when PDE reported one. Elementary, secondary, and federal are a split of that actual, not extra dollars. A missing account is left out.";
+  host.innerHTML = `${measures}${spendCrumb(focus)}
+    <div class="sun-layout">${chart}${spendCard(focus, measure, root, yearActual, yearBudget)}</div>
+    ${spendList(innerNodes, measure, yearActual, yearBudget)}
+    ${notes.map((note) => `<p class="note">${escapeHtml(note)}</p>`).join("")}
+    <p class="note">${footnote}</p>`;
 }
 
 function drawGrades(grades) {
@@ -2778,6 +3393,7 @@ function sourceLinks(year) {
   if (enrollment) items.push(`<a href="${escapeAttr(enrollment)}">Enrollment workbook</a>`);
   if (actual) items.push(`<a href="${escapeAttr(actual)}">Annual Financial Report</a>`);
   if (budget) items.push(`<a href="${escapeAttr(budget)}">General Fund Budget</a>`);
+  if (catalog.sources.chart) items.push(`<a href="${escapeAttr(catalog.sources.chart)}">Chart of accounts</a>`);
   if (catalog.sources.act1) items.push(`<a href="${escapeAttr(catalog.sources.act1)}">Act 1 index</a>`);
   const mills = catalog.sources.retax?.[year];
   if (mills) items.push(`<a href="${escapeAttr(mills)}">Real estate tax rates</a>`);
@@ -2786,7 +3402,7 @@ function sourceLinks(year) {
   const note = leaPack.category === "career_and_technical_center"
     ? " Part-day students here can also be counted in a school district."
     : "";
-  return `<p class="note">Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books.${note}</p>
+  return `<p class="note">Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books. When that year’s AFR is not published, the card uses the general fund budget divided by October 1 enrollment, with estimated charter tuition removed, and compares that with the prior year.${note}</p>
     <p class="sources note">${items.join(" · ") || "Source files are listed in the catalog."}</p>`;
 }
 
@@ -2895,7 +3511,7 @@ function leaHtml() {
     <div data-tab-panel="financials" hidden>
       ${yearRow}
       <div class="stats" id="finance-stats"></div>
-      <section class="panel"><h2>General fund budget</h2><div id="spend"></div></section>
+      <section class="panel"><h2>General fund</h2><div id="spend"></div></section>
       <div id="sources"></div>
     </div>
 

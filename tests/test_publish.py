@@ -7,10 +7,22 @@ from pa_edu.publish import (
     _experience_stats,
     _percent_points,
     _salary_group,
+    _short_title,
     _years_for,
     directory_row,
     lea_document,
 )
+
+
+def test_support_service_titles_keep_the_chart_suffix() -> None:
+    assert _short_title("SUPPORT SERVICES – STUDENTS") == "STUDENTS"
+    assert _short_title("SUPPORT SERVICES – INSTRUCTIONAL STAFF") == "INSTRUCTIONAL STAFF"
+    assert _short_title("SUPPORT SERVICES – ADMINISTRATION") == "ADMINISTRATION"
+    assert _short_title("SUPPORT SERVICES – PUPIL HEALTH") == "PUPIL HEALTH"
+    assert _short_title("SUPPORT SERVICES – BUSINESS") == "BUSINESS"
+    assert _short_title("SUPPORT SERVICES – CENTRAL") == "CENTRAL"
+    assert _short_title("REGULAR PROGRAMS – ELEMENTARY / SECONDARY") == "REGULAR PROGRAMS"
+    assert _short_title("STUDENT TRANSPORTATION SERVICES") == "STUDENT TRANSPORTATION SERVICES"
 
 
 def test_empty_years_are_left_out() -> None:
@@ -111,6 +123,61 @@ def test_county_ranks_order_highest_first() -> None:
     assert ranks["2"][2024]["pssa_math"]["rank"] == 1
     assert ranks["1"][2024]["pssa_math"]["rank"] == 2
     assert "3" not in ranks or 2024 not in ranks.get("3", {}) or "actual" not in ranks.get("3", {}).get(2024, {})
+
+
+def test_per_student_rank_uses_budget_when_actuals_are_absent() -> None:
+    profiles = [
+        {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "2", "name": "Beta", "county": "Fayette", "category": "school_district"},
+    ]
+    grades = {"1": {2025: {"012": 100}}, "2": {2025: {"012": 200}}}
+    budget = {"1": {2025: {"1000": 1000}}, "2": {2025: {"1000": 1000}}}
+    charter = {"1": {2025: 100.0}, "2": {2025: 50.0}}
+    ranks = _county_ranks(profiles, grades, {}, budget, charter)
+    peers = {peer["aun"]: peer["value"] for peer in ranks["1"][2025]["perStudent"]["peers"]}
+    assert peers["1"] == 9
+    assert peers["2"] == 4.75
+    assert ranks["1"][2025]["perStudent"]["rank"] == 1
+    assert ranks["2"][2025]["perStudent"]["rank"] == 2
+
+
+def test_budget_per_student_uses_the_latest_prior_charter_tuition() -> None:
+    profiles = [
+        {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "2", "name": "Beta", "county": "Fayette", "category": "school_district"},
+    ]
+    grades = {"1": {2025: {"012": 100}}, "2": {2025: {"012": 100}}}
+    budget = {"1": {2025: {"1000": 1000}}, "2": {2025: {"1000": 1000}}}
+    charter = {"1": {2024: 100.0, 2023: 50.0}, "2": {2024: 200.0}}
+    ranks = _county_ranks(profiles, grades, {}, budget, charter)
+    peers = {peer["aun"]: peer["value"] for peer in ranks["1"][2025]["perStudent"]["peers"]}
+    assert peers["1"] == 9
+    assert peers["2"] == 8
+
+
+def test_per_student_rank_does_not_mix_budget_with_actuals() -> None:
+    profiles = [
+        {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "2", "name": "Beta", "county": "Fayette", "category": "school_district"},
+        {"aun": "3", "name": "Gamma", "county": "Fayette", "category": "school_district"},
+    ]
+    grades = {
+        "1": {2024: {"012": 100}},
+        "2": {2024: {"012": 100}},
+        "3": {2024: {"012": 100}},
+    }
+    actual = {"1": {2024: {"1000": 500}}, "2": {2024: {"1000": 200}}}
+    budget = {
+        "1": {2024: {"1000": 9000}},
+        "2": {2024: {"1000": 9000}},
+        "3": {2024: {"1000": 9000}},
+    }
+    charter = {"1": {2024: 100.0}}
+    ranks = _county_ranks(profiles, grades, actual, budget, charter)
+    peers = {peer["aun"]: peer["value"] for peer in ranks["1"][2024]["perStudent"]["peers"]}
+    assert peers == {"1": 4, "2": 2}
+    assert ranks["1"][2024]["perStudent"]["of"] == 2
+    assert "perStudent" not in ranks["3"][2024]
 
 
 def test_act1_rides_along_on_a_year_that_already_exists() -> None:
