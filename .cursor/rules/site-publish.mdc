@@ -39,4 +39,6 @@ The DuckDB views read `https://pdenumbers.org/download/tables/*.parquet`. DuckDB
 
 ## Deploy note
 
-`publish.main()` rsyncs the site, then uploads `download/pdenumbers.duckdb` once the Parquet is on the host. To build without deploying, call `main` with `deploy` monkeypatched, or run `python -m pa_edu.portal` for the download directory only. Prefer the same path Robert has been using; do not invent a second host.
+A push to `main` is the deploy. Jenkins runs `python -m pa_edu.publish`, which rsyncs the site to `elm:/data/pdenumbers/htdocs/`, then uploads `download/pdenumbers.duckdb` once the Parquet is on the host. Do not run that from an agent session.
+
+The agent keeps `data/refined` and `data/pde.db` in `/var/lib/jenkins/pde-data`, outside the git checkout. Refresh that copy with `scripts/push-jenkins-data.sh` after `refine` or a personnel load. To build without deploying, call `main` with `deploy` monkeypatched, or run `python -m pa_edu.portal` for the download directory only.

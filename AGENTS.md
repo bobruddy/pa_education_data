@@ -36,7 +36,7 @@ Commands (always use `.venv/bin/python`):
 | `python -m pa_edu.refine` | Fetch missing raw files, parse `stable`, write parquet / duckdb |
 | `python -m pa_edu.check` | Offline checks against `data/raw` + parquet |
 | `python -m pa_edu.discover` | Print uncataloged links on watched PDE pages |
-| `python -m pa_edu.publish` | Build `pde_site/` and rsync to `elm:/data/pdenumbers/htdocs/` |
+| `python -m pa_edu.publish` | Build `pde_site/` and rsync to `elm:/data/pdenumbers/htdocs/`. Jenkins runs this on a push to `main`. |
 | `pytest tests/` | Tiny fixture workbooks for parsers and publish helpers |
 
 `pa.gov` returns 403 without the project User-Agent in `pa_edu.common.HEADERS`.
@@ -70,4 +70,6 @@ Commands (always use `.venv/bin/python`):
 - Do not edit `docs/` unless he asks (this `AGENTS.md` and `.cursor/rules/` are the standing exception for agent guidance).
 - Do not kill an interactive `duckdb` session locking `data/pde.duckdb`. Parquet can still be written; `check` and `publish` read parquet.
 - Prefer proving numbers from the workbook or live JSON over asserting the UI “should” show them.
-- When a feature must be visible on elm, rebuild locally, deploy (publish or rsync of `pde_site/`), and verify the public URL.
+- A push to `main` publishes https://pdenumbers.org. Jenkins on cicd checks out that commit, runs `pytest`, then `python -m pa_edu.publish`. Do not run publish from an agent session.
+- The job reads `/var/lib/jenkins/pde-data` on cicd (`refined/` and `pde.db`). That tree is not in git. After `refine` or a personnel load changes `data/`, run `scripts/push-jenkins-data.sh` or the next build republishes the previous extract.
+- When a change must be checked on the live site, push to `main`, wait for the Jenkins job, and verify https://pdenumbers.org. Bump `index.html`’s `?v=` before that push when JS or CSS changed.

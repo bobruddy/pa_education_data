@@ -15,7 +15,7 @@ Source: [github.com/bobruddy/pa_education_data](https://github.com/bobruddy/pa_e
 | `pa_edu/parse_*.py` | One parser family per source shape |
 | `python -m pa_edu.refine` | Fetch missing raw files, parse `stable`, write Parquet (+ DuckDB views) |
 | `python -m pa_edu.check` | Offline identity, grain, and cell checks |
-| `python -m pa_edu.publish` | Build `pde_site/` and rsync to elm → https://pdenumbers.org |
+| `python -m pa_edu.publish` | Build `pde_site/` and rsync to elm → https://pdenumbers.org. A push to `main` runs this on Jenkins. |
 | `pa_edu/web/` | Source of truth for the LEA browser UI |
 
 Refined coverage today includes EdNA LEAs, General Fund Budget expenditures, AFR actuals (LEA and school), public-school enrollment (with gender/race cuts), PSSA/Keystone district proficiency, Act 1 indexes, real-estate tax mills, charter ADM, and home-education counts. Staff salaries still load through the older personnel path and are attached at publish time.
@@ -31,13 +31,21 @@ pip install -e ".[dev]"
 
 python -m pa_edu.refine    # first run needs the network; later runs use data/raw/
 python -m pa_edu.check     # offline, against the local cache
-python -m pa_edu.publish   # writes pde_site/ and deploys to elm
+python -m pa_edu.publish   # local build and deploy; Jenkins does this on a push to main
 pytest tests/
 ```
 
 Raw bytes land under `data/raw/<source_id>/<sha256>/`. Refined tables under `data/refined/*.parquet`. DuckDB views from `sql/model.sql` live in `data/pde.duckdb`. All of `data/` is gitignored.
 
 `school_year` is the **four-digit start year** (`2024` = 2024–25). It comes from the catalog entry, not from a workbook header string.
+
+## Deploy
+
+A push to `main` publishes the site. Jenkins polls that branch, runs the tests, and runs `python -m pa_edu.publish` on cicd. The Parquet tables and `data/pde.db` are not in git. They stay on the agent at `/var/lib/jenkins/pde-data`. After `refine` or a personnel load, copy them before the new numbers can go out:
+
+```bash
+scripts/push-jenkins-data.sh
+```
 
 ## Site
 
