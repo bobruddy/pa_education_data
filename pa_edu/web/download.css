@@ -1,0 +1,136 @@
+:root {
+  --paper: #f3efe6;
+  --ink: #1c1915;
+  --muted: #5e574c;
+  --line: #e3d9c8;
+  --card: #fffdf8;
+  --teal: #0c5c56;
+  --shadow: 0 1px 0 rgba(28, 25, 21, 0.04);
+  color: var(--ink);
+  background: var(--paper);
+  font: 16px/1.45 "Avenir Next", "Segoe UI", sans-serif;
+  font-variant-numeric: tabular-nums;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+a { color: var(--teal); }
+a:hover { color: #083f3b; }
+
+.skip {
+  position: absolute;
+  left: 12px;
+  top: -40px;
+  background: var(--ink);
+  color: white;
+  padding: 8px 12px;
+  z-index: 5;
+}
+.skip:focus { top: 8px; }
+
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+  background: rgba(243, 239, 230, 0.92);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+  padding: 12px 20px;
+}
+.top-row {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+}
+.brand {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 1.45rem;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+.brand-note { margin: 0; color: var(--muted); }
+
+main {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 28px 20px 48px;
+  width: 100%;
+}
+h1 {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 2.1rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
+}
+h2 {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 1.45rem;
+  font-weight: 500;
+  margin: 36px 0 8px;
+}
+.lede, .note { color: var(--muted); max-width: 68ch; }
+.contents { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 18px; }
+.contents a {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 6px 12px;
+  text-decoration: none;
+  box-shadow: var(--shadow);
+}
+
+pre {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px 16px;
+  overflow-x: auto;
+  font: 0.86rem/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+code {
+  font: 0.9em/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 10px 12px; vertical-align: top; border-bottom: 1px solid var(--line); }
+th { font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; white-space: nowrap; }
+.name { font-weight: 600; }
+.about { margin: 4px 0 0; color: var(--muted); font-size: 0.92rem; max-width: 62ch; }
+
+.counties {
+  columns: 3;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+}
+.counties li { break-inside: avoid; padding: 4px 0; }
+.counties span { color: var(--muted); }
+
+.site-foot {
+  border-top: 1px solid var(--line);
+  padding: 14px 20px 22px;
+  color: var(--muted);
+  font-size: 0.82rem;
+  margin-top: auto;
+}
+.site-foot p { max-width: 1120px; margin: 0 auto; }
+.site-foot p + p { margin-top: 6px; }
+.site-foot a { color: var(--muted); text-underline-offset: 2px; }
+.site-foot a:hover { color: var(--teal); }
+
+@media (max-width: 800px) {
+  .counties { columns: 1; }
+  h1 { font-size: 1.7rem; }
+}

@@ -18,7 +18,9 @@ Build a tiny xlsx/pdf fixture in the test. Pin the cases that corrupt silently:
 - Split rates / multi-county / stacked sheets behave as designed.
 - `document_id` is present on fact rows.
 
-Run at least the touched files: `.venv/bin/python -m pytest tests/test_refine.py tests/test_publish.py -q`.
+Run at least the touched files: `.venv/bin/python -m pytest tests/test_refine.py tests/test_publish.py tests/test_portal.py -q`.
+
+`test_portal_describes_every_refined_table` fails when `pa_edu.portal.TABLES` drifts from `refine.COLUMNS`. A new table, lookup, or `sql/portal.sql` view updates `tests/test_portal.py` in the same change.
 
 ## Rebuild checks (`python -m pa_edu.check`)
 

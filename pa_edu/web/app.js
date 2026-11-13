@@ -3770,7 +3770,8 @@ document.querySelector("#share").addEventListener("click", share);
 window.addEventListener("popstate", () => { render().catch(showError); });
 document.body.addEventListener("click", (event) => {
   const anchor = event.target.closest("a");
-  if (!anchor || anchor.origin !== location.origin || anchor.classList.contains("brand")) return;
+  if (!anchor || anchor.origin !== location.origin) return;
+  if (anchor.classList.contains("brand") || anchor.classList.contains("site-link")) return;
   if (anchor.getAttribute("href")?.startsWith("http")) return;
   event.preventDefault();
   history.pushState(null, "", anchor.href);

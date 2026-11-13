@@ -1,6 +1,6 @@
 ---
 description: LEA browser UI, publish JSON, and elm deploy
-globs: pa_edu/web/**/*,pa_edu/publish.py,pde_site/**/*
+globs: pa_edu/web/**/*,pa_edu/publish.py,pa_edu/portal.py,sql/portal.sql,pde_site/**/*
 alwaysApply: false
 ---
 
@@ -8,7 +8,20 @@ alwaysApply: false
 
 ## Source of truth
 
-Edit `pa_edu/web/` (`app.js`, `app.css`, `index.html`). `pde_site/` is generated and gitignored. `python -m pa_edu.publish` copies web assets, writes `data/index.json` + `data/lea/<aun>.json` from parquet, then rsyncs to `elm:/data/pdenumbers/htdocs/` (https://pdenumbers.org).
+Edit `pa_edu/web/` (`app.js`, `app.css`, `index.html`). `pde_site/` is generated and gitignored. `python -m pa_edu.publish` copies web assets, writes `data/index.json` + `data/lea/<aun>.json` from parquet, writes the download portal, then rsyncs to `elm:/data/pdenumbers/htdocs/` (https://pdenumbers.org).
+
+## Download portal
+
+`pde_site/download/` is a separate page from the LEA browser: Parquet tables, one zip per directory county, `schema.sql`, and `pdenumbers.duckdb`. Edit copy and packing in `pa_edu/portal.py`, view SQL in `sql/portal.sql`, and portal CSS in `pa_edu/web/download.css`. Bump `ASSET_VERSION` in `portal.py` when `download.css` changes.
+
+Keep the portal in the same change as a new or reshaped table:
+
+- One sentence in `TABLES`. The keys must match `refine.COLUMNS`. An unknown parquet file fails the build.
+- `aun` tables are filtered to `lea.county` (the administrative office). Millage rows stay with that county. Tables with no `aun` are lookups: add them to `LOOKUP_TABLES` or the county build fails.
+- New views go in `sql/portal.sql` with `-- view:`, `-- needs:`, and `-- about:`. They keep published grain. Do not sum budget with actuals, or a parent account with its children.
+- SPA links to `download/` use class `site-link`.
+
+The DuckDB views read `https://pdenumbers.org/download/tables/*.parquet`. DuckDB opens each file while the view is created, so `publish` rsyncs the Parquet first and uploads `pdenumbers.duckdb` after. `python -m pa_edu.portal` is a local preview and points that database at local files. Do not rsync the preview database.
 
 ## JSON shape
 
@@ -26,4 +39,4 @@ Edit `pa_edu/web/` (`app.js`, `app.css`, `index.html`). `pde_site/` is generated
 
 ## Deploy note
 
-`publish.main()` always rsyncs. To build without deploying, call `main` with `deploy` monkeypatched, or copy assets after a local build. Prefer the same path Robert has been using; do not invent a second host.
+`publish.main()` rsyncs the site, then uploads `download/pdenumbers.duckdb` once the Parquet is on the host. To build without deploying, call `main` with `deploy` monkeypatched, or run `python -m pa_edu.portal` for the download directory only. Prefer the same path Robert has been using; do not invent a second host.

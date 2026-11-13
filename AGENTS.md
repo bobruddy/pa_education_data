@@ -20,9 +20,11 @@ sources/checks.toml      AUNs / cells that must round-trip from workbook → par
 pa_edu/parse_*.py        one parser family per source shape
 pa_edu/refine.py         download → parse stable → write parquet (+ duckdb views)
 pa_edu/check.py          offline identity, grain, and cell checks against the cache
-sql/model.sql            DuckDB views over parquet
-pa_edu/publish.py        parquet → pde_site/ JSON + static files → rsync to elm
-pa_edu/web/              source of truth for the LEA browser UI
+sql/model.sql            DuckDB views over local parquet
+sql/portal.sql           convenience views (school district, fund 10, labeled lines)
+pa_edu/portal.py         download page: Parquet, county zips, remote DuckDB
+pa_edu/publish.py        parquet → pde_site/ JSON + download portal → rsync to elm
+pa_edu/web/              LEA browser UI; download.css is the portal stylesheet
 ```
 
 `school_year` is the **four-digit start year** (`2024` = 2024–25). Take it from the catalog entry, not from a workbook header string.
@@ -51,6 +53,16 @@ Commands (always use `.venv/bin/python`):
 - After JS/CSS changes, bump the `?v=` query on `pa_edu/web/index.html` so browsers pick up the new file (nginx sends no Cache-Control).
 - Keep the source-code footnote in `index.html` (`site-foot`) so every view links to https://github.com/bobruddy/pa_education_data.
 - Sidecar series (Act 1, millage) attach only onto years that already exist from enrollment / budget / actuals. Do not invent years that only have the sidecar.
+
+## Download portal
+
+`/download/` is a separate page from the LEA browser. `publish` writes it. A change that adds or reshapes a refined table updates the portal in the same commit.
+
+- Add a one-line description to `TABLES` in `pa_edu/portal.py`. `TABLES` must match `refine.COLUMNS`. A parquet file with no entry fails the build.
+- A table with `aun` is packed into the LEA's directory county. A table with no `aun` is a lookup copied whole into every county zip: add it to `LOOKUP_TABLES`. Anything else fails the build.
+- Convenience views live in `sql/portal.sql` (`-- view:`, `-- needs:`, `-- about:`). `refine` applies that file after `sql/model.sql`. Keep published grain. Budget and actuals stay apart. A view does not add a parent account to its children.
+- Links from the LEA browser to `download/` use class `site-link`, or `app.js` will swallow them. Portal CSS is `pa_edu/web/download.css`. Bump `ASSET_VERSION` in `portal.py` when that file changes.
+- `python -m pa_edu.portal` writes a local preview whose DuckDB reads local files. The database `publish` uploads reads `https://pdenumbers.org/download/tables/`. Do not rsync the preview file.
 
 ## Agent working agreements
 

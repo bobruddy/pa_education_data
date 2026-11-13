@@ -408,10 +408,12 @@ def _align(frame: pd.DataFrame, columns: list[str], sort: list[str]) -> pd.DataF
 def _duckdb(database: Path, refined: Path) -> None:
     sql = (ROOT / "sql" / "model.sql").read_text()
     sql = sql.replace("data/refined", refined.as_posix())
+    portal = (ROOT / "sql" / "portal.sql").read_text()
     database.parent.mkdir(parents=True, exist_ok=True)
     connection = duckdb.connect(str(database))
     try:
         connection.execute(sql)
+        connection.execute(portal)
     finally:
         connection.close()
 

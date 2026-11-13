@@ -20,7 +20,7 @@ Public PDE files → citeable Parquet tables → LEA browser at https://pdenumbe
 ## Working method
 
 - Use `.venv/bin/python`. Network fetches need `pa_edu.common.HEADERS`.
-- New sources: catalog entry → `parse_*.py` → wire `refine` / `model.sql` / `check` → tests → only then UI.
+- New sources: catalog entry → `parse_*.py` → wire `refine` / `model.sql` / `check` → `TABLES` in `pa_edu/portal.py` (and `LOOKUP_TABLES` if the table has no `aun`) → tests, including `tests/test_portal.py` → only then UI. The download portal ships in that same change.
 - Prefer small, focused diffs. Match existing parse / check / publish patterns.
 - Do not commit, push, or force-push unless asked. Do not kill the user’s DuckDB CLI lock on `data/pde.duckdb`.
 - Verify site changes on elm (or a local `pde_site` server) with a hard reload after bumping `index.html`’s `?v=` cache query.

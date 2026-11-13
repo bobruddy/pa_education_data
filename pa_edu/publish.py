@@ -2,7 +2,9 @@
 
 `python -m pa_edu.publish` reads `data/refined/*.parquet` and writes `pde_site/`.
 It then copies that directory to `/data/pdenumbers/htdocs/` on elm. nginx
-serves it at https://pdenumbers.org.
+serves it at https://pdenumbers.org. The download portal is `pde_site/download/`.
+Its DuckDB file is uploaded after the Parquet, because the views read those
+files from https://pdenumbers.org while they are created.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ import numpy as np
 import pandas as pd
 
 from pa_edu.common import DATA_DIR, ROOT
+from pa_edu.portal import DUCKDB_NAME, PUBLIC_TABLE_ROOT, build_portal, write_duckdb
 
 OUT = ROOT / "pde_site"
 WEB = Path(__file__).resolve().parent / "web"
@@ -263,8 +266,20 @@ def main() -> None:
         ))
     payload = {**catalog, "leas": rows}
     (OUT / "data" / "index.json").write_text(_dump(payload), encoding="utf-8")
+    build_portal(OUT / "download", REFINED)
     print(f"wrote {OUT} ({len(rows)} LEAs)")
     deploy()
+    manifest = json.loads((OUT / "download" / "manifest.json").read_text(encoding="utf-8"))
+    write_duckdb(
+        OUT / "download" / DUCKDB_NAME,
+        PUBLIC_TABLE_ROOT,
+        [item["name"] for item in manifest["tables"]],
+    )
+    subprocess.run(
+        ["rsync", "-a", str(OUT / "download" / DUCKDB_NAME), f"{ELM_TARGET}download/{DUCKDB_NAME}"],
+        check=True,
+    )
+    print(f"published {ELM_TARGET}download/{DUCKDB_NAME}")
 
 
 def deploy() -> None:
