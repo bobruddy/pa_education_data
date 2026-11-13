@@ -627,9 +627,39 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         "objectNames": objects,
         "revenueMajors": [{"code": code, "label": label} for code, label in REVENUE_MAJORS],
         "revenueNames": _revenue_names(connection),
+        **_chart_descriptions(connection),
         "categories": [{"id": code, "label": label} for code, label in CATEGORIES],
         "sources": sources,
     }
+
+
+def _chart_descriptions(connection: duckdb.DuckDBPyConnection) -> dict[str, dict[str, str]]:
+    """Chart headings and prose, each keyed by code.
+
+    A code with no heading is left out of the heading map. A code with no
+    paragraph is left out of the description map.
+    """
+    keys = {
+        "function": ("functionDescriptions", "functionHeadings"),
+        "object": ("objectDescriptions", "objectHeadings"),
+        "revenue": ("revenueDescriptions", "revenueHeadings"),
+    }
+    grouped = {name: {} for pair in keys.values() for name in pair}
+    path = REFINED / "chart_description.parquet"
+    if not path.exists():
+        return grouped
+    frame = connection.sql(f"SELECT * FROM '{path}'").df()
+    has_name = "name" in frame.columns
+    for row in frame.itertuples(index=False):
+        pair = keys.get(str(row.kind))
+        if pair is None:
+            raise RuntimeError(f"chart description kind {row.kind!r} is not function, object, or revenue")
+        descriptions, headings = pair
+        if not _missing(row.description):
+            grouped[descriptions][str(row.code)] = str(row.description)
+        if has_name and not _missing(getattr(row, "name", None)):
+            grouped[headings][str(row.code)] = str(row.name)
+    return grouped
 
 
 def _revenue_names(connection: duckdb.DuckDBPyConnection) -> dict[str, str]:

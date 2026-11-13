@@ -15,7 +15,7 @@ from pa_edu.parse_iep import parse_iep
 from pa_edu.parse_low_income import parse_low_income
 from pa_edu.parse_retax import parse_retax
 from pa_edu.parse_assessment import parse_keystone, parse_pssa
-from pa_edu.parse_chart import titles_from_text
+from pa_edu.parse_chart import descriptions_from_text, titles_from_text
 from pa_edu.parse_gfb import parse_gfb
 from pa_edu.refine import run
 from pa_edu.storage import load_index, store_bytes
@@ -332,6 +332,80 @@ def test_chart_titles_stop_at_the_description() -> None:
     assert "6111" not in functions
     assert revenue["6111"] == "Current Real Estate Taxes"
     assert revenue["6000"] == "REVENUE FROM LOCAL SOURCES"
+    described = descriptions_from_text(text)
+    assert described[0]["1110"] == "Use this account for instruction."
+    assert described[1]["100"] == "Gross salaries paid."
+    assert described[1]["120"] == "Gross salaries for teachers."
+    assert described[2]["6111"] == "Revenue received."
+    assert "1000" not in described[0]
+    assert "6000" not in described[2]
+
+
+def test_chart_descriptions_stay_with_their_heading() -> None:
+    text = """
+1000 INSTRUCTION
+Instruction includes teaching.
+1800 PRE-KINDERGARTEN
+Activities designed to provide Pre-K students with learning experiences.
+1801* Instruction
+Include in this function costs for salaries and benefits.
+Expenditure Function Codes: 2024-2025 FY E-3
+1802* Pre-K Administrative Support
+Include in this function costs for admin salaries.
+2611 SUPERVISION OF PLANT – HEAD OF
+Component
+Activities associated with the director.
+100 PERSONNEL SERVICES – SALARIES
+Gross salaries paid to employees of the LEA. (Expenditures may be charged to the following sub-
+accounts.)
+120 PROFESSIONAL – TEACHERS
+Gross salaries for teachers.
+REVENUE FROM LOCAL SOURCES
+6110 AD VALOREM TAXES
+Taxes levied by an LEA on the assessed valuation.
+6111 Current Real Estate Taxes
+Revenue received from taxes assessed and levied upon real property.
+"""
+    functions, objects, revenue = descriptions_from_text(text)
+    assert functions["1800"] == "Activities designed to provide Pre-K students with learning experiences."
+    assert functions["1801"] == "Include in this function costs for salaries and benefits."
+    assert "Expenditure Function Codes" not in functions["1802"]
+    assert functions["1802"] == "Include in this function costs for admin salaries."
+    assert functions["2611"] == "Activities associated with the director."
+    assert objects["100"].endswith("sub-accounts.)")
+    assert revenue["6110"] == "Taxes levied by an LEA on the assessed valuation."
+    assert revenue["6111"] == "Revenue received from taxes assessed and levied upon real property."
+    assert revenue["6110"] != revenue["6111"]
+
+
+def test_chart_description_rejects_a_heading_in_the_wrong_section() -> None:
+    text = """
+1000 INSTRUCTION
+Instruction includes teaching.
+1110 REGULAR PROGRAMS
+Use this account for regular programs.
+100 SALARIES
+Gross salaries paid.
+"""
+    try:
+        descriptions_from_text(text)
+    except RuntimeError as error:
+        assert "no longer sits under the heading" in str(error)
+        assert "100" in str(error)
+    else:
+        raise AssertionError("a salary heading inside the function section was accepted")
+
+
+def test_chart_description_keeps_the_heading_beside_the_paragraph() -> None:
+    from pa_edu.refine import _chart_description_frame
+
+    frame = _chart_description_frame(
+        {"object": {"571": "Food Service Management – Food Costs"}},
+        {"object": {"571": "Expenditures for food costs paid to a food service management company."}},
+    )
+    row = frame.loc[frame["code"] == "571"].iloc[0]
+    assert row["name"] == "Food Service Management – Food Costs"
+    assert row["description"].startswith("Expenditures for food costs")
 
 
 def test_review_is_downloaded_and_not_parsed(tmp_path: Path) -> None:

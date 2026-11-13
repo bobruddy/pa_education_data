@@ -34,6 +34,9 @@ SELECT * FROM read_parquet('data/refined/gfb_revenue.parquet');
 CREATE OR REPLACE VIEW revenue_account AS
 SELECT * FROM read_parquet('data/refined/revenue_account.parquet');
 
+CREATE OR REPLACE VIEW chart_description AS
+SELECT * FROM read_parquet('data/refined/chart_description.parquet');
+
 CREATE OR REPLACE VIEW enrollment AS
 SELECT * FROM read_parquet('data/refined/enrollment.parquet');
 

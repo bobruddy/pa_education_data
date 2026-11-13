@@ -54,6 +54,12 @@ def test_portal_packages_one_county_and_keeps_lookup_tables(tmp_path: Path) -> N
     _write(refined / "act1_base.parquet", """
         SELECT 2024 AS school_year, 3.5 AS base_index, 'doc-1' AS document_id
     """)
+    _write(refined / "chart_description.parquet", """
+        SELECT * FROM (VALUES
+            ('object', '571', 'Food Service Management – Food Costs', 'Expenditures for food costs.'),
+            ('function', '1100', 'REGULAR PROGRAMS – ELEMENTARY / SECONDARY', 'Activities designed to provide grades K-12.')
+        ) t(kind, code, name, description)
+    """)
     _write(refined / "enrollment.parquet", """
         SELECT * FROM (VALUES
             ('101260303', '0001', 'A G High', 2024, '001', 10, 'Albert Gallatin Area SD', 'SD', 'Adams', 'doc-1'),
@@ -108,6 +114,13 @@ def test_portal_packages_one_county_and_keeps_lookup_tables(tmp_path: Path) -> N
     assert _scalar(adams / "document.parquet", "SELECT source_url FROM read_parquet(?)") == "https://example.test/gfb.xlsx"
     assert _scalar(adams / "act1_base.parquet", "SELECT base_index FROM read_parquet(?)") == 3.5
     assert _scalar(adams / "grade.parquet", "SELECT label FROM read_parquet(?)") == "Grade 1"
+    assert _scalar(
+        adams / "chart_description.parquet",
+        "SELECT name FROM read_parquet(?) WHERE code = '571'",
+    ) == "Food Service Management – Food Costs"
+    assert _column(adams / "chart_description.parquet", "code") == _column(
+        beaver / "chart_description.parquet", "code"
+    )
     readme = (adams / "README.txt").read_text(encoding="utf-8")
     assert "Adams County" in readme
     assert "duckdb county.duckdb" in readme

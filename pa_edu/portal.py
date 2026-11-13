@@ -40,6 +40,7 @@ LOOKUP_TABLES = frozenset({
     "grade",
     "account",
     "revenue_account",
+    "chart_description",
     "act1_base",
 })
 
@@ -52,6 +53,7 @@ TABLES: dict[str, str] = {
     "grade": "Grade code, label, and band.",
     "account": "Chart of accounts names for a function code and an object code.",
     "revenue_account": "Revenue account names and rollup codes.",
+    "chart_description": "Chart-of-accounts heading (name) and the paragraph under it (description) for a function, object, or revenue code.",
     "gfb_expenditure": "General Fund Budget expenditure. One reported amount. This is the adopted budget, not an actual.",
     "gfb_revenue": "General Fund Budget revenue. One reported amount.",
     "afr_expenditure": "Annual Financial Report expenditure, all funds, at the published account grain.",

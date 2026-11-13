@@ -130,6 +130,7 @@ COLUMNS = {
         "account_code", "name",
         "rollup1_account_code", "rollup2_account_code", "rollup3_account_code",
     ],
+    "chart_description": ["kind", "code", "name", "description"],
 }
 COLUMNS["afr_expenditure_school"] = [
     "aun", "school_number", "school_name", *COLUMNS["afr_expenditure"][1:],
@@ -165,6 +166,7 @@ SORT = {
     "grade": ["grade_code"],
     "account": ["function_code", "object_code"],
     "revenue_account": ["account_code"],
+    "chart_description": ["kind", "code"],
 }
 
 INST_CATEGORY = {
@@ -199,6 +201,7 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
     functions: dict[str, str] = {}
     objects: dict[str, str] = {}
     revenues: dict[str, str] = {}
+    described: dict[str, dict[str, str]] = {"function": {}, "object": {}, "revenue": {}}
     for entry in entries:
         record = materialize(entry, data_dir, index)
         print(f"{entry.status:6} {entry.id}: {Path(record['path']).name}")
@@ -212,12 +215,19 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
         except Exception as error:
             raise RuntimeError(f"{entry.id} failed: {error}") from error
         if entry.parser == "chart":
-            functions = dict(zip(parsed["function"]["function_code"], parsed["function"]["name"], strict=True))
-            objects = dict(zip(parsed["object"]["object_code"], parsed["object"]["name"], strict=True))
-            revenues = dict(zip(parsed["revenue"]["account_code"], parsed["revenue"]["name"], strict=True))
+            functions = _chart_names(parsed["function"], "function_code")
+            objects = _chart_names(parsed["object"], "object_code")
+            revenues = _chart_names(parsed["revenue"], "account_code")
+            described = {
+                "function": _chart_descriptions(parsed["function"], "function_code"),
+                "object": _chart_descriptions(parsed["object"], "object_code"),
+                "revenue": _chart_descriptions(parsed["revenue"], "account_code"),
+            }
             print(
                 f"         chart titles: {len(functions)} functions, "
-                f"{len(objects)} objects, {len(revenues)} revenue"
+                f"{len(objects)} objects, {len(revenues)} revenue; "
+                f"descriptions: {len(described['function'])} functions, "
+                f"{len(described['object'])} objects, {len(described['revenue'])} revenue"
             )
             continue
         for table, frame in parsed.items():
@@ -238,6 +248,10 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
     frames["grade"] = grade_table()
     frames["account"] = _account(frames, functions, objects)
     frames["revenue_account"] = _revenue_account(frames, revenues)
+    frames["chart_description"] = _chart_description_frame(
+        {"function": functions, "object": objects, "revenue": revenues},
+        described,
+    )
     frames["document"] = _documents(index)
     refined = data_dir / "refined"
     refined.mkdir(parents=True, exist_ok=True)
@@ -323,6 +337,55 @@ def _school(enrollment: pd.DataFrame) -> pd.DataFrame:
     frame = enrollment.dropna(subset=["aun", "school_number"]).sort_values(["school_year", "school_name"])
     latest = frame.groupby(["aun", "school_number"], as_index=False).tail(1)
     return latest.loc[:, ["aun", "school_number", "school_name"]]
+
+
+def _chart_names(frame: pd.DataFrame, column: str) -> dict[str, str]:
+    names = {}
+    for code, name in zip(frame[column], frame["name"], strict=True):
+        if pd.isna(name):
+            continue
+        text = str(name).strip()
+        if text and text not in {"None", "nan", "<NA>"}:
+            names[str(code)] = text
+    return names
+
+
+def _chart_descriptions(frame: pd.DataFrame, column: str) -> dict[str, str]:
+    described = {}
+    if "description" not in frame.columns:
+        return described
+    for code, description in zip(frame[column], frame["description"], strict=True):
+        if pd.isna(description):
+            continue
+        text = str(description).strip()
+        if text and text not in {"None", "nan", "<NA>"}:
+            described[str(code)] = text
+    return described
+
+
+def _chart_description_frame(
+    names: dict[str, dict[str, str]],
+    described: dict[str, dict[str, str]],
+) -> pd.DataFrame:
+    """One row per chart code that has a heading, a paragraph, or both.
+
+    A missing heading or a missing paragraph stays null. Neither is copied
+    from the other.
+    """
+    rows = []
+    for kind in ("function", "object", "revenue"):
+        titled = names.get(kind, {})
+        prose = described.get(kind, {})
+        for code in set(titled) | set(prose):
+            rows.append({
+                "kind": kind,
+                "code": code,
+                "name": titled.get(code) or pd.NA,
+                "description": prose.get(code) or pd.NA,
+            })
+    if not rows:
+        return empty_frame(COLUMNS["chart_description"])
+    return pd.DataFrame(rows, columns=COLUMNS["chart_description"])
 
 
 def _account(frames: dict[str, pd.DataFrame], functions: dict[str, str], objects: dict[str, str]) -> pd.DataFrame:

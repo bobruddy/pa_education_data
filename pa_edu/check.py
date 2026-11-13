@@ -79,7 +79,7 @@ def run_checks(data_dir: Path | None = None) -> list[str]:
     checks = load_checks(ROOT / "sources" / "checks.toml")
     tables = {
         name: pd.read_parquet(refined / f"{name}.parquet")
-        for name in ["lea", "document", "revenue_account", *FACT_TABLES]
+        for name in ["lea", "document", "revenue_account", "chart_description", *FACT_TABLES]
     }
     errors: list[str] = []
     errors.extend(_lea_coverage(tables, index, checks))
@@ -87,6 +87,7 @@ def run_checks(data_dir: Path | None = None) -> list[str]:
     errors.extend(_grain(tables))
     errors.extend(_cells(tables, index, checks))
     errors.extend(_revenue_title(tables))
+    errors.extend(_chart_descriptions(tables))
     errors.extend(_revenue_not_doubled(tables))
     errors.extend(_published_totals(tables, index, checks))
     errors.extend(_school_rollup(tables, checks))
@@ -328,6 +329,49 @@ def _revenue_title(tables: dict[str, pd.DataFrame]) -> list[str]:
     if "real estate" not in name.casefold():
         return [f"revenue account 6111 title is {name!r}"]
     return []
+
+
+def _chart_descriptions(tables: dict[str, pd.DataFrame]) -> list[str]:
+    """The paragraph under a heading stays with that code.
+
+    6110 and 6111 each keep their own sentence. 1801 is not folded into 1800.
+    """
+    frame = tables["chart_description"]
+    if frame.empty:
+        return ["chart descriptions are missing"]
+
+    def text(kind: str, code: str) -> str | None:
+        rows = frame.loc[(frame["kind"] == kind) & (frame["code"].astype(str) == code), "description"]
+        if rows.empty or _missing_text(rows.iloc[0]):
+            return None
+        return str(rows.iloc[0])
+
+    expected = [
+        ("function", "1000", "Instruction includes all those activities dealing directly"),
+        ("function", "1100", "Activities designed to provide grades K–12 students with learning experiences"),
+        ("function", "1801", "Include in this function costs for salaries"),
+        ("object", "100", "Gross salaries paid to employees of the LEA"),
+        ("object", "562", "Expenditures to reimburse Pennsylvania charter schools"),
+        ("revenue", "6110", "Taxes levied by an LEA on the assessed valuation"),
+        ("revenue", "6111", "Revenue received from taxes assessed and levied upon real property."),
+    ]
+    errors = []
+    for kind, code, prefix in expected:
+        found = text(kind, code)
+        if found is None or not found.startswith(prefix):
+            errors.append(f"chart {kind} {code} description is {found!r}")
+    parent = text("revenue", "6110")
+    child = text("revenue", "6111")
+    if parent and child and (parent == child or child.startswith(parent[:40])):
+        errors.append("chart revenue 6111 kept 6110's description")
+    function_1800 = text("function", "1800")
+    if function_1800 and "Include in this function costs for salaries" in function_1800:
+        errors.append("chart function 1800 absorbed 1801's description")
+    return errors
+
+
+def _missing_text(value: object) -> bool:
+    return value is None or str(value) in {"", "None", "nan", "<NA>"}
 
 
 def _revenue_not_doubled(tables: dict[str, pd.DataFrame]) -> list[str]:

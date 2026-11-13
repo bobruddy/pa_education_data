@@ -564,6 +564,19 @@ function bindLea() {
   if (app.dataset.leaBound) return;
   app.dataset.leaBound = "1";
   app.addEventListener("click", (event) => {
+    const more = event.target.closest(".sun-more");
+    if (more) {
+      const block = more.closest(".sun-desc");
+      const text = block?.querySelector(".sun-desc-text");
+      if (block && text) {
+        const open = block.classList.toggle("is-open");
+        if (block.dataset.short) {
+          text.textContent = open ? (block.dataset.full || "") : `${block.dataset.short}…`;
+        }
+        more.textContent = open ? "less" : "more";
+      }
+      return;
+    }
     const spendMode = event.target.closest("#spend [data-spend]");
     if (spendMode) {
       hideTip();
@@ -2979,6 +2992,31 @@ function seriesPhrase(label, node, series, published) {
   return `${label} ${moneyFull(signedSpend(node, series))}`;
 }
 
+function chartText(node, income, field) {
+  if (!node?.code || node.kind === "school" || node.kind === "root") return "";
+  const maps = field === "heading"
+    ? { object: catalog.objectHeadings, revenue: catalog.revenueHeadings, function: catalog.functionHeadings }
+    : { object: catalog.objectDescriptions, revenue: catalog.revenueDescriptions, function: catalog.functionDescriptions };
+  if (node.kind === "object" || node.kind === "detail") return maps.object?.[node.code] || "";
+  if (income || node.kind === "account") return maps.revenue?.[node.code] || "";
+  return maps.function?.[node.code] || "";
+}
+
+function stampDescriptions(node, income) {
+  node.heading = chartText(node, income, "heading");
+  node.description = chartText(node, income, "description");
+  for (const child of node.children) stampDescriptions(child, income);
+}
+
+function tipTitle(node) {
+  const heading = String(node.heading || "").trim();
+  const label = String(node.label || "").trim();
+  if (!heading) return label;
+  const letters = (text) => text.replace(/[^A-Za-z]/g, "").toLowerCase();
+  if (letters(heading) === letters(label)) return label;
+  return heading;
+}
+
 function spendTip(node, measure, yearActual, yearBudget) {
   const lines = [];
   if (node.account) lines.push(`<span class="tip-muted">${escapeHtml(node.account)}</span>`);
@@ -2989,7 +3027,34 @@ function spendTip(node, measure, yearActual, yearBudget) {
     if (share) lines.push(`${share} of ${escapeHtml(node.parent.label)}`);
   }
   if (orderedChildren(node, measure).length) lines.push(`<span class="tip-muted">Click to open</span>`);
-  return tipLines(node.label, lines);
+  return tipLines(tipTitle(node), lines);
+}
+
+const DESCRIPTION_WORDS = 18;
+
+function descriptionBlock(text) {
+  const full = String(text || "").trim();
+  if (!full) return "";
+  const words = full.split(/\s+/);
+  if (words.length <= DESCRIPTION_WORDS) return `<p class="sun-desc">${escapeHtml(full)}</p>`;
+  const short = words.slice(0, DESCRIPTION_WORDS).join(" ");
+  return `<p class="sun-desc" data-short="${escapeAttr(short)}" data-full="${escapeAttr(full)}"><span class="sun-desc-text">${escapeHtml(short)}…</span> <button type="button" class="sun-more">more</button></p>`;
+}
+
+function listDescription(text) {
+  const full = String(text || "").trim();
+  if (!full) return "";
+  return `<span class="sun-desc sun-desc-line" data-full="${escapeAttr(full)}"><span class="sun-desc-text">${escapeHtml(full)}</span><span class="sun-more" hidden>more</span></span>`;
+}
+
+function fitListDescriptions(root) {
+  root.querySelectorAll(".sun-desc-line:not(.is-open)").forEach((block) => {
+    const text = block.querySelector(".sun-desc-text");
+    const more = block.querySelector(".sun-more");
+    if (!text || !more) return;
+    more.hidden = true;
+    more.hidden = text.scrollWidth <= text.clientWidth + 1;
+  });
 }
 
 let sunLabelId = 0;
@@ -3119,6 +3184,7 @@ function spendCard(node, measure, root, yearActual, yearBudget, drawn) {
     ${gap ? `<p class="sun-gap">${escapeHtml(gap)}</p>` : ""}
     ${splitBits.length ? `<p class="sun-split">${escapeHtml(splitBits.join(" · "))}</p>` : ""}
     ${source ? `<p class="sun-source">${escapeHtml(source)}</p>` : ""}
+    ${descriptionBlock(node.description)}
   </div>`;
 }
 
@@ -3130,7 +3196,7 @@ function spendList(nodes, measure, yearActual, yearBudget) {
     const tip = spendTip(node, measure, yearActual, yearBudget);
     return `<button type="button" class="sun-row" data-budget="${escapeAttr(node.path)}" data-slice="${escapeAttr(node.path)}" data-tip="${escapeAttr(tip)}">
       <span class="sun-swatch" style="background:${fill}"></span>
-      <span class="sun-name">${escapeHtml(node.label)}<small>${escapeHtml(node.account || node.code)}</small></span>
+      <span class="sun-name">${escapeHtml(node.label)}<small>${escapeHtml(node.account || node.code)}</small>${listDescription(node.description)}</span>
       <span class="sun-pct">${pctText(wedgeValue(node, measure), total)}</span>
       <span class="sun-amt">${escapeHtml(money(wedgeValue(node, measure)))}</span>
     </button>`;
@@ -3277,6 +3343,7 @@ function drawSpend(block, state) {
   const publishedActual = incomeMode ? incomeActualOn : yearActual;
   const publishedBudget = incomeMode ? incomeBudgetOn : yearBudget;
   const root = incomeMode ? buildIncomeTree(block) : buildSpendTree(block);
+  stampDescriptions(root, incomeMode);
   const focusKey = incomeMode ? (state.income || "") : (state.budget || "");
   const focus = visibleSpendNode(findSpendNode(root, focusKey), drawn);
   if (focusKey !== focus.path) {
@@ -3317,6 +3384,7 @@ function drawSpend(block, state) {
     ${spendList(innerNodes, drawn, publishedActual, publishedBudget)}
     ${notes.map((note) => `<p class="note">${escapeHtml(note)}</p>`).join("")}
     <p class="note">${footnote}</p>`;
+  fitListDescriptions(host);
 }
 
 function drawGrades(grades) {
