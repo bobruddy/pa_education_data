@@ -1,3 +1,7 @@
+import gzip
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 
@@ -8,6 +12,7 @@ from pa_edu.publish import (
     _percent_points,
     _salary_group,
     _short_title,
+    _write_json,
     _years_for,
     directory_row,
     _revenue_chain,
@@ -379,6 +384,15 @@ def test_keystone_year_is_kept_on_its_own() -> None:
     algebra = document["years"]["2024"]["keystone"]["algebra_i"]["011"]["All Students"]
     assert algebra["n"] == 410
     assert algebra["pct"] == 64.9
+
+
+def test_write_json_stores_gzip_for_nginx(tmp_path: Path) -> None:
+    target = tmp_path / "101260303.json"
+    target.write_text("stale", encoding="utf-8")
+    _write_json(target, {"aun": "101260303", "years": {}})
+    assert not target.exists()
+    stored = json.loads(gzip.decompress((tmp_path / "101260303.json.gz").read_bytes()))
+    assert stored == {"aun": "101260303", "years": {}}
 
 
 def test_directory_row_keeps_a_missing_actual() -> None:

@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Source of truth
 
-Edit `pa_edu/web/` (`app.js`, `app.css`, `index.html`). `pde_site/` is generated and gitignored. `python -m pa_edu.publish` copies web assets, writes `data/index.json` + `data/lea/<aun>.json` from parquet, writes the download portal, then rsyncs to `elm:/data/pdenumbers/htdocs/` (https://pdenumbers.org).
+Edit `pa_edu/web/` (`app.js`, `app.css`, `index.html`). `pde_site/` is generated and gitignored. `python -m pa_edu.publish` copies web assets, writes `data/index.json.gz` + `data/lea/<aun>.json.gz` from parquet, writes the download portal, then rsyncs to `elm:/data/pdenumbers/htdocs/` (https://pdenumbers.org). nginx `gzip_static` serves those for the `.json` URLs. Leave Parquet uncompressed on disk.
 
 ## Download portal
 

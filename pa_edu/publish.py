@@ -1,14 +1,17 @@
 """Write the static LEA browser for https://pdenumbers.org.
 
 `python -m pa_edu.publish` reads `data/refined/*.parquet` and writes `pde_site/`.
-It then copies that directory to `/data/pdenumbers/htdocs/` on elm. nginx
-serves it at https://pdenumbers.org. The download portal is `pde_site/download/`.
+LEA JSON is stored gzipped (`index.json.gz`, `lea/<aun>.json.gz`). nginx
+`gzip_static` serves those for the `.json` URLs. Publish then copies that
+directory to `/data/pdenumbers/htdocs/` on elm, which serves
+https://pdenumbers.org. The download portal is `pde_site/download/`.
 Its DuckDB file is uploaded after the Parquet, because the views read those
 files from https://pdenumbers.org while they are created.
 """
 
 from __future__ import annotations
 
+import gzip
 import json
 import shutil
 import sqlite3
@@ -256,7 +259,7 @@ def main() -> None:
                 income_budget,
             ),
         )
-        (data_dir / f"{aun}.json").write_text(_dump(document), encoding="utf-8")
+        _write_json(data_dir / f"{aun}.json", document)
         snapshot = document["years"]
         rows.append(directory_row(
             profile,
@@ -265,7 +268,7 @@ def main() -> None:
             _total(snapshot.get(str(budget_year), {}).get("budget")),
         ))
     payload = {**catalog, "leas": rows}
-    (OUT / "data" / "index.json").write_text(_dump(payload), encoding="utf-8")
+    _write_json(OUT / "data" / "index.json", payload)
     build_portal(OUT / "download", REFINED)
     print(f"wrote {OUT} ({len(rows)} LEAs)")
     deploy()
@@ -290,8 +293,15 @@ def deploy() -> None:
     print(f"published {ELM_TARGET}")
 
 
-def _dump(payload: dict) -> str:
-    return json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
+def _write_json(path: Path, payload: dict) -> None:
+    """Store JSON as ``path`` plus ``.gz`` for nginx ``gzip_static``.
+
+    The browser still requests ``path``. nginx responds with
+    ``Content-Encoding: gzip`` and the browser inflates it.
+    """
+    body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+    path.with_name(path.name + ".gz").write_bytes(gzip.compress(body, compresslevel=9, mtime=0))
+    path.unlink(missing_ok=True)
 
 
 def _total(values: dict | None) -> int | float | None:
