@@ -1,5 +1,8 @@
 pipeline {
     agent { label 'education' }
+    options {
+        disableConcurrentBuilds(abortPrevious: true)
+    }
     stages {
         stage('test') {
             steps {
