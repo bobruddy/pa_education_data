@@ -8,6 +8,8 @@ test -f data/refined/lea.parquet
 test -f data/pde.db
 remote=(ssh -o ConnectTimeout=20 -J mimas root@192.168.10.202)
 "${remote[@]}" 'pct exec 136 -- mkdir -p /var/lib/jenkins/pde-data'
-tar -C data -cf - refined pde.db | "${remote[@]}" 'pct exec 136 -- tar -C /var/lib/jenkins/pde-data -xf -'
+# macOS tar otherwise adds ._* sidecar files, and the portal rejects unknown parquet names.
+COPYFILE_DISABLE=1 tar -C data -cf - refined pde.db | "${remote[@]}" 'pct exec 136 -- tar -C /var/lib/jenkins/pde-data -xf -'
+"${remote[@]}" 'pct exec 136 -- bash -lc "find /var/lib/jenkins/pde-data -name '\''._*'\'' -delete"'
 "${remote[@]}" 'pct exec 136 -- chown -R jenkins:jenkins /var/lib/jenkins/pde-data'
 "${remote[@]}" 'pct exec 136 -- du -sh /var/lib/jenkins/pde-data /var/lib/jenkins/pde-data/pde.db /var/lib/jenkins/pde-data/refined'
