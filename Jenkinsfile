@@ -35,5 +35,17 @@ pipeline {
                 '''
             }
         }
+        stage('image') {
+            steps {
+                sh '''
+                    set -eu
+                    tag=$(git rev-parse HEAD)
+                    image="192.168.150.59:443/pdenumbers:${tag}"
+                    docker build -t "$image" .
+                    docker push "$image"
+                    echo "pushed ${image}"
+                '''
+            }
+        }
     }
 }

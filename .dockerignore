@@ -1,0 +1,13 @@
+.git
+.venv
+venv
+data
+**/__pycache__
+**/*.pyc
+.pytest_cache
+**/.DS_Store
+analysis
+data_acquisition
+docker_files
+tests
+docs
