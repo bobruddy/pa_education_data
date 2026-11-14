@@ -2,11 +2,10 @@
 
 `python -m pa_edu.publish` reads `data/refined/*.parquet` and writes `pde_site/`.
 LEA JSON is stored gzipped (`index.json.gz`, `lea/<aun>.json.gz`). nginx
-`gzip_static` serves those for the `.json` URLs. Publish then copies that
-directory to `/data/pdenumbers/htdocs/` on elm, which serves
-https://pdenumbers.org. The download portal is `pde_site/download/`.
-Its DuckDB file is uploaded after the Parquet, because the views read those
-files from https://pdenumbers.org while they are created.
+`gzip_static` serves those for the `.json` URLs. Jenkins builds that directory
+into an image, pushes it, and replaces the container on docker09. The download
+portal is `pde_site/download/`. Its DuckDB views read the Parquet already
+published at https://pdenumbers.org.
 """
 
 from __future__ import annotations
@@ -15,7 +14,6 @@ import gzip
 import json
 import shutil
 import sqlite3
-import subprocess
 from pathlib import Path
 
 import duckdb
@@ -29,7 +27,6 @@ OUT = ROOT / "pde_site"
 WEB = Path(__file__).resolve().parent / "web"
 REFINED = DATA_DIR / "refined"
 SQLITE = DATA_DIR / "pde.db"
-ELM_TARGET = "elm:/data/pdenumbers/htdocs/"
 PERSONNEL_PAGE = (
     "https://www.pa.gov/agencies/education/data-and-reporting/school-staff/"
     "professional-and-support-personnel"
@@ -271,26 +268,13 @@ def main() -> None:
     _write_json(OUT / "data" / "index.json", payload)
     build_portal(OUT / "download", REFINED)
     print(f"wrote {OUT} ({len(rows)} LEAs)")
-    deploy()
     manifest = json.loads((OUT / "download" / "manifest.json").read_text(encoding="utf-8"))
     write_duckdb(
         OUT / "download" / DUCKDB_NAME,
         PUBLIC_TABLE_ROOT,
         [item["name"] for item in manifest["tables"]],
     )
-    subprocess.run(
-        ["rsync", "-a", str(OUT / "download" / DUCKDB_NAME), f"{ELM_TARGET}download/{DUCKDB_NAME}"],
-        check=True,
-    )
-    print(f"published {ELM_TARGET}download/{DUCKDB_NAME}")
-
-
-def deploy() -> None:
-    subprocess.run(
-        ["rsync", "-a", "--delete", f"{OUT}/", ELM_TARGET],
-        check=True,
-    )
-    print(f"published {ELM_TARGET}")
+    print(f"wrote {OUT / 'download' / DUCKDB_NAME}")
 
 
 def _write_json(path: Path, payload: dict) -> None:

@@ -23,7 +23,7 @@ pa_edu/check.py          offline identity, grain, and cell checks against the ca
 sql/model.sql            DuckDB views over local parquet
 sql/portal.sql           convenience views (school district, fund 10, labeled lines)
 pa_edu/portal.py         download page: Parquet, county zips, remote DuckDB
-pa_edu/publish.py        parquet → pde_site/ JSON + download portal → rsync to elm
+pa_edu/publish.py        parquet → pde_site/ JSON + download portal
 pa_edu/web/              LEA browser UI; download.css is the portal stylesheet
 ```
 
@@ -36,7 +36,7 @@ Commands (always use `.venv/bin/python`):
 | `python -m pa_edu.refine` | Fetch missing raw files, parse `stable`, write parquet / duckdb |
 | `python -m pa_edu.check` | Offline checks against `data/raw` + parquet |
 | `python -m pa_edu.discover` | Print uncataloged links on watched PDE pages |
-| `python -m pa_edu.publish` | Build `pde_site/` and rsync to `elm:/data/pdenumbers/htdocs/`. The education Jenkins job runs this after `refine`, `personnel`, and `check`. |
+| `python -m pa_edu.publish` | Build `pde_site/`. The education Jenkins job runs this after `refine`, `personnel`, and `check`, then ships the image. |
 | `pytest tests/` | Tiny fixture workbooks for parsers and publish helpers |
 
 `pa.gov` returns 403 without the project User-Agent in `pa_edu.common.HEADERS`.
@@ -62,7 +62,7 @@ Commands (always use `.venv/bin/python`):
 - A table with `aun` is packed into the LEA's directory county. A table with no `aun` is a lookup copied whole into every county zip: add it to `LOOKUP_TABLES`. Anything else fails the build.
 - Convenience views live in `sql/portal.sql` (`-- view:`, `-- needs:`, `-- about:`). `refine` applies that file after `sql/model.sql`. Keep published grain. Budget and actuals stay apart. A view does not add a parent account to its children.
 - Links from the LEA browser to `download/` use class `site-link`, or `app.js` will swallow them. Portal CSS is `pa_edu/web/download.css`. Bump `ASSET_VERSION` in `portal.py` when that file changes.
-- `python -m pa_edu.portal` writes a local preview whose DuckDB reads local files. The database `publish` uploads reads `https://pdenumbers.org/download/tables/`. Do not rsync the preview file.
+- `python -m pa_edu.portal` writes a local preview whose DuckDB reads local files. The database `publish` writes reads `https://pdenumbers.org/download/tables/`. Do not copy that preview database into the image.
 
 ## Agent working agreements
 
@@ -70,6 +70,6 @@ Commands (always use `.venv/bin/python`):
 - Do not edit `docs/` unless he asks (this `AGENTS.md` and `.cursor/rules/` are the standing exception for agent guidance).
 - Do not kill an interactive `duckdb` session locking `data/pde.duckdb`. Parquet can still be written; `check` and `publish` read parquet.
 - Prefer proving numbers from the workbook or live JSON over asserting the UI “should” show them.
-- A push to `main` publishes https://pdenumbers.org. The job runs on the education agent: `pytest`, then `refine`, `personnel`, and `check` against `/home/jenkins/pde-data`, then `python -m pa_edu.publish`. Do not run publish from an agent session, and do not copy `data/` from the laptop.
+- A push to `main` runs the education job: `pytest`, then `refine`, `personnel`, and `check` against `/home/jenkins/pde-data`, then `python -m pa_edu.publish`. That writes `pde_site/` and does not copy it to elm. The job then pushes `192.168.150.59:443/pdenumbers:<git sha>` and `scripts/docker09.sh` starts `pdenumbers` on port 8090 if it is absent, or replaces that container if it is already running. UAT is http://192.168.10.116:8090/. Do not run publish from an agent session, do not rsync to elm, and do not copy `data/` from the laptop.
 - That data directory stays on education, outside the git checkout. `refine` downloads a catalog file it does not already have and rebuilds the Parquet. `personnel` downloads a staff workbook it does not already have and rewrites `pde.db`. A raw file already on disk is not fetched again.
 - When a change must be checked on the live site, push to `main`, wait for the Jenkins job, and verify https://pdenumbers.org. Bump `index.html`’s `?v=` before that push when JS or CSS changed.

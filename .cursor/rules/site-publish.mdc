@@ -8,7 +8,7 @@ alwaysApply: false
 
 ## Source of truth
 
-Edit `pa_edu/web/` (`app.js`, `app.css`, `index.html`). `pde_site/` is generated and gitignored. `python -m pa_edu.publish` copies web assets, writes `data/index.json.gz` + `data/lea/<aun>.json.gz` from parquet, writes the download portal, then rsyncs to `elm:/data/pdenumbers/htdocs/` (https://pdenumbers.org). nginx `gzip_static` serves those for the `.json` URLs. Leave Parquet uncompressed on disk.
+Edit `pa_edu/web/` (`app.js`, `app.css`, `index.html`). `pde_site/` is generated and gitignored. `python -m pa_edu.publish` copies web assets, writes `data/index.json.gz` + `data/lea/<aun>.json.gz` from parquet, and writes the download portal. It does not copy the tree to elm. nginx `gzip_static` in the image serves the `.json` URLs. Leave Parquet uncompressed on disk.
 
 ## Download portal
 
@@ -21,7 +21,7 @@ Keep the portal in the same change as a new or reshaped table:
 - New views go in `sql/portal.sql` with `-- view:`, `-- needs:`, and `-- about:`. They keep published grain. Do not sum budget with actuals, or a parent account with its children.
 - SPA links to `download/` use class `site-link`.
 
-The DuckDB views read `https://pdenumbers.org/download/tables/*.parquet`. DuckDB opens each file while the view is created, so `publish` rsyncs the Parquet first and uploads `pdenumbers.duckdb` after. `python -m pa_edu.portal` is a local preview and points that database at local files. Do not rsync the preview database.
+The DuckDB views read `https://pdenumbers.org/download/tables/*.parquet`. DuckDB opens each file while the view is created. `python -m pa_edu.portal` is a local preview and points that database at local files. Do not put the preview database in the image.
 
 ## JSON shape
 
@@ -35,10 +35,10 @@ The DuckDB views read `https://pdenumbers.org/download/tables/*.parquet`. DuckDB
 - Budget card notes: year-over-year change, then Act 1, then mills. Multi-rate districts list each county/place line.
 - Keep the `site-foot` source-code footnote in `index.html` (outside `#app`) so every SPA view links to the GitHub repo.
 - Bump `app.js?v=` / `app.css?v=` in `index.html` whenever those files change so elm visitors are not stuck on a cached script.
-- After deploy, prove with the public URL or on-disk elm paths—not only local `pde_site`.
+- After deploy, prove with http://192.168.10.116:8090/.
 
 ## Deploy note
 
-A push to `main` is the deploy. The education agent runs `refine`, `personnel`, and `check` against `/home/jenkins/pde-data`, then `python -m pa_edu.publish`. Publish rsyncs the site to `elm:/data/pdenumbers/htdocs/`, then uploads `download/pdenumbers.duckdb` once the Parquet is on the host. Do not run that from an agent session, and do not copy `data/` from the laptop.
+A push to `main` is the deploy. The education agent runs `refine`, `personnel`, and `check` against `/home/jenkins/pde-data`, then `python -m pa_edu.publish`. That writes `pde_site/` and does not rsync it to elm. The job pushes `192.168.150.59:443/pdenumbers:<git sha>` and runs `scripts/docker09.sh`, which starts `pdenumbers` on port 8090 if it is absent and replaces that container if it is already running. Do not run publish from an agent session, and do not copy `data/` from the laptop.
 
 `refine` and `personnel` download a source file only when the education cache does not already have it. To build without deploying, call `main` with `deploy` monkeypatched, or run `python -m pa_edu.portal` for the download directory only.

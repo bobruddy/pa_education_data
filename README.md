@@ -15,7 +15,7 @@ Source: [github.com/bobruddy/pa_education_data](https://github.com/bobruddy/pa_e
 | `pa_edu/parse_*.py` | One parser family per source shape |
 | `python -m pa_edu.refine` | Fetch missing raw files, parse `stable`, write Parquet (+ DuckDB views) |
 | `python -m pa_edu.check` | Offline identity, grain, and cell checks |
-| `python -m pa_edu.publish` | Build `pde_site/` and rsync to elm → https://pdenumbers.org. The education job runs this after refreshing `data/`. |
+| `python -m pa_edu.publish` | Build `pde_site/`. The education job runs this after refreshing `data/`, then ships the image. |
 | `pa_edu/web/` | Source of truth for the LEA browser UI |
 
 Refined coverage today includes EdNA LEAs, General Fund Budget expenditures, AFR actuals (LEA and school), public-school enrollment (with gender/race cuts), PSSA/Keystone district proficiency, Act 1 indexes, real-estate tax mills, charter ADM, and home-education counts. Staff salaries still load through the older personnel path and are attached at publish time.
@@ -40,7 +40,9 @@ Raw bytes land under `data/raw/<source_id>/<sha256>/`. Refined tables under `dat
 
 ## Deploy
 
-A push to `main` publishes the site. Jenkins runs the job on the education build host. The job runs the tests, then `refine`, `personnel`, and `check`, then `python -m pa_edu.publish`.
+A push to `main` runs the job on the education build host. The job runs the tests, then `refine`, `personnel`, and `check`, then `python -m pa_edu.publish`. It pushes `192.168.150.59:443/pdenumbers:<git sha>` and updates the container on docker09. It does not copy files to elm.
+
+`scripts/docker09.sh <sha>` pulls that image. It starts `pdenumbers` on port 8090 if the container is absent, and replaces it if it is already there. The site is http://192.168.10.116:8090/.
 
 `data/` is not in git. The job keeps it at `/home/jenkins/pde-data` on that host. `refine` and `personnel` download a PDE file only when that copy is not already there, then rebuild the Parquet and the personnel database from the cache.
 
