@@ -2,9 +2,13 @@ from pathlib import Path
 
 import duckdb
 import pandas as pd
+from openpyxl import Workbook
 
-from pa_edu.personnel import staff_rows, write_personnel_tables
+from pa_edu.extract import read_workbook
+from pa_edu.personnel import refresh, staff_rows, write_personnel_tables
+from pa_edu.personnel_layouts import LAYOUTS
 from pa_edu.refine import COLUMNS, _ensure_personnel
+from pa_edu.storage import load_index
 
 
 def test_staff_rows_keep_one_salary_per_person() -> None:
@@ -96,3 +100,118 @@ def _assignment(
         "annual_salary": [annual_salary],
         "source_file": ["staff.xlsx"],
     })
+
+
+def _staff_book(path: Path, year: int, salary: float, public_id: float = 12345.0) -> None:
+    headers = list(LAYOUTS["spaced_2012"])
+    values = {header: None for header in headers}
+    values.update({
+        "SY": f"{year}-{(year + 1) % 100:02d}",
+        "Staff Snapshot Date": f"{year}-10-01",
+        "Public ID": public_id,
+        "Last Name": "Ada",
+        "First Name": "Ann",
+        "Gender": "F",
+        "Race With Description": "White",
+        "Annual Salary": salary,
+        "Degree Code": "05",
+        "Years In ED": 10,
+        "Years In LEA": 4,
+        "Status": "A",
+        "AUN": 101260303.0,
+        "LEAName": "Albert Gallatin Area SD",
+        "LEAType Description": "School District",
+        "LEACounty Code": "26",
+        "LEACounty": "Fayette",
+        "School Location Number": 9999.0,
+        "School": "Elem",
+        "FT/PT": "FT",
+        "Job Class": "1",
+        "Primary Assignment": "Yes",
+        "Assign Code": "b",
+        "Assignment Description": "Teacher",
+        "Position Number": "1",
+        "Position Description": "Teacher",
+        "EDF Number": "1",
+        "EDF Category": "Elementary",
+        "Category Description": "Elementary",
+        "FTE%": 40,
+    })
+    second = dict(values)
+    second["Primary Assignment"] = "No"
+    second["Assign Code"] = "a"
+    second["FTE%"] = 80
+    second["School Location Number"] = 0
+    book = Workbook()
+    sheet = book.active
+    sheet.append(headers)
+    sheet.append([values[header] for header in headers])
+    sheet.append([second[header] for header in headers])
+    path.parent.mkdir(parents=True, exist_ok=True)
+    book.save(path)
+
+
+def test_personnel_warm_run_does_not_open_excel(tmp_path, monkeypatch) -> None:
+    early = tmp_path / "files" / "staff-2024.xlsx"
+    late = tmp_path / "files" / "staff-2025.xlsx"
+    _staff_book(early, 2024, 70_000)
+    _staff_book(late, 2025, 80_000)
+    data = tmp_path / "data"
+    sources = [(2024, early.as_uri()), (2025, late.as_uri())]
+    refresh(data, sources)
+    assignment = pd.read_parquet(data / "refined" / "professional_assignment.parquet")
+    staff = pd.read_parquet(data / "refined" / "professional_staff.parquet")
+    assert len(assignment) == 4
+    assert len(staff) == 2
+    chosen = staff.loc[staff["school_year"] == 2024].iloc[0]
+    assert chosen["row_rule"] == "primary_assignment"
+    assert chosen["assignment_code"] == "b"
+    assert int(chosen["assignment_count"]) == 2
+    assert chosen["annual_salary"] == 70_000
+    schools = set(assignment.loc[assignment["school_year"] == 2024, "school_number"])
+    assert schools == {"9999", "0"}
+    assert set(assignment["aun"]) == {"101260303"}
+
+    def refuse(path):
+        raise AssertionError(f"opened {path}")
+
+    monkeypatch.setattr("pa_edu.extract.read_workbook", refuse)
+    monkeypatch.setattr(pd, "read_excel", refuse)
+    refresh(data, sources)
+    again = pd.read_parquet(data / "refined" / "professional_staff.parquet")
+    assert set(again["school_year"]) == {2024, 2025}
+
+
+def test_personnel_appends_a_year_and_updates_a_replaced_file(tmp_path, monkeypatch) -> None:
+    early = tmp_path / "files" / "staff-2024.xlsx"
+    _staff_book(early, 2024, 70_000)
+    data = tmp_path / "data"
+    refresh(data, [(2024, early.as_uri())])
+    first_raw = [Path(record["path"]) for record in load_index(data)["documents"].values()]
+    assert len(first_raw) == 1
+    late = tmp_path / "files" / "staff-2025.xlsx"
+    _staff_book(late, 2025, 80_000)
+    opened: list[str] = []
+    original = read_workbook
+
+    def counting(path):
+        opened.append(Path(path).name)
+        return original(path)
+
+    monkeypatch.setattr("pa_edu.extract.read_workbook", counting)
+    refresh(data, [(2024, early.as_uri()), (2025, late.as_uri())])
+    assert opened == [late.name]
+    staff = pd.read_parquet(data / "refined" / "professional_staff.parquet")
+    salaries = dict(zip(staff["school_year"], staff["annual_salary"], strict=True))
+    assert salaries == {2024: 70_000, 2025: 80_000}
+    assert first_raw[0].is_file()
+
+    first_raw[0].unlink()
+    _staff_book(early, 2024, 75_000)
+    opened.clear()
+    refresh(data, [(2024, early.as_uri()), (2025, late.as_uri())])
+    assert opened == [early.name]
+    staff = pd.read_parquet(data / "refined" / "professional_staff.parquet")
+    salaries = dict(zip(staff["school_year"], staff["annual_salary"], strict=True))
+    assert salaries == {2024: 75_000, 2025: 80_000}
+

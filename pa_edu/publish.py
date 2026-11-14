@@ -13,14 +13,17 @@ from __future__ import annotations
 
 import gzip
 import json
+import os
 import shutil
 import subprocess
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
 import numpy as np
 import pandas as pd
+import requests
 
 from pa_edu.common import DATA_DIR, ROOT
 from pa_edu.portal import DUCKDB_NAME, PUBLIC_TABLE_ROOT, build_portal, write_duckdb
@@ -173,6 +176,8 @@ def directory_row(lea: dict, enrollment: int | None, actual: float | None, budge
 
 
 def main() -> None:
+    global REFINED
+    REFINED = resolve_refined()
     if not (REFINED / "lea.parquet").exists():
         raise SystemExit("data/refined is missing. Run python -m pa_edu.refine first.")
     connection = duckdb.connect()
@@ -280,6 +285,42 @@ def main() -> None:
     print(f"wrote {OUT / 'download' / DUCKDB_NAME}")
     stamp = write_build_stamp(OUT)
     print(f"build {stamp['commitShort']} generated {stamp['generatedAt']}")
+
+
+def resolve_refined() -> Path:
+    """Local refined tables, or a copy read from the data service with httpfs.
+
+    ``PDE_REFINED_URL`` is the service root, without a trailing slash, such as
+    ``http://192.168.10.116:8091/refined``. Unset, publish reads ``data/refined``.
+    """
+    url = os.environ.get("PDE_REFINED_URL", "").strip().rstrip("/")
+    if not url:
+        return DATA_DIR / "refined"
+    response = requests.get(f"{url}/", timeout=120)
+    response.raise_for_status()
+    names = response.json()["tables"]
+    stage = Path(tempfile.mkdtemp(prefix="pde-refined-"))
+    connection = duckdb.connect()
+    try:
+        connection.execute("INSTALL httpfs; LOAD httpfs;")
+        for name in names:
+            if not isinstance(name, str) or "/" in name or not name.endswith(".parquet"):
+                raise RuntimeError(f"refined listing has unexpected name {name!r}")
+            temporary = stage / f".{name}.tmp"
+            source = f"{url}/{name}"
+            connection.execute(
+                f"COPY (SELECT * FROM read_parquet({_sql_quote(source)})) "
+                f"TO {_sql_quote(temporary.as_posix())} (FORMAT PARQUET)"
+            )
+            os.replace(temporary, stage / name)
+    finally:
+        connection.close()
+    print(f"read {len(names)} refined tables from {url}")
+    return stage
+
+
+def _sql_quote(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
 
 
 def read_git_build(now: datetime | None = None) -> dict[str, str]:

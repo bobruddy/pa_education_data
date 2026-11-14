@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from pa_edu.codes import as_amount, as_code, as_text, sheet_names
+from pa_edu.codes import as_amount, as_code, as_text, read_grid, sheet_names
 
 
 def parse_low_income(path: Path, document: dict) -> dict[str, pd.DataFrame]:
@@ -74,8 +74,7 @@ def _is_lea_sheet(name: str) -> bool:
 
 
 def _read_lea_sheet(path: Path, sheet: str) -> pd.DataFrame:
-    engine = "xlrd" if path.suffix.lower() == ".xls" else "openpyxl"
-    raw = pd.read_excel(path, sheet_name=sheet, header=None, engine=engine)
+    raw = read_grid(path, sheet)
     header_index = None
     for index, row in raw.iterrows():
         labels = [_label(value) for value in row.tolist()]

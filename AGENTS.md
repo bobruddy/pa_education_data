@@ -17,9 +17,11 @@ Deep design lives in [`docs/refined-pipeline.md`](docs/refined-pipeline.md). Cur
 ```text
 sources/catalog.toml     known documents (URL, parser, stable|review, school_year)
 sources/checks.toml      AUNs / cells that must round-trip from workbook → parquet
+pa_edu/extract.py        workbook bytes → one table per sheet, beside data/raw
 pa_edu/parse_*.py        one parser family per source shape
-pa_edu/refine.py         download → parse stable → write parquet (+ duckdb views)
-pa_edu/check.py          offline identity, grain, and cell checks against the cache
+pa_edu/refine.py         download → extract stable workbooks → refined parquet
+pa_edu/check.py          offline identity, grain, and cell checks against the workbooks
+pa_edu/serve.py          refined Parquet over HTTP for the education build
 sql/model.sql            DuckDB views over local parquet
 sql/portal.sql           convenience views (school district, fund 10, labeled lines)
 pa_edu/portal.py         download page: Parquet, county zips, remote DuckDB
@@ -33,10 +35,10 @@ Commands (always use `.venv/bin/python`):
 
 | Command | Role |
 | --- | --- |
-| `python -m pa_edu.refine` | Fetch missing raw files, parse `stable`, write parquet / duckdb |
-| `python -m pa_edu.check` | Offline checks against `data/raw` + parquet |
+| `python -m pa_edu.refine` | Fetch missing raw files, extract sheets, build parquet / duckdb from the extracts |
+| `python -m pa_edu.check` | Offline checks; cell round-trip still opens the workbook |
 | `python -m pa_edu.discover` | Print uncataloged links on watched PDE pages |
-| `python -m pa_edu.publish` | Build `pde_site/`. The education Jenkins job runs this after `refine`, `personnel`, and `check`, then ships the image. |
+| `python -m pa_edu.publish` | Build `pde_site/` from local parquet, or from `PDE_REFINED_URL` on the education job |
 | `pytest tests/` | Tiny fixture workbooks for parsers and publish helpers |
 
 `pa.gov` returns 403 without the project User-Agent in `pa_edu.common.HEADERS`.
@@ -70,6 +72,6 @@ Commands (always use `.venv/bin/python`):
 - Do not edit `docs/` unless he asks (this `AGENTS.md` and `.cursor/rules/` are the standing exception for agent guidance).
 - Do not kill an interactive `duckdb` session locking `data/pde.duckdb`. Parquet can still be written; `check` and `publish` read parquet.
 - Prefer proving numbers from the workbook or live JSON over asserting the UI “should” show them.
-- A push to `main` runs the education job: `pytest`, then `refine`, `personnel`, and `check` against `/home/jenkins/pde-data`, then `python -m pa_edu.publish`. That writes `pde_site/` and does not copy it to elm. The job then pushes `192.168.150.59:443/pdenumbers:<git sha>` and `scripts/docker09.sh` starts `pdenumbers` on port 8090 if it is absent, or replaces that container if it is already running. UAT is http://192.168.10.116:8090/. Do not run publish from an agent session, do not rsync to elm, and do not copy `data/` from the laptop.
-- That data directory stays on education, outside the git checkout. `refine` downloads a catalog file it does not already have and rebuilds the Parquet. `personnel` downloads a staff workbook it does not already have and rewrites `professional_staff` and `professional_assignment` under `data/refined/`. A raw file already on disk is not fetched again. `refine` leaves those two files in place.
-- When a change must be checked on the live site, push to `main`, wait for the Jenkins job, and verify https://pdenumbers.org. Bump `index.html`’s `?v=` before that push when JS or CSS changed.
+- A push to `main` runs the education job: `pytest`, then a data image whose container on docker09 has the NFS share at `/var/pde`. That container is the only writer. The job runs `refine`, `personnel`, and `check` inside it, then `python -m pa_edu.publish` with `PDE_REFINED_URL=http://192.168.10.116:8091/refined`. Publish does not read `/home/jenkins/pde-data`. It writes `pde_site/` and does not copy it to elm. The job then pushes `192.168.150.59:443/pdenumbers:<git sha>` and `pdenumbers:latest`, and `scripts/docker09.sh` starts `pdenumbers` on port 8090 if it is absent, or replaces that container if it is already running. The data service stays on port 8091. UAT is http://192.168.10.116:8090/. Do not run publish from an agent session, do not rsync to elm, and do not copy `data/` from the laptop. A push does not change https://pdenumbers.org/. That container moves only from Jenkins job `pdenumbers-install` (parameter `tag`, default `latest`, or a 40-character git sha) or `scripts/elm.sh`.
+- Workbooks, raw extracts, and refined tables stay on the NFS share mounted only into the data container. Replacing the education workspace does not delete them. `refine` downloads a catalog file the container does not already have, writes the sheet extract, and rebuilds the refined tables from that extract. `personnel` does the same for staff workbooks. A raw file already on disk is not fetched again, and a warm run does not open Excel. `check` still opens the workbook. The site image is the nginx site: LEA JSON, county packages, and view definitions. It does not contain the workbooks, the extracts, or the refined tables.
+- When a change must be checked on UAT, push to `main`, wait for the education job, and verify http://192.168.10.116:8090/. Bump `index.html`’s `?v=` before that push when JS or CSS changed. https://pdenumbers.org/ stays on the installed tag until Robert runs `pdenumbers-install`. Do not run that job unless he asks.

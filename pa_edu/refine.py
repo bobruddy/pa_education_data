@@ -22,7 +22,8 @@ import pandas as pd
 
 from pa_edu.catalog import load_catalog
 from pa_edu.codes import empty_frame
-from pa_edu.common import DATA_DIR, ROOT
+from pa_edu.common import DATA_DIR, ROOT, write_parquet
+from pa_edu.extract import ensure_extract, ingest_discovered, is_workbook, use_extract
 from pa_edu.parse_act1 import parse_act1, parse_act1_base
 from pa_edu.parse_afr import parse_afr
 from pa_edu.parse_assessment import parse_keystone, parse_pssa
@@ -237,11 +238,18 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
     for entry in entries:
         record = materialize(entry, data_dir, index)
         print(f"{entry.status:6} {entry.id}: {Path(record['path']).name}")
+        if is_workbook(Path(record["path"])):
+            try:
+                record = ensure_extract(data_dir, index, record)
+            except Exception as error:
+                raise RuntimeError(f"{entry.id} failed: {error}") from error
         if entry.status != "stable":
             continue
         if entry.parser not in PARSERS:
             raise RuntimeError(f"{entry.id} has no parser {entry.parser!r}")
         jobs.append(_job(entry, record))
+    if catalog_path.resolve() == (ROOT / "sources" / "catalog.toml").resolve():
+        ingest_discovered(data_dir, index)
     refined = data_dir / "refined"
     refined.mkdir(parents=True, exist_ok=True)
     stamp = _stamp(jobs, index)
@@ -262,6 +270,8 @@ def _job(entry, record: dict) -> dict:
         "sha256": record["sha256"],
         "parser": entry.parser,
         "fingerprint": _fingerprint(entry.parser),
+        "extract_code": record.get("extract_code"),
+        "extract_path": record.get("extract_path"),
         "path": record["path"],
         "record": record,
     }
@@ -278,6 +288,7 @@ def _stamp(jobs: list[dict], index: dict) -> dict:
             {
                 "catalog_id": job["catalog_id"],
                 "document_id": job["document_id"],
+                "extract_code": job["extract_code"],
                 "fingerprint": job["fingerprint"],
                 "parser": job["parser"],
                 "sha256": job["sha256"],
@@ -335,7 +346,8 @@ def _parse_missing(jobs: list[dict]) -> None:
 def _parse_one(job: dict) -> None:
     catalog_id = job["catalog_id"]
     try:
-        parsed = PARSERS[job["parser"]](Path(job["path"]), job["record"])
+        with use_extract(job["path"], job.get("extract_path")):
+            parsed = PARSERS[job["parser"]](Path(job["path"]), job["record"])
         _write_shard(Path(job["dest"]), job, parsed)
     except Exception as error:
         raise RuntimeError(f"{catalog_id} failed: {error}") from error
@@ -360,6 +372,7 @@ def _write_shard(dest: Path, job: dict, parsed: dict) -> None:
         "sha256": job["sha256"],
         "parser": job["parser"],
         "fingerprint": job["fingerprint"],
+        "extract_code": job.get("extract_code"),
         "tables": tables,
     }
     (temporary / "meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n")
@@ -376,8 +389,8 @@ def _shard_ready(parts: Path, job: dict) -> bool:
     meta = json.loads(meta_path.read_text())
     if meta.get("version") != SHARD_VERSION:
         return False
-    for key in ("catalog_id", "document_id", "sha256", "parser", "fingerprint"):
-        if meta.get(key) != job[key]:
+    for key in ("catalog_id", "document_id", "sha256", "parser", "fingerprint", "extract_code"):
+        if meta.get(key) != job.get(key):
             return False
     tables = meta.get("tables")
     if not isinstance(tables, list):
@@ -469,7 +482,7 @@ def _publish_frames(
     frames["document"] = _documents(index)
     for name, frame in frames.items():
         frame = _align(frame, COLUMNS[name], SORT[name])
-        frame.to_parquet(refined / f"{name}.parquet", index=False)
+        write_parquet(frame, refined / f"{name}.parquet")
         print(f"wrote {name} {len(frame):,}")
 
 
@@ -741,7 +754,7 @@ def _ensure_personnel(refined: Path) -> None:
         if path.exists():
             print(f"kept {name}")
             continue
-        empty_frame(COLUMNS[name]).to_parquet(path, index=False)
+        write_parquet(empty_frame(COLUMNS[name]), path)
         print(f"wrote {name} 0")
 
 

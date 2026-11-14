@@ -9,7 +9,7 @@ python3.14 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 python -m pa_edu.refine
 python -m pa_edu.check
-python -m pa_edu.publish   # builds pde_site/ and rsyncs to elm → https://pdenumbers.org
+python -m pa_edu.publish   # builds pde_site/ for the image. It does not update https://pdenumbers.org
 ```
 
 As of November 2026 the PDE pages from 2021 no longer point at the workbooks. Catalog URLs in `sources/catalog.toml` target the current `pa.gov` paths. `pa.gov` returns 403 without the project User-Agent in `pa_edu.common.HEADERS`.

@@ -40,11 +40,13 @@ Raw bytes land under `data/raw/<source_id>/<sha256>/`. Refined tables under `dat
 
 ## Deploy
 
-A push to `main` runs the job on the education build host. The job runs the tests, then `refine`, `personnel`, and `check`, then `python -m pa_edu.publish`. It pushes `192.168.150.59:443/pdenumbers:<git sha>` and updates the container on docker09. It does not copy files to elm.
+A push to `main` runs the job on the education build host. The job runs the tests, then `refine`, `personnel`, and `check` inside the data container on docker09, then `python -m pa_edu.publish` against that service. It pushes `192.168.150.59:443/pdenumbers:<git sha>` and the same image as `pdenumbers:latest`, then updates the site container on docker09. It does not copy files to elm and it does not change https://pdenumbers.org/.
 
-`scripts/docker09.sh <sha>` pulls that image. It starts `pdenumbers` on port 8090 if the container is absent, and replaces it if it is already there. The site is http://192.168.10.116:8090/.
+`scripts/docker09.sh <sha>` pulls that image. It starts `pdenumbers` on port 8090 if the container is absent, and replaces it if it is already there. The site is http://192.168.10.116:8090/. The data service is a separate container, `scripts/docker09-data.sh`, on port 8091. NFS is mounted at `/var/pde` in that container only. docker09 needs `/etc/pde-data-nfs` (`host:/export`) before the job can refresh data.
 
-`data/` is not in git. The job keeps it at `/home/jenkins/pde-data` on that host. `refine` and `personnel` download a PDE file only when that copy is not already there, then rebuild the Parquet from the cache.
+https://pdenumbers.org/ is the elm container. Jenkins job `pdenumbers-install` is the button that moves it. Leave the parameter at `latest` to install the newest push, or paste a 40-character git sha to install that build. `scripts/elm.sh` does the same thing from a shell on education. The tag in use is `/data/pdenumbers/.env` (`PDENUMBERS_TAG`). The `latest` push in the Jenkinsfile takes effect on the next build after this file is on `main`.
+
+`data/` is not in git. Workbooks, sheet extracts, and refined tables live on the NFS share. The education job does not keep them under `/home/jenkins/pde-data`, and they are not copied into the site image. Publish reads the refined tables from `http://192.168.10.116:8091/refined`.
 
 ## Site
 

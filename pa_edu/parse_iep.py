@@ -13,7 +13,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from pa_edu.codes import as_amount, as_code, as_text, sheet_names
+from pa_edu.codes import as_amount, as_code, as_text, read_grid, sheet_names
 
 YEAR_SHEET = re.compile(r"^(\d{4})\s*[-–]\s*(\d{4})$")
 WARD_AUN = re.compile(r"^\d{3}999999$")
@@ -46,8 +46,7 @@ def _sheet_year(name: str) -> int | None:
 
 
 def _read_year(path: Path, sheet: str, year: int, document_id: str) -> pd.DataFrame:
-    engine = "xlrd" if path.suffix.lower() == ".xls" else "openpyxl"
-    raw = pd.read_excel(path, sheet_name=sheet, header=None, engine=engine)
+    raw = read_grid(path, sheet)
     header_index = None
     for index, row in raw.iterrows():
         labels = [_label(value) for value in row.tolist()]

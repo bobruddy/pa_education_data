@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from pa_edu.codes import as_code, as_text, sheet_names
+from pa_edu.codes import as_code, as_text, read_grid, sheet_names
 
 IDENTITY = {
     "lea type": "lea_type",
@@ -154,8 +154,7 @@ def _lea_sheet(path: Path) -> str:
 
 
 def _read(path: Path, sheet: str) -> pd.DataFrame:
-    engine = "xlrd" if path.suffix.lower() == ".xls" else "openpyxl"
-    return pd.read_excel(path, sheet_name=sheet, header=None, engine=engine)
+    return read_grid(path, sheet)
 
 
 def _group_columns(columns: dict[str, int]) -> list[str]:

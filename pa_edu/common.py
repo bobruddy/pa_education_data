@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import sqlite3
 import urllib.parse
@@ -11,8 +12,8 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-ROOT = Path(__file__).resolve().parents[1]
-DATA_DIR = ROOT / "data"
+ROOT = Path(os.environ["PDE_ROOT"]) if os.environ.get("PDE_ROOT") else Path(__file__).resolve().parents[1]
+DATA_DIR = Path(os.environ["PDE_DATA"]) if os.environ.get("PDE_DATA") else ROOT / "data"
 DB_PATH = DATA_DIR / "pde.db"
 LOOKUP_PATH = ROOT / "lookup_data" / "expense_lookups.csv"
 PA_ORIGIN = "https://www.pa.gov"
@@ -63,6 +64,14 @@ def cache_download(url: str, directory: Path) -> Path:
     response.raise_for_status()
     destination.write_bytes(response.content)
     return destination
+
+
+def write_parquet(frame: pd.DataFrame, dest: Path) -> None:
+    """Write a Parquet file under a temporary name, then rename it into place."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    temporary = dest.parent / f".{dest.name}.{os.getpid()}.tmp"
+    frame.to_parquet(temporary, index=False)
+    os.replace(temporary, dest)
 
 
 def connect() -> sqlite3.Connection:

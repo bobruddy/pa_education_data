@@ -496,6 +496,69 @@ def test_unchanged_refine_keeps_tables_without_rereading(tmp_path: Path, capsys)
     assert _district_gfb(data) == 5
 
 
+def test_reparse_uses_the_extract_when_the_workbook_is_unreadable(tmp_path: Path, monkeypatch) -> None:
+    data, catalog, _gfb = _finance_catalog(tmp_path)
+    run(data, catalog)
+    metas = list((data / "refined" / "_parts").glob("gfb-*/meta.json"))
+    meta = json.loads(metas[0].read_text())
+    meta["fingerprint"] = "stale"
+    metas[0].write_text(json.dumps(meta))
+    stamp_path = data / "refined" / "_inputs.json"
+    stamp = json.loads(stamp_path.read_text())
+    for row in stamp["parsed"]:
+        if row["catalog_id"] == "gfb":
+            row["fingerprint"] = "stale"
+    stamp_path.write_text(json.dumps(stamp))
+    _corrupt_cached(data)
+
+    def refuse(path, *args, **kwargs):
+        raise AssertionError(f"opened {path}")
+
+    monkeypatch.setattr("pa_edu.extract.read_workbook", refuse)
+    monkeypatch.setattr(pd, "read_excel", refuse)
+    run(data, catalog)
+    assert _district_gfb(data) == 5
+
+
+def test_a_new_stable_year_is_appended(tmp_path: Path, monkeypatch) -> None:
+    data, catalog, _gfb = _finance_catalog(tmp_path)
+    run(data, catalog)
+    extra = tmp_path / "files" / "gfb-2020.xlsx"
+    _gfb_book(extra, amount=3)
+    text = catalog.read_text()
+    text += "\n".join(
+        [
+            "[[document]]",
+            'id = "gfb-2020"',
+            'source_id = "test"',
+            f'source_url = "{extra.as_uri()}"',
+            f'page_url = "{extra.as_uri()}"',
+            'parser = "gfb"',
+            'status = "stable"',
+            "school_year = 2020",
+            "",
+        ]
+    )
+    catalog.write_text(text)
+    opened: list[str] = []
+    import pa_edu.extract as extract
+
+    original = extract.read_workbook
+
+    def counting(path: Path):
+        opened.append(Path(path).name)
+        return original(path)
+
+    monkeypatch.setattr(extract, "read_workbook", counting)
+    run(data, catalog)
+    assert opened == [extra.name]
+    expenses = pd.read_parquet(data / "refined" / "gfb_expenditure.parquet")
+    district = expenses.loc[expenses["aun"] == "101260303"]
+    totals = district.groupby("school_year")["amount"].sum().to_dict()
+    assert totals[2019] == 5
+    assert totals[2020] == 3
+
+
 def test_stale_parser_fingerprint_reparses_that_document_only(tmp_path: Path) -> None:
     data, catalog, _gfb = _finance_catalog(tmp_path)
     run(data, catalog)

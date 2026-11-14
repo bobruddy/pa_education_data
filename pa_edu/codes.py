@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pandas as pd
 
-from pa_edu.common import id_to_str, sheet_names
+from pa_edu.common import id_to_str
+from pa_edu.common import sheet_names as _excel_sheet_names
 
 ACCOUNT_RE = re.compile(r"^(\d{4})-(\d{3})(?:-(\d+))?$")
 
@@ -45,6 +46,15 @@ def as_amount(values: pd.Series) -> pd.Series:
     return pd.to_numeric(values, errors="coerce")
 
 
+def sheet_names(path: Path) -> list[str]:
+    from pa_edu.extract import published_names
+
+    names = published_names(path)
+    if names is not None:
+        return names
+    return _excel_sheet_names(path)
+
+
 def find_sheet(path: Path, preferred: str) -> str:
     names = sheet_names(path)
     if preferred in names:
@@ -61,15 +71,33 @@ def sheets_starting(path: Path, prefix: str) -> list[str]:
 
 
 def read_sheet(path: Path, sheet: str, skiprows: int = 0) -> pd.DataFrame:
+    from pa_edu.extract import published_sheet
+
+    extracted = published_sheet(path, sheet)
+    if extracted is not None:
+        return extracted
     engine = "xlrd" if path.suffix.lower() == ".xls" else "openpyxl"
     frame = pd.read_excel(path, sheet_name=sheet, skiprows=skiprows, engine=engine)
     frame.columns = [str(column).strip() for column in frame.columns]
     return frame
 
 
+def read_grid(path: Path, sheet: str) -> pd.DataFrame:
+    """Headerless rows. An active extract rebuilds them without opening Excel."""
+    from pa_edu.extract import published_sheet
+
+    extracted = published_sheet(path, sheet)
+    if extracted is not None:
+        return _grid_from_published(extracted)
+    engine = "xlrd" if path.suffix.lower() == ".xls" else "openpyxl"
+    return pd.read_excel(path, sheet_name=sheet, header=None, engine=engine)
+
+
 def read_headed(path: Path, sheet: str, skiprows: int) -> pd.DataFrame:
+    from pa_edu.extract import published_names
+
     frame = read_sheet(path, sheet, skiprows)
-    if _headed(frame):
+    if _headed(frame) or published_names(path) is not None:
         return frame
     engine = "xlrd" if path.suffix.lower() == ".xls" else "openpyxl"
     raw = pd.read_excel(path, sheet_name=sheet, header=None, nrows=20, engine=engine)
@@ -78,6 +106,14 @@ def read_headed(path: Path, sheet: str, skiprows: int) -> pd.DataFrame:
         if "AUN" in labels:
             return read_sheet(path, sheet, int(index))
     return frame
+
+
+def _grid_from_published(frame: pd.DataFrame) -> pd.DataFrame:
+    header = pd.DataFrame([list(frame.columns)])
+    body = frame.astype("object")
+    body.columns = range(len(frame.columns))
+    header.columns = range(len(frame.columns))
+    return pd.concat([header, body], ignore_index=True)
 
 
 def column_map(frame: pd.DataFrame) -> dict[str, str]:
