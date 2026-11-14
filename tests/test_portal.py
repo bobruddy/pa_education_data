@@ -81,6 +81,12 @@ def test_portal_packages_one_county_and_keeps_lookup_tables(tmp_path: Path) -> N
         ) t(aun, school_year, fund_code, function_code, object_code, program_code,
             elementary_amount, secondary_amount, federal_amount, total_amount, document_id)
     """)
+    _write(refined / "professional_staff.parquet", """
+        SELECT * FROM (VALUES
+            ('101260303', 2024, 'p1', 50000.0, 100.0),
+            ('112011103', 2024, 'p2', 60000.0, 100.0)
+        ) t(aun, school_year, public_id, annual_salary, fte_percent)
+    """)
 
     out = tmp_path / "download"
     build_portal(out, refined)
@@ -110,6 +116,8 @@ def test_portal_packages_one_county_and_keeps_lookup_tables(tmp_path: Path) -> N
     assert _column(beaver / "lea.parquet", "aun") == ["112011103"]
     assert _column(adams / "gfb_expenditure.parquet", "aun") == ["101260303"]
     assert _column(adams / "enrollment.parquet", "aun") == ["101260303", "101260303"]
+    assert _column(adams / "professional_staff.parquet", "public_id") == ["p1"]
+    assert _column(beaver / "professional_staff.parquet", "public_id") == ["p2"]
     assert "_portal_county" not in _describe(adams / "gfb_expenditure.parquet")
     assert _scalar(adams / "document.parquet", "SELECT source_url FROM read_parquet(?)") == "https://example.test/gfb.xlsx"
     assert _scalar(adams / "act1_base.parquet", "SELECT base_index FROM read_parquet(?)") == 3.5

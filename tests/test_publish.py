@@ -10,6 +10,7 @@ from pa_edu.publish import (
     _county_ranks,
     _experience_stats,
     _percent_points,
+    _salaries,
     _salary_group,
     _short_title,
     _write_json,
@@ -70,6 +71,30 @@ def test_salary_groups_follow_edf_codes() -> None:
     assert _salary_group("Elementary Teachers") == "elementary"
     assert _salary_group("Secondary Teachers") == "secondary"
     assert _salary_group(None) is None
+
+
+def test_salaries_come_from_professional_staff_parquet(tmp_path: Path, monkeypatch) -> None:
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    pd.DataFrame({
+        "aun": ["1", "1", "1", "1", "1"],
+        "school_year": [2023, 2023, 2023, 2023, 2024],
+        "public_id": ["a", "b", "z", "c", "a"],
+        "annual_salary": [50_000.0, 70_000.0, 0.0, 10.0, 51_000.0],
+        "fte_percent": [100.0, 100.0, 100.0, 50.0, 100.0],
+        "edf_category": ["ELMTCH", "ELMTCH", "ELMTCH", "ELMTCH", "ELMTCH"],
+        "years_in_lea": [3.0, 1.0, 9.0, 9.0, 4.0],
+        "years_in_education": [5.0, 2.0, 9.0, 9.0, 6.0],
+        "degree_code": ["1054", "1051", "1054", "1054", "1054"],
+    }).to_parquet(refined / "professional_staff.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+    salaries, experience, retention = _salaries()
+    stats = salaries["1"][2023]["elementary"]
+    assert stats["n"] == 2
+    assert stats["mean"] == 60_000
+    assert retention["1"][2023] == {"rate": 0.5, "base": 2, "stayed": 1, "nextYear": 2024}
+    assert 2024 not in retention["1"]
+    assert experience["1"][2023]["elementary"]["lea"]["n"] == 2
 
 
 def test_experience_hist_bins_integer_years() -> None:

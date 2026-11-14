@@ -72,6 +72,8 @@ TABLES: dict[str, str] = {
     "real_estate_tax": "Real-estate millage by AUN, year, county, and locality.",
     "charter_adm": "Charter average daily membership PDE published for a district and year.",
     "home_education": "Home-education affidavit counts PDE published for a district and year.",
+    "professional_assignment": "One assignment for a person at an LEA in a year. Annual salary is that person's total at the LEA and is repeated on every assignment.",
+    "professional_staff": "One person at an LEA in a year, so salary can be summed. The row is the primary assignment, or the highest FTE when PDE did not mark one.",
 }
 
 

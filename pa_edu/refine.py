@@ -120,6 +120,16 @@ COLUMNS = {
     "cohort_graduation_group": [
         "aun", "school_year", "span", "student_group", "rate", "document_id",
     ],
+    "professional_assignment": [
+        "school_year", "snapshot_date", "public_id", "last_name", "first_name",
+        "middle_name", "suffix", "gender", "race", "annual_salary", "degree_code",
+        "degree_description", "years_in_education", "years_in_lea", "status", "aun",
+        "lea_name", "lea_type", "lea_type_code", "county_code", "county",
+        "school_number", "school_name", "iu_code", "iu_name", "time_status",
+        "job_class", "primary_assignment", "assignment_code", "assignment_description",
+        "position_code", "position_description", "edf_code", "edf_category",
+        "category_description", "fte_percent", "source_layout", "source_file",
+    ],
     "school": ["aun", "school_number", "school_name"],
     "grade": ["grade_code", "label", "band", "session"],
     "account": [
@@ -134,6 +144,11 @@ COLUMNS = {
 }
 COLUMNS["afr_expenditure_school"] = [
     "aun", "school_number", "school_name", *COLUMNS["afr_expenditure"][1:],
+]
+COLUMNS["professional_staff"] = [
+    *COLUMNS["professional_assignment"],
+    "row_rule",
+    "assignment_count",
 ]
 
 SORT = {
@@ -162,6 +177,8 @@ SORT = {
     "home_education": ["school_year", "aun"],
     "cohort_graduation": ["school_year", "span", "aun"],
     "cohort_graduation_group": ["school_year", "span", "aun", "student_group"],
+    "professional_assignment": ["school_year", "aun", "public_id", "assignment_code", "school_number"],
+    "professional_staff": ["school_year", "aun", "public_id"],
     "school": ["aun", "school_number"],
     "grade": ["grade_code"],
     "account": ["function_code", "object_code"],
@@ -187,6 +204,9 @@ ENROLLMENT_CATEGORY = {
     "spj": "jointure",
 }
 
+# Written by python -m pa_edu.personnel. refine must not replace an existing file.
+PERSONNEL_TABLES = ("professional_assignment", "professional_staff")
+
 
 def main() -> None:
     run()
@@ -197,7 +217,10 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
     catalog_path = catalog_path or ROOT / "sources" / "catalog.toml"
     entries = load_catalog(catalog_path)
     index = load_index(data_dir)
-    collected: dict[str, list[pd.DataFrame]] = {name: [] for name in COLUMNS if name != "document"}
+    catalog_tables = [
+        name for name in COLUMNS if name not in {"document", *PERSONNEL_TABLES}
+    ]
+    collected: dict[str, list[pd.DataFrame]] = {name: [] for name in catalog_tables}
     functions: dict[str, str] = {}
     objects: dict[str, str] = {}
     revenues: dict[str, str] = {}
@@ -259,6 +282,7 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
         frame = _align(frame, COLUMNS[name], SORT[name])
         frame.to_parquet(refined / f"{name}.parquet", index=False)
         print(f"wrote {name} {len(frame):,}")
+    _ensure_personnel(refined)
     _duckdb(data_dir / "pde.duckdb", refined)
     print(f"wrote {data_dir / 'pde.duckdb'}")
     return refined
@@ -466,6 +490,21 @@ def _align(frame: pd.DataFrame, columns: list[str], sort: list[str]) -> pd.DataF
     if frame.empty:
         return frame
     return frame.sort_values(sort, kind="mergesort").reset_index(drop=True)
+
+
+def _ensure_personnel(refined: Path) -> None:
+    """Leave staff parquet from pa_edu.personnel in place.
+
+    A missing file gets an empty frame so the DuckDB views can bind. The next
+    personnel run replaces it.
+    """
+    for name in PERSONNEL_TABLES:
+        path = refined / f"{name}.parquet"
+        if path.exists():
+            print(f"kept {name}")
+            continue
+        empty_frame(COLUMNS[name]).to_parquet(path, index=False)
+        print(f"wrote {name} 0")
 
 
 def _duckdb(database: Path, refined: Path) -> None:

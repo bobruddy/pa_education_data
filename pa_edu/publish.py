@@ -13,7 +13,6 @@ from __future__ import annotations
 import gzip
 import json
 import shutil
-import sqlite3
 from pathlib import Path
 
 import duckdb
@@ -26,7 +25,6 @@ from pa_edu.portal import DUCKDB_NAME, PUBLIC_TABLE_ROOT, build_portal, write_du
 OUT = ROOT / "pde_site"
 WEB = Path(__file__).resolve().parent / "web"
 REFINED = DATA_DIR / "refined"
-SQLITE = DATA_DIR / "pde.db"
 PERSONNEL_PAGE = (
     "https://www.pa.gov/agencies/education/data-and-reporting/school-staff/"
     "professional-and-support-personnel"
@@ -916,19 +914,24 @@ def _school_detail(connection: duckdb.DuckDBPyConnection) -> dict:
 
 def _salaries() -> tuple[dict, dict, dict]:
     """Full-time professional staff salary + experience stats and same-LEA retention."""
-    if not SQLITE.exists():
-        print("no data/pde.db; salary panel skipped")
+    path = REFINED / "professional_staff.parquet"
+    if not path.exists():
+        print("no professional_staff.parquet; salary panel skipped")
         return {}, {}, {}
-    frame = pd.read_sql_query(
-        """
-        SELECT aun, school_year, public_id, annual_salary, edf_category,
-               years_in_lea, years_in_education, degree_code
-        FROM professional_staff
-        WHERE annual_salary > 0
-          AND fte_percent = 100
-        """,
-        sqlite3.connect(SQLITE),
-    )
+    connection = duckdb.connect()
+    try:
+        frame = connection.execute(
+            """
+            SELECT aun, school_year, public_id, annual_salary, edf_category,
+                   years_in_lea, years_in_education, degree_code
+            FROM read_parquet(?)
+            WHERE annual_salary > 0
+              AND fte_percent = 100
+            """,
+            [str(path)],
+        ).df()
+    finally:
+        connection.close()
     if frame.empty:
         return {}, {}, {}
     frame["group"] = frame["edf_category"].map(_salary_group)

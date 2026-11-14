@@ -25,7 +25,7 @@ One `[[document]]` per known file: `id`, `source_id`, `source_url`, `page_url`, 
 ## Refine / storage
 
 - Raw cache: `data/raw/<source_id>/<sha256>/`. Same URL + new hash keeps both copies.
-- Write every table listed in `refine.COLUMNS` / `SORT`, then apply `sql/model.sql` and `sql/portal.sql`.
+- Write every catalog table listed in `refine.COLUMNS` / `SORT`, then apply `sql/model.sql` and `sql/portal.sql`. `professional_assignment` and `professional_staff` are the exception: `python -m pa_edu.personnel` writes them, and `refine` must not replace an existing file.
 - A new `COLUMNS` table needs a one-line `TABLES` blurb in `pa_edu/portal.py` in the same change. A table with no `aun` also goes in `LOOKUP_TABLES` so each county zip still carries it. `tests/test_portal.py` fails if `TABLES` drifts from `COLUMNS`.
 - If `pde.duckdb` is locked, parquet may still be good; do not delete the lock or kill the interactive session.
 

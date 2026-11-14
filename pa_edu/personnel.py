@@ -1,7 +1,7 @@
 """Professional personnel salaries, one consistent schema for every school year.
 
-Downloads the individual-staff workbooks from PDE and writes two tables in
-data/pde.db:
+Downloads the individual-staff workbooks from PDE and writes two Parquet tables
+under data/refined/:
 
 - professional_assignment: one row per person, LEA, year, and assignment.
   Annual salary is the person's total at that LEA and is repeated on every
@@ -10,69 +10,33 @@ data/pde.db:
   summed. The row is the primary assignment when PDE published that flag,
   otherwise the assignment with the highest FTE. `row_rule` says which.
 
-Run: python -m pa_edu.personnel
+`source_file` is the workbook name in data/raw/personnel/. Run:
+python -m pa_edu.personnel
 """
 
 from __future__ import annotations
 
 import re
+import tempfile
 import urllib.parse
+from pathlib import Path
 
+import duckdb
 import pandas as pd
 
-from pa_edu.common import DATA_DIR, absolute_url, cache_download, connect, fetch_hrefs
+from pa_edu.common import DATA_DIR, absolute_url, cache_download, fetch_hrefs
 from pa_edu.personnel_layouts import CANONICAL_FIELDS, LAYOUTS, LEA_TYPE_CODES, YEAR_LAYOUT
+from pa_edu.refine import COLUMNS, PERSONNEL_TABLES, SORT, _duckdb
 
 PERSONNEL_PAGE = (
     "https://www.pa.gov/agencies/education/data-and-reporting/school-staff/"
     "professional-and-support-personnel"
 )
-RAW_DIR = DATA_DIR / "raw" / "personnel"
 FILE_RE = re.compile(
     r"(20\d{2})-(\d{2}).*professional personnel individual staff.*\.xlsx$",
     re.IGNORECASE,
 )
 
-OUTPUT_COLUMNS = (
-    "school_year",
-    "snapshot_date",
-    "public_id",
-    "last_name",
-    "first_name",
-    "middle_name",
-    "suffix",
-    "gender",
-    "race",
-    "annual_salary",
-    "degree_code",
-    "degree_description",
-    "years_in_education",
-    "years_in_lea",
-    "status",
-    "aun",
-    "lea_name",
-    "lea_type",
-    "lea_type_code",
-    "county_code",
-    "county",
-    "school_number",
-    "school_name",
-    "iu_code",
-    "iu_name",
-    "time_status",
-    "job_class",
-    "primary_assignment",
-    "assignment_code",
-    "assignment_description",
-    "position_code",
-    "position_description",
-    "edf_code",
-    "edf_category",
-    "category_description",
-    "fte_percent",
-    "source_layout",
-    "source_file",
-)
 STRING_COLUMNS = (
     "public_id",
     "last_name",
@@ -106,6 +70,7 @@ STRING_COLUMNS = (
     "source_layout",
     "source_file",
 )
+FLOAT_COLUMNS = ("annual_salary", "years_in_education", "years_in_lea", "fte_percent")
 
 
 def personnel_sources() -> list[tuple[int, str]]:
@@ -133,30 +98,62 @@ def personnel_sources() -> list[tuple[int, str]]:
     return found
 
 
-def load_personnel() -> None:
+def load_personnel(data_dir: Path | None = None) -> None:
+    data_dir = data_dir or DATA_DIR
     sources = personnel_sources()
-    with connect() as connection:
-        connection.execute("DROP TABLE IF EXISTS professional_assignment")
-        connection.execute("DROP TABLE IF EXISTS professional_staff")
-    for index, (school_year, url) in enumerate(sources):
-        path = cache_download(url, RAW_DIR)
-        print(f"personnel {school_year}: {path.name} ({YEAR_LAYOUT[school_year]})")
-        frame = pd.read_excel(path, engine="openpyxl")
-        assignments = normalize_assignments(frame, school_year, path.name)
-        staff = staff_rows(assignments)
-        mode = "replace" if index == 0 else "append"
-        with connect() as connection:
-            write = {"if_exists": mode, "index": False, "method": "multi", "chunksize": 200}
-            _for_sql(assignments).to_sql("professional_assignment", connection, **write)
-            _for_sql(staff).to_sql("professional_staff", connection, **write)
-        primary = int(assignments["primary_assignment"].fillna(False).sum())
-        blank_primary = int(assignments["primary_assignment"].isna().sum())
-        print(
-            f"  assignments {len(assignments):,}  staff {len(staff):,}  "
-            f"primary_yes {primary:,}  primary_blank {blank_primary:,}"
-        )
-    _create_indexes()
+    if not sources:
+        raise RuntimeError("PDE personnel page has no individual-staff workbooks")
+    refined = data_dir / "refined"
+    refined.mkdir(parents=True, exist_ok=True)
+    raw_dir = data_dir / "raw" / "personnel"
+    with tempfile.TemporaryDirectory(prefix="personnel-") as tmp_name:
+        tmp = Path(tmp_name)
+        for index, (school_year, url) in enumerate(sources):
+            path = cache_download(url, raw_dir)
+            print(f"personnel {school_year}: {path.name} ({YEAR_LAYOUT[school_year]})")
+            frame = pd.read_excel(path, engine="openpyxl")
+            assignments = normalize_assignments(frame, school_year, path.name)
+            staff = staff_rows(assignments)
+            _cast(assignments, COLUMNS["professional_assignment"]).to_parquet(
+                tmp / f"assignment-{index:02d}.parquet", index=False
+            )
+            _cast(staff, COLUMNS["professional_staff"]).to_parquet(
+                tmp / f"staff-{index:02d}.parquet", index=False
+            )
+            primary = int(assignments["primary_assignment"].fillna(False).sum())
+            blank_primary = int(assignments["primary_assignment"].isna().sum())
+            print(
+                f"  assignments {len(assignments):,}  staff {len(staff):,}  "
+                f"primary_yes {primary:,}  primary_blank {blank_primary:,}"
+            )
+        for name in PERSONNEL_TABLES:
+            prefix = "assignment" if name == "professional_assignment" else "staff"
+            _combine(tmp, f"{prefix}-*.parquet", refined / f"{name}.parquet", SORT[name])
+    _refresh_views(data_dir)
     print(f"wrote professional_assignment and professional_staff for {len(sources)} years")
+
+
+def write_personnel_tables(
+    assignments: list[pd.DataFrame],
+    staff: list[pd.DataFrame],
+    refined: Path,
+) -> None:
+    """Write one Parquet file per table from yearly frames. Used by tests."""
+    if len(assignments) != len(staff) or not assignments:
+        raise ValueError("assignments and staff must be paired, non-empty year lists")
+    refined.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix="personnel-") as tmp_name:
+        tmp = Path(tmp_name)
+        for index, (assignment_year, staff_year) in enumerate(zip(assignments, staff, strict=True)):
+            _cast(assignment_year, COLUMNS["professional_assignment"]).to_parquet(
+                tmp / f"assignment-{index:02d}.parquet", index=False
+            )
+            _cast(staff_year, COLUMNS["professional_staff"]).to_parquet(
+                tmp / f"staff-{index:02d}.parquet", index=False
+            )
+        for name in PERSONNEL_TABLES:
+            prefix = "assignment" if name == "professional_assignment" else "staff"
+            _combine(tmp, f"{prefix}-*.parquet", refined / f"{name}.parquet", SORT[name])
 
 
 def normalize_assignments(frame: pd.DataFrame, school_year: int, source_file: str) -> pd.DataFrame:
@@ -180,7 +177,7 @@ def normalize_assignments(frame: pd.DataFrame, school_year: int, source_file: st
     unknown = sorted(set(renamed.loc[renamed["lea_type"].notna() & renamed["lea_type_code"].isna(), "lea_type"]))
     if unknown:
         print(f"  lea types without a short code: {unknown}")
-    return renamed.loc[:, OUTPUT_COLUMNS]
+    return renamed.loc[:, list(COLUMNS["professional_assignment"])]
 
 
 def staff_rows(assignments: pd.DataFrame) -> pd.DataFrame:
@@ -260,23 +257,68 @@ def _text(value: object) -> object:
     return text
 
 
-def _for_sql(frame: pd.DataFrame) -> pd.DataFrame:
+def _cast(frame: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
     out = frame.copy()
-    out["primary_assignment"] = out["primary_assignment"].astype("Int64")
+    for column in columns:
+        if column not in out.columns:
+            out[column] = pd.NA
+    out = out.loc[:, columns]
+    for column in columns:
+        if column in ("school_year", "assignment_count"):
+            values = pd.to_numeric(out[column], errors="coerce")
+            if values.isna().any():
+                raise ValueError(f"{column} has a missing value")
+            out[column] = values.astype("int64")
+        elif column == "primary_assignment":
+            out[column] = out[column].astype("boolean")
+        elif column in FLOAT_COLUMNS:
+            out[column] = pd.to_numeric(out[column], errors="coerce")
+        else:
+            out[column] = out[column].astype("string")
     return out
 
 
-def _create_indexes() -> None:
-    with connect() as connection:
+def _combine(directory: Path, pattern: str, dest: Path, sort: list[str]) -> None:
+    files = sorted(directory.glob(pattern))
+    if not files:
+        raise RuntimeError(f"no rows to write for {dest.name}")
+    listed = ", ".join(_quote(path.as_posix()) for path in files)
+    order = ", ".join(sort)
+    connection = duckdb.connect()
+    try:
         connection.execute(
-            "CREATE INDEX ix_prof_assign_aun_year ON professional_assignment (aun, school_year)"
+            f"""
+            COPY (
+                SELECT * FROM read_parquet([{listed}], union_by_name = true)
+                ORDER BY {order}
+            ) TO {_quote(dest.as_posix())} (FORMAT PARQUET)
+            """
         )
-        connection.execute(
-            "CREATE INDEX ix_prof_assign_person ON professional_assignment (public_id, school_year)"
-        )
-        connection.execute(
-            "CREATE INDEX ix_prof_staff_aun_year ON professional_staff (aun, school_year)"
-        )
+        count = connection.execute(
+            f"SELECT count(*) FROM read_parquet({_quote(dest.as_posix())})"
+        ).fetchone()
+    finally:
+        connection.close()
+    print(f"wrote {dest.name} {int(count[0]):,}")
+
+
+def _refresh_views(data_dir: Path) -> None:
+    refined = data_dir / "refined"
+    missing = [name for name in COLUMNS if not (refined / f"{name}.parquet").exists()]
+    if missing:
+        print("parquet written; duckdb views left in place (refined tables still missing)")
+        return
+    database = data_dir / "pde.duckdb"
+    try:
+        _duckdb(database, refined)
+    except duckdb.IOException as error:
+        print(f"parquet written; could not refresh {database}: {error}")
+        return
+    print(f"wrote {database}")
+
+
+def _quote(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
 
 
 if __name__ == "__main__":

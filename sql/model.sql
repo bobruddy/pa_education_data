@@ -76,5 +76,11 @@ SELECT * FROM read_parquet('data/refined/cohort_graduation.parquet');
 CREATE OR REPLACE VIEW cohort_graduation_group AS
 SELECT * FROM read_parquet('data/refined/cohort_graduation_group.parquet');
 
+CREATE OR REPLACE VIEW professional_assignment AS
+SELECT * FROM read_parquet('data/refined/professional_assignment.parquet');
+
+CREATE OR REPLACE VIEW professional_staff AS
+SELECT * FROM read_parquet('data/refined/professional_staff.parquet');
+
 CREATE OR REPLACE VIEW afr_general_fund AS
 SELECT * FROM afr_expenditure WHERE fund_code = '10';

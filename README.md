@@ -18,7 +18,7 @@ Source: [github.com/bobruddy/pa_education_data](https://github.com/bobruddy/pa_e
 | `python -m pa_edu.publish` | Build `pde_site/`. The education job runs this after refreshing `data/`, then ships the image. |
 | `pa_edu/web/` | Source of truth for the LEA browser UI |
 
-Refined coverage today includes EdNA LEAs, General Fund Budget expenditures, AFR actuals (LEA and school), public-school enrollment (with gender/race cuts), PSSA/Keystone district proficiency, Act 1 indexes, real-estate tax mills, charter ADM, and home-education counts. Staff salaries still load through the older personnel path and are attached at publish time.
+Refined coverage today includes EdNA LEAs, General Fund Budget expenditures, AFR actuals (LEA and school), public-school enrollment (with gender/race cuts), PSSA/Keystone district proficiency, Act 1 indexes, real-estate tax mills, charter ADM, home-education counts, and professional-staff salaries. Staff tables are written by `python -m pa_edu.personnel` and attached at publish time.
 
 ## Run locally
 
@@ -44,7 +44,7 @@ A push to `main` runs the job on the education build host. The job runs the test
 
 `scripts/docker09.sh <sha>` pulls that image. It starts `pdenumbers` on port 8090 if the container is absent, and replaces it if it is already there. The site is http://192.168.10.116:8090/.
 
-`data/` is not in git. The job keeps it at `/home/jenkins/pde-data` on that host. `refine` and `personnel` download a PDE file only when that copy is not already there, then rebuild the Parquet and the personnel database from the cache.
+`data/` is not in git. The job keeps it at `/home/jenkins/pde-data` on that host. `refine` and `personnel` download a PDE file only when that copy is not already there, then rebuild the Parquet from the cache.
 
 ## Site
 
@@ -68,6 +68,6 @@ The older SQLite loaders (`python -m pa_edu.load`), Dash app (`python -m pa_edu.
 
 ```bash
 python -m pa_edu.load       # rebuilds data/pde.db
-python -m pa_edu.personnel  # professional-staff salaries into SQLite
+python -m pa_edu.personnel  # professional-staff salaries into data/refined/
 python -m pa_edu.app        # Dash chart at http://127.0.0.1:8050
 ```
