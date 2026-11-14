@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import re
 import sqlite3
+import time
 import urllib.parse
 from pathlib import Path
 
@@ -37,9 +38,30 @@ GRADE_COLUMNS = [
 ID_COLUMNS = ["aun", "lea_name", "lea_type", "county", "school_number", "school_name", "school_year"]
 
 
+def http_get(url: str, timeout: int = 180, attempts: int = 4) -> requests.Response:
+    """GET a PDE URL.
+
+    docker09 drops the occasional handshake to www.pa.gov. The kernel gives up
+    after about two minutes, and one failure used to stop the whole refine.
+    """
+    last: Exception | None = None
+    for attempt in range(attempts):
+        try:
+            response = requests.get(url, headers=HEADERS, timeout=(20, timeout))
+            response.raise_for_status()
+            return response
+        except (requests.ConnectionError, requests.Timeout) as exc:
+            last = exc
+            if attempt + 1 == attempts:
+                raise
+            time.sleep(min(5 * (attempt + 1), 15))
+    if last is None:
+        raise RuntimeError(url)
+    raise last
+
+
 def fetch_hrefs(url: str) -> list[str]:
-    response = requests.get(url, headers=HEADERS, timeout=60)
-    response.raise_for_status()
+    response = http_get(url, timeout=60)
     soup = BeautifulSoup(response.text, "html.parser")
     return [a["href"] for a in soup.find_all("a", href=True)]
 
@@ -60,8 +82,7 @@ def cache_download(url: str, directory: Path) -> Path:
     if destination.exists() and destination.stat().st_size > 0:
         return destination
     print(f"downloading {url}")
-    response = requests.get(url, headers=HEADERS, timeout=180)
-    response.raise_for_status()
+    response = http_get(url, timeout=180)
     destination.write_bytes(response.content)
     return destination
 

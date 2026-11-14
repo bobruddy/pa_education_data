@@ -12,7 +12,7 @@ from pathlib import Path
 import requests
 
 from pa_edu.catalog import CatalogEntry
-from pa_edu.common import HEADERS
+from pa_edu.common import HEADERS, http_get
 
 INDEX_NAME = "index.json"
 
@@ -87,8 +87,7 @@ def fetch(entry: CatalogEntry) -> tuple[bytes, str]:
     if entry.source_url.startswith("file:"):
         path = Path(file_url_path(entry.source_url))
         return path.read_bytes(), entry.filename or path.name
-    response = requests.get(entry.source_url, headers=HEADERS, timeout=600)
-    response.raise_for_status()
+    response = http_get(entry.source_url, timeout=600)
     name = entry.filename or _name_from_url(entry.source_url)
     return response.content, name
 
