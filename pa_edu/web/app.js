@@ -1,3 +1,5 @@
+import { applyFeedbackLinks, buildReady } from "./stamp.js?v=20261114a";
+
 const CATEGORIES = [
   ["school_district", "School district"],
   ["charter_school", "Charter"],
@@ -19,6 +21,12 @@ const tip = document.querySelector("#tip");
 let catalog = null;
 let leaPack = null;
 let toastTimer = 0;
+let buildStamp = null;
+
+buildReady.then((stamp) => {
+  buildStamp = stamp;
+  applyFeedbackLinks(buildStamp);
+});
 
 function asset(path) {
   return new URL(path, import.meta.url);
@@ -317,6 +325,7 @@ function writeUrl(state, mode) {
   if (next === location.pathname + location.search) return;
   if (mode === "push") history.pushState(null, "", next);
   else history.replaceState(null, "", next);
+  applyFeedbackLinks(buildStamp);
 }
 
 function putAssessmentParams(query, state) {
@@ -3805,6 +3814,7 @@ function escapeAttr(value) {
 }
 
 async function render() {
+  applyFeedbackLinks(buildStamp);
   const state = readState();
   if (!catalog) catalog = await loadJson("data/index.json");
   if (state.aun) {

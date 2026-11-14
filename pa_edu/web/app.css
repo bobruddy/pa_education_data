@@ -412,13 +412,29 @@ table.schools td.num, table.schools th.num { text-align: right; }
   color: var(--muted);
   font-size: 0.82rem;
 }
-.site-foot p {
+.site-foot-row {
   max-width: 1120px;
   margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
 }
-.site-foot p + p { margin-top: 6px; }
+.site-foot-notes { min-width: 0; }
+.site-foot-notes p { margin: 0; }
+.site-foot-notes p + p { margin-top: 6px; }
 .site-foot a { color: var(--muted); text-underline-offset: 2px; }
 .site-foot a:hover { color: var(--teal); }
+.site-stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin: 0;
+  text-align: right;
+  flex: none;
+}
+.site-stamp[hidden] { display: none; }
 
 #toast {
   position: fixed;
@@ -580,6 +596,8 @@ table.schools td.num, table.schools th.num { text-align: right; }
 @media (max-width: 800px) {
   .sun-layout { grid-template-columns: 1fr; }
   .brand-note { display: none; }
+  .site-foot-row { flex-direction: column; }
+  .site-stamp { align-items: flex-start; text-align: left; }
   .stats, .stats-wide, .stats-2, .stats-3, .panels, .lea-row, .salary-grid { grid-template-columns: 1fr 1fr; }
   .lea-row { grid-template-columns: 1fr auto; }
   .lea-row .hide-sm { display: none; }

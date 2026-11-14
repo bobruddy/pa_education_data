@@ -5,7 +5,8 @@ LEA JSON is stored gzipped (`index.json.gz`, `lea/<aun>.json.gz`). nginx
 `gzip_static` serves those for the `.json` URLs. Jenkins builds that directory
 into an image, pushes it, and replaces the container on docker09. The download
 portal is `pde_site/download/`. Its DuckDB views read the Parquet already
-published at https://pdenumbers.org.
+published at https://pdenumbers.org. `build.json` records the git commit and
+the UTC time publish finished; the footer reads that file.
 """
 
 from __future__ import annotations
@@ -13,6 +14,8 @@ from __future__ import annotations
 import gzip
 import json
 import shutil
+import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 import duckdb
@@ -24,6 +27,7 @@ from pa_edu.portal import DUCKDB_NAME, PUBLIC_TABLE_ROOT, build_portal, write_du
 
 OUT = ROOT / "pde_site"
 WEB = Path(__file__).resolve().parent / "web"
+REPO_URL = "https://github.com/bobruddy/pa_education_data"
 REFINED = DATA_DIR / "refined"
 PERSONNEL_PAGE = (
     "https://www.pa.gov/agencies/education/data-and-reporting/school-staff/"
@@ -216,7 +220,7 @@ def main() -> None:
         shutil.rmtree(OUT)
     data_dir = OUT / "data" / "lea"
     data_dir.mkdir(parents=True)
-    for name in ("index.html", "app.css", "app.js"):
+    for name in ("index.html", "app.css", "app.js", "stamp.js"):
         shutil.copyfile(WEB / name, OUT / name)
 
     rows = []
@@ -274,6 +278,51 @@ def main() -> None:
         schema_from=OUT / "download" / "tables",
     )
     print(f"wrote {OUT / 'download' / DUCKDB_NAME}")
+    stamp = write_build_stamp(OUT)
+    print(f"build {stamp['commitShort']} generated {stamp['generatedAt']}")
+
+
+def read_git_build(now: datetime | None = None) -> dict[str, str]:
+    """Commit identity plus the UTC time this publish finished."""
+    commit = _git("rev-parse", "HEAD")
+    committed_at = _git("log", "-1", "--format=%aI")
+    if now is None:
+        generated = datetime.now(timezone.utc)
+    elif now.tzinfo is None:
+        generated = now.replace(tzinfo=timezone.utc)
+    else:
+        generated = now.astimezone(timezone.utc)
+    return {
+        "commit": commit,
+        "commitShort": commit[:7],
+        "commitUrl": f"{REPO_URL}/commit/{commit}",
+        "committedAt": committed_at,
+        "generatedAt": generated.strftime("%Y-%m-%dT%H:%M:%SZ"),
+    }
+
+
+def write_build_stamp(out: Path, stamp: dict[str, str] | None = None) -> dict[str, str]:
+    payload = read_git_build() if stamp is None else stamp
+    _write_json(out / "build.json", payload)
+    return payload
+
+
+def _git(*args: str) -> str:
+    try:
+        result = subprocess.run(
+            ["git", *args],
+            cwd=ROOT,
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except (OSError, subprocess.CalledProcessError) as exc:
+        detail = (exc.stderr or "").strip() if isinstance(exc, subprocess.CalledProcessError) else str(exc)
+        raise SystemExit(f"git {' '.join(args)} failed: {detail or exc}") from exc
+    value = result.stdout.strip()
+    if not value:
+        raise SystemExit(f"git {' '.join(args)} returned nothing")
+    return value
 
 
 def _write_json(path: Path, payload: dict) -> None:

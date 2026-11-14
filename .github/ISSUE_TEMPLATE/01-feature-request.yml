@@ -22,3 +22,18 @@ body:
       description: The problem this solves, or who it helps.
     validations:
       required: true
+  - type: input
+    id: page
+    attributes:
+      label: Link to the page
+      description: The pdenumbers.org URL you were on, if this is about a specific view.
+      placeholder: "https://pdenumbers.org/"
+    validations:
+      required: false
+  - type: textarea
+    id: build
+    attributes:
+      label: Build
+      description: Commit and build time from the site. Leave this as-is.
+    validations:
+      required: false

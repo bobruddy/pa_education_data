@@ -125,12 +125,33 @@ td.num, th.num { text-align: right; white-space: nowrap; }
   font-size: 0.82rem;
   margin-top: auto;
 }
-.site-foot p { max-width: 1120px; margin: 0 auto; }
-.site-foot p + p { margin-top: 6px; }
+.site-foot-row {
+  max-width: 1120px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+.site-foot-notes { min-width: 0; }
+.site-foot-notes p { margin: 0; }
+.site-foot-notes p + p { margin-top: 6px; }
 .site-foot a { color: var(--muted); text-underline-offset: 2px; }
 .site-foot a:hover { color: var(--teal); }
+.site-stamp {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin: 0;
+  text-align: right;
+  flex: none;
+}
+.site-stamp[hidden] { display: none; }
 
 @media (max-width: 800px) {
   .counties { columns: 1; }
   h1 { font-size: 1.7rem; }
+  .site-foot-row { flex-direction: column; }
+  .site-stamp { align-items: flex-start; text-align: left; }
 }

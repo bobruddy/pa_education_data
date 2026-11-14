@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PDE data</title>
-<link rel="stylesheet" href="app.css?v=20261113e">
+<link rel="stylesheet" href="app.css?v=20261114a">
 </head>
 <body>
 <a class="skip" href="#app">Skip to content</a>
@@ -26,18 +26,31 @@
 </header>
 <main id="app" tabindex="-1"></main>
 <footer class="site-foot">
-  <p>
-    Source code:
-    <a href="https://github.com/bobruddy/pa_education_data">github.com/bobruddy/pa_education_data</a>
-  </p>
-  <p>
-    <a href="https://github.com/bobruddy/pa_education_data/issues/new/choose">Report an issue / request a feature</a>.
-    A free GitHub account is required.
-  </p>
-  <p><a class="site-link" href="download/">Download the tables</a></p>
+  <div class="site-foot-row">
+    <div class="site-foot-notes">
+      <p>
+        Source code:
+        <a href="https://github.com/bobruddy/pa_education_data">github.com/bobruddy/pa_education_data</a>
+      </p>
+      <p>
+        Report an issue / request a feature:
+        <a class="feedback" data-template="01-feature-request.yml" data-page-field="page" href="https://github.com/bobruddy/pa_education_data/issues/new?template=01-feature-request.yml">feature</a>,
+        <a class="feedback" data-template="02-data-problem.yml" data-page-field="page" href="https://github.com/bobruddy/pa_education_data/issues/new?template=02-data-problem.yml">data problem</a>,
+        or
+        <a class="feedback" data-template="03-site-bug.yml" data-page-field="url" href="https://github.com/bobruddy/pa_education_data/issues/new?template=03-site-bug.yml">site bug</a>.
+        A free GitHub account is required.
+      </p>
+      <p><a class="site-link" href="download/">Download the tables</a></p>
+    </div>
+    <p class="site-stamp" id="build-stamp" hidden>
+      <span>Commit <a href="https://github.com/bobruddy/pa_education_data"></a></span>
+      <span data-committed></span>
+      <span data-built></span>
+    </p>
+  </div>
 </footer>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="tip" role="tooltip" hidden></div>
-<script type="module" src="app.js?v=20261113e"></script>
+<script type="module" src="app.js?v=20261114a"></script>
 </body>
 </html>

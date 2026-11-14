@@ -25,9 +25,20 @@ def test_downloads_link_leaves_the_lea_browser() -> None:
     root = Path(__file__).resolve().parents[1]
     html = (root / "pa_edu" / "web" / "index.html").read_text(encoding="utf-8")
     script = (root / "pa_edu" / "web" / "app.js").read_text(encoding="utf-8")
+    stamp = (root / "pa_edu" / "web" / "stamp.js").read_text(encoding="utf-8")
     assert 'class="nav-link site-link" href="download/"' in html
     assert 'class="site-link" href="download/"' in html
     assert 'classList.contains("site-link")' in script
+    assert 'id="build-stamp"' in html
+    assert 'data-template="01-feature-request.yml"' in html
+    assert 'data-template="02-data-problem.yml"' in html
+    assert 'data-template="03-site-bug.yml"' in html
+    assert 'data-page-field="url"' in html
+    assert "build.json" in stamp
+    assert 'params.set("build"' in stamp
+    for name in ("01-feature-request.yml", "02-data-problem.yml", "03-site-bug.yml"):
+        body = (root / ".github" / "ISSUE_TEMPLATE" / name).read_text(encoding="utf-8")
+        assert "id: build" in body
 
 
 def test_portal_packages_one_county_and_keeps_lookup_tables(tmp_path: Path) -> None:
@@ -106,6 +117,8 @@ def test_portal_packages_one_county_and_keeps_lookup_tables(tmp_path: Path) -> N
     assert "Corrections (131000000)" in page
     assert "enrollment_headcount" in page
     assert 'href="../"' in page
+    assert 'id="build-stamp"' in page
+    assert 'src="../stamp.js?v=' in page
     schema = (out / "schema.sql").read_text(encoding="utf-8")
     assert "https://pdenumbers.org/download/tables/lea.parquet" in schema
     assert "schema=" not in schema

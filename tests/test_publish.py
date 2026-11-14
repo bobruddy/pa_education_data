@@ -1,5 +1,6 @@
 import gzip
 import json
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import numpy as np
@@ -16,8 +17,10 @@ from pa_edu.publish import (
     _write_json,
     _years_for,
     directory_row,
+    read_git_build,
     _revenue_chain,
     lea_document,
+    write_build_stamp,
 )
 
 
@@ -409,6 +412,34 @@ def test_keystone_year_is_kept_on_its_own() -> None:
     algebra = document["years"]["2024"]["keystone"]["algebra_i"]["011"]["All Students"]
     assert algebra["n"] == 410
     assert algebra["pct"] == 64.9
+
+
+def test_read_git_build_stamps_head_and_utc() -> None:
+    import subprocess
+
+    root = Path(__file__).resolve().parents[1]
+    head = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    committed = subprocess.check_output(["git", "log", "-1", "--format=%aI"], cwd=root, text=True).strip()
+    stamp = read_git_build(datetime(2026, 11, 14, 10, 4, 5, tzinfo=timezone(timedelta(hours=-5))))
+    assert stamp["commit"] == head
+    assert stamp["commitShort"] == head[:7]
+    assert stamp["commitUrl"] == f"https://github.com/bobruddy/pa_education_data/commit/{head}"
+    assert stamp["committedAt"] == committed
+    assert stamp["generatedAt"] == "2026-11-14T15:04:05Z"
+
+
+def test_write_build_stamp_is_gzipped_json(tmp_path: Path) -> None:
+    stamp = {
+        "commit": "a" * 40,
+        "commitShort": "aaaaaaa",
+        "commitUrl": "https://github.com/bobruddy/pa_education_data/commit/" + "a" * 40,
+        "committedAt": "2026-11-14T15:04:05-05:00",
+        "generatedAt": "2026-11-14T20:04:05Z",
+    }
+    write_build_stamp(tmp_path, stamp)
+    assert not (tmp_path / "build.json").exists()
+    stored = json.loads(gzip.decompress((tmp_path / "build.json.gz").read_bytes()))
+    assert stored == stamp
 
 
 def test_write_json_stores_gzip_for_nginx(tmp_path: Path) -> None:

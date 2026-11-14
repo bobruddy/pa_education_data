@@ -28,7 +28,7 @@ from pa_edu.common import DATA_DIR, ROOT
 PUBLIC_SITE = "https://pdenumbers.org"
 PUBLIC_TABLE_ROOT = f"{PUBLIC_SITE}/download/tables"
 DUCKDB_NAME = "pdenumbers.duckdb"
-ASSET_VERSION = "20261113c"
+ASSET_VERSION = "20261114a"
 WEB_CSS = Path(__file__).resolve().parent / "web" / "download.css"
 PORTAL_SQL = ROOT / "sql" / "portal.sql"
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -361,9 +361,19 @@ ORDER BY function_code, object_code, program_code;</pre>
   {unassigned_note}
 </main>
 <footer class="site-foot">
-  <p>Source code: <a href="https://github.com/bobruddy/pa_education_data">github.com/bobruddy/pa_education_data</a></p>
-  <p><a href="../">LEA browser</a></p>
+  <div class="site-foot-row">
+    <div class="site-foot-notes">
+      <p>Source code: <a href="https://github.com/bobruddy/pa_education_data">github.com/bobruddy/pa_education_data</a></p>
+      <p><a href="../">LEA browser</a></p>
+    </div>
+    <p class="site-stamp" id="build-stamp" hidden>
+      <span>Commit <a href="https://github.com/bobruddy/pa_education_data"></a></span>
+      <span data-committed></span>
+      <span data-built></span>
+    </p>
+  </div>
 </footer>
+<script type="module" src="../stamp.js?v={ASSET_VERSION}"></script>
 </body>
 </html>
 """

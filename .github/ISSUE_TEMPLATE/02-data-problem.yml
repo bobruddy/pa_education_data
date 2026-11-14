@@ -53,3 +53,10 @@ body:
       placeholder: "https://pdenumbers.org/"
     validations:
       required: false
+  - type: textarea
+    id: build
+    attributes:
+      label: Build
+      description: Commit and build time from the site. Leave this as-is.
+    validations:
+      required: false
