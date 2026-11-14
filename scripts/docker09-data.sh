@@ -2,22 +2,19 @@
 # Start the data container on docker09, or replace it.
 # Usage: scripts/docker09-data.sh <git sha>
 #
-# NFS is mounted at /var/pde inside the container. That container is the only
-# writer. It serves refined/<table>.parquet on port 8091, not 8090.
-# docker09 must have /etc/pde-data-nfs with one line: host:/export
+# NFS is blackhole:/mnt/tank04/pde_data, mounted at /var/pde inside the
+# container. That container is the only writer. It serves refined parquet
+# on port 8091, not 8090.
 set -eu
 tag=${1:?usage: scripts/docker09-data.sh <git sha>}
 image="192.168.150.59:443/pde-data:${tag}"
-ssh docker09 sh -s "$image" <<'EOF'
+nfs_host=blackhole
+nfs_path=/mnt/tank04/pde_data
+ssh docker09 sh -s "$image" "$nfs_host" "$nfs_path" <<'EOF'
 set -eu
 image=$1
-spec=$(tr -d '[:space:]' < /etc/pde-data-nfs)
-host=${spec%%:*}
-export_path=${spec#*:}
-if [ -z "$host" ] || [ -z "$export_path" ] || [ "$host" = "$spec" ]; then
-  echo "expected /etc/pde-data-nfs to contain host:/export" >&2
-  exit 2
-fi
+host=$2
+export_path=$3
 docker pull "$image"
 if ! docker volume inspect pde-nfs >/dev/null 2>&1; then
   docker volume create --driver local \
