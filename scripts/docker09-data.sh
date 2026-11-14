@@ -26,7 +26,10 @@ fi
 if docker inspect pde-data >/dev/null 2>&1; then
   docker rm -f pde-data >/dev/null
 fi
+# The bridge has no IPv6 route. www.pa.gov publishes an AAAA record, and
+# a connect to it returns ENETUNREACH. Keep the download on IPv4.
 docker run -d --name pde-data --restart unless-stopped \
+  --sysctl net.ipv6.conf.all.disable_ipv6=1 \
   -p 8091:8091 \
   -e PDE_ROOT=/app \
   -e PDE_DATA=/var/pde \
