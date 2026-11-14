@@ -325,6 +325,10 @@ def _git(*args: str) -> str:
     return value
 
 
+# Level 1. nginx gzip_static serves the body; the higher levels dominated publish.
+JSON_GZIP_LEVEL = 1
+
+
 def _write_json(path: Path, payload: dict) -> None:
     """Store JSON as ``path`` plus ``.gz`` for nginx ``gzip_static``.
 
@@ -332,7 +336,9 @@ def _write_json(path: Path, payload: dict) -> None:
     ``Content-Encoding: gzip`` and the browser inflates it.
     """
     body = json.dumps(payload, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
-    path.with_name(path.name + ".gz").write_bytes(gzip.compress(body, compresslevel=9, mtime=0))
+    path.with_name(path.name + ".gz").write_bytes(
+        gzip.compress(body, compresslevel=JSON_GZIP_LEVEL, mtime=0)
+    )
     path.unlink(missing_ok=True)
 
 

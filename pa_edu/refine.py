@@ -1,7 +1,20 @@
-"""Download cataloged PDE files and write the refined Parquet tables."""
+"""Download cataloged PDE files and write the refined Parquet tables.
+
+A stable file is parsed again when its bytes or its parser source have changed.
+Each document's tables are kept under ``data/refined/_parts/<document_id>/``
+and concatenated into the published parquet. An unchanged catalog leaves those
+files in place.
+"""
 
 from __future__ import annotations
 
+import hashlib
+import inspect
+import json
+import multiprocessing
+import os
+import shutil
+from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 
 import duckdb
@@ -206,6 +219,9 @@ ENROLLMENT_CATEGORY = {
 
 # Written by python -m pa_edu.personnel. refine must not replace an existing file.
 PERSONNEL_TABLES = ("professional_assignment", "professional_staff")
+PARTS_DIR = "_parts"
+STAMP_NAME = "_inputs.json"
+SHARD_VERSION = 1
 
 
 def main() -> None:
@@ -217,46 +233,221 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
     catalog_path = catalog_path or ROOT / "sources" / "catalog.toml"
     entries = load_catalog(catalog_path)
     index = load_index(data_dir)
-    catalog_tables = [
-        name for name in COLUMNS if name not in {"document", *PERSONNEL_TABLES}
-    ]
-    collected: dict[str, list[pd.DataFrame]] = {name: [] for name in catalog_tables}
-    functions: dict[str, str] = {}
-    objects: dict[str, str] = {}
-    revenues: dict[str, str] = {}
-    described: dict[str, dict[str, str]] = {"function": {}, "object": {}, "revenue": {}}
+    jobs = []
     for entry in entries:
         record = materialize(entry, data_dir, index)
         print(f"{entry.status:6} {entry.id}: {Path(record['path']).name}")
         if entry.status != "stable":
             continue
-        parser = PARSERS.get(entry.parser)
-        if parser is None:
+        if entry.parser not in PARSERS:
             raise RuntimeError(f"{entry.id} has no parser {entry.parser!r}")
-        try:
-            parsed = parser(Path(record["path"]), record)
-        except Exception as error:
-            raise RuntimeError(f"{entry.id} failed: {error}") from error
-        if entry.parser == "chart":
-            functions = _chart_names(parsed["function"], "function_code")
-            objects = _chart_names(parsed["object"], "object_code")
-            revenues = _chart_names(parsed["revenue"], "account_code")
-            described = {
-                "function": _chart_descriptions(parsed["function"], "function_code"),
-                "object": _chart_descriptions(parsed["object"], "object_code"),
-                "revenue": _chart_descriptions(parsed["revenue"], "account_code"),
+        jobs.append(_job(entry, record))
+    refined = data_dir / "refined"
+    refined.mkdir(parents=True, exist_ok=True)
+    stamp = _stamp(jobs, index)
+    if _stamp_matches(refined, stamp):
+        print(f"kept refined tables ({len(jobs)} documents)")
+    else:
+        _refresh(refined, jobs, stamp, index)
+    _ensure_personnel(refined)
+    _duckdb(data_dir / "pde.duckdb", refined)
+    print(f"wrote {data_dir / 'pde.duckdb'}")
+    return refined
+
+
+def _job(entry, record: dict) -> dict:
+    return {
+        "catalog_id": entry.id,
+        "document_id": record["document_id"],
+        "sha256": record["sha256"],
+        "parser": entry.parser,
+        "fingerprint": _fingerprint(entry.parser),
+        "path": record["path"],
+        "record": record,
+    }
+
+
+def _stamp(jobs: list[dict], index: dict) -> dict:
+    return {
+        "assembly": _assembly_fingerprint(),
+        "documents": sorted(
+            f"{document_id}:{record['sha256']}"
+            for document_id, record in index["documents"].items()
+        ),
+        "parsed": [
+            {
+                "catalog_id": job["catalog_id"],
+                "document_id": job["document_id"],
+                "fingerprint": job["fingerprint"],
+                "parser": job["parser"],
+                "sha256": job["sha256"],
             }
-            print(
-                f"         chart titles: {len(functions)} functions, "
-                f"{len(objects)} objects, {len(revenues)} revenue; "
-                f"descriptions: {len(described['function'])} functions, "
-                f"{len(described['object'])} objects, {len(described['revenue'])} revenue"
-            )
+            for job in jobs
+        ],
+    }
+
+
+def _stamp_matches(refined: Path, stamp: dict) -> bool:
+    path = refined / STAMP_NAME
+    if not path.exists():
+        return False
+    if json.loads(path.read_text()) != stamp:
+        return False
+    return all((refined / f"{name}.parquet").exists() for name in _output_tables())
+
+
+def _output_tables() -> list[str]:
+    return [name for name in COLUMNS if name not in PERSONNEL_TABLES]
+
+
+def _refresh(refined: Path, jobs: list[dict], stamp: dict, index: dict) -> None:
+    parts = refined / PARTS_DIR
+    parts.mkdir(parents=True, exist_ok=True)
+    missing = []
+    for job in jobs:
+        if _shard_ready(parts, job):
+            print(f"         kept {job['catalog_id']}")
             continue
-        for table, frame in parsed.items():
-            if frame is None or frame.empty:
+        print(f"         parse {job['catalog_id']}")
+        job["dest"] = str(parts / job["document_id"])
+        missing.append(job)
+    _parse_missing(missing)
+    collected, functions, objects, revenues, described = _load_parts(parts, jobs)
+    _publish_frames(refined, collected, functions, objects, revenues, described, index)
+    _drop_stale_parts(parts, {job["document_id"] for job in jobs})
+    (refined / STAMP_NAME).write_text(json.dumps(stamp, indent=2, sort_keys=True) + "\n")
+
+
+def _parse_missing(jobs: list[dict]) -> None:
+    if not jobs:
+        return
+    workers = min(len(jobs), os.cpu_count() or 1)
+    if workers == 1:
+        for job in jobs:
+            _parse_one(job)
+        return
+    # spawn: the parent has already imported pandas, and fork can deadlock on its locks.
+    context = multiprocessing.get_context("spawn")
+    with ProcessPoolExecutor(max_workers=workers, mp_context=context) as pool:
+        list(pool.map(_parse_one, jobs))
+
+
+def _parse_one(job: dict) -> None:
+    catalog_id = job["catalog_id"]
+    try:
+        parsed = PARSERS[job["parser"]](Path(job["path"]), job["record"])
+        _write_shard(Path(job["dest"]), job, parsed)
+    except Exception as error:
+        raise RuntimeError(f"{catalog_id} failed: {error}") from error
+
+
+def _write_shard(dest: Path, job: dict, parsed: dict) -> None:
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    temporary = dest.parent / f".{dest.name}.tmp"
+    if temporary.exists():
+        shutil.rmtree(temporary)
+    temporary.mkdir()
+    tables = []
+    for name, frame in parsed.items():
+        if frame is None or frame.empty:
+            continue
+        frame.to_parquet(temporary / f"{name}.parquet", index=False)
+        tables.append(name)
+    meta = {
+        "version": SHARD_VERSION,
+        "catalog_id": job["catalog_id"],
+        "document_id": job["document_id"],
+        "sha256": job["sha256"],
+        "parser": job["parser"],
+        "fingerprint": job["fingerprint"],
+        "tables": tables,
+    }
+    (temporary / "meta.json").write_text(json.dumps(meta, indent=2, sort_keys=True) + "\n")
+    if dest.exists():
+        shutil.rmtree(dest)
+    temporary.rename(dest)
+
+
+def _shard_ready(parts: Path, job: dict) -> bool:
+    directory = parts / job["document_id"]
+    meta_path = directory / "meta.json"
+    if not meta_path.is_file():
+        return False
+    meta = json.loads(meta_path.read_text())
+    if meta.get("version") != SHARD_VERSION:
+        return False
+    for key in ("catalog_id", "document_id", "sha256", "parser", "fingerprint"):
+        if meta.get(key) != job[key]:
+            return False
+    tables = meta.get("tables")
+    if not isinstance(tables, list):
+        return False
+    return all(isinstance(name, str) and (directory / f"{name}.parquet").is_file() for name in tables)
+
+
+def _load_parts(parts: Path, jobs: list[dict]):
+    catalog_tables = [name for name in COLUMNS if name not in {"document", *PERSONNEL_TABLES}]
+    collected: dict[str, list[pd.DataFrame]] = {name: [] for name in catalog_tables}
+    functions: dict[str, str] = {}
+    objects: dict[str, str] = {}
+    revenues: dict[str, str] = {}
+    described: dict[str, dict[str, str]] = {"function": {}, "object": {}, "revenue": {}}
+    for job in jobs:
+        directory = parts / job["document_id"]
+        meta = json.loads((directory / "meta.json").read_text())
+        frames = {
+            name: pd.read_parquet(directory / f"{name}.parquet")
+            for name in meta["tables"]
+        }
+        if job["parser"] == "chart":
+            functions, objects, revenues, described = _chart_fields(frames)
+            continue
+        for table, frame in frames.items():
+            if table not in collected:
+                raise RuntimeError(f"{job['catalog_id']} returned unknown table {table}")
+            if frame.empty:
                 continue
             collected[table].append(frame)
+    return collected, functions, objects, revenues, described
+
+
+def _chart_frame(parsed: dict, name: str, column: str) -> pd.DataFrame:
+    frame = parsed.get(name)
+    if frame is None:
+        return empty_frame([column, "name", "description"])
+    return frame
+
+
+def _chart_fields(parsed: dict):
+    function = _chart_frame(parsed, "function", "function_code")
+    obj = _chart_frame(parsed, "object", "object_code")
+    revenue = _chart_frame(parsed, "revenue", "account_code")
+    functions = _chart_names(function, "function_code")
+    objects = _chart_names(obj, "object_code")
+    revenues = _chart_names(revenue, "account_code")
+    described = {
+        "function": _chart_descriptions(function, "function_code"),
+        "object": _chart_descriptions(obj, "object_code"),
+        "revenue": _chart_descriptions(revenue, "account_code"),
+    }
+    print(
+        f"         chart titles: {len(functions)} functions, "
+        f"{len(objects)} objects, {len(revenues)} revenue; "
+        f"descriptions: {len(described['function'])} functions, "
+        f"{len(described['object'])} objects, {len(described['revenue'])} revenue"
+    )
+    return functions, objects, revenues, described
+
+
+def _publish_frames(
+    refined: Path,
+    collected: dict[str, list[pd.DataFrame]],
+    functions: dict[str, str],
+    objects: dict[str, str],
+    revenues: dict[str, str],
+    described: dict[str, dict[str, str]],
+    index: dict,
+) -> None:
     frames = {name: _concat(parts, COLUMNS[name]) for name, parts in collected.items()}
     frames["lea"] = _lea(
         frames["lea"],
@@ -276,16 +467,63 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
         described,
     )
     frames["document"] = _documents(index)
-    refined = data_dir / "refined"
-    refined.mkdir(parents=True, exist_ok=True)
     for name, frame in frames.items():
         frame = _align(frame, COLUMNS[name], SORT[name])
         frame.to_parquet(refined / f"{name}.parquet", index=False)
         print(f"wrote {name} {len(frame):,}")
-    _ensure_personnel(refined)
-    _duckdb(data_dir / "pde.duckdb", refined)
-    print(f"wrote {data_dir / 'pde.duckdb'}")
-    return refined
+
+
+def _drop_stale_parts(parts: Path, keep: set[str]) -> None:
+    for child in parts.iterdir():
+        if child.name in keep:
+            continue
+        if child.is_dir():
+            shutil.rmtree(child)
+        else:
+            child.unlink()
+
+
+def _fingerprint(parser_name: str) -> str:
+    module = inspect.getmodule(PARSERS[parser_name])
+    if module is None:
+        raise RuntimeError(f"{parser_name} has no module to fingerprint")
+    digest = hashlib.sha256()
+    root = ROOT.resolve()
+    for path in sorted(_pa_files(module, set()), key=lambda item: item.as_posix()):
+        digest.update(path.resolve().relative_to(root).as_posix().encode())
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+    return digest.hexdigest()
+
+
+def _pa_files(module, seen: set[str]) -> set[Path]:
+    """Parser source plus the pa_edu modules it calls.
+
+    ``from pa_edu.codes import as_code`` does not leave the module itself in
+    the parser's namespace, so follow those functions back to their files.
+    """
+    if module is None:
+        return set()
+    name = getattr(module, "__name__", "")
+    if not name.startswith("pa_edu") or name in seen:
+        return set()
+    seen.add(name)
+    found: set[Path] = set()
+    file = getattr(module, "__file__", None)
+    if file and file.endswith(".py"):
+        found.add(Path(file).resolve())
+    for value in vars(module).values():
+        if inspect.ismodule(value):
+            found.update(_pa_files(value, seen))
+            continue
+        if not (inspect.isfunction(value) or inspect.isclass(value)):
+            continue
+        found.update(_pa_files(inspect.getmodule(value), seen))
+    return found
+
+
+def _assembly_fingerprint() -> str:
+    return hashlib.sha256(Path(__file__).read_bytes()).hexdigest()
 
 
 def _concat(parts: list[pd.DataFrame], columns: list[str]) -> pd.DataFrame:

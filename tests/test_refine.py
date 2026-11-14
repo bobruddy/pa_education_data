@@ -1,9 +1,11 @@
 """Parser and rebuild tests. They use tiny workbooks, not PDE."""
 
+import json
 from pathlib import Path
 
 import duckdb
 import pandas as pd
+import pytest
 from openpyxl import Workbook
 
 from pa_edu.check import _grain, GRAIN
@@ -35,13 +37,13 @@ def _save(path: Path, sheets: dict[str, list[list]]) -> None:
     book.save(path)
 
 
-def _gfb_book(path: Path) -> None:
+def _gfb_book(path: Path, amount: int = 5) -> None:
     _save(
         path,
         {
             "Exp": [
                 ["InstCat", "AUN", "InstName", "CountyName", "1100-100", "1100-200", "Notes", ""],
-                [1, 101260303.0, "Albert Gallatin Area SD", "Fayette", 5, 0, "ignore", None],
+                [1, 101260303.0, "Albert Gallatin Area SD", "Fayette", amount, 0, "ignore", None],
                 [2, 101000000, "Intermediate Unit 1", "Washington", 9, 1, None, None],
             ],
             "IUExp_Prog": [
@@ -453,6 +455,119 @@ def test_review_is_downloaded_and_not_parsed(tmp_path: Path) -> None:
         """
     ).fetchone()[0]
     assert cited == afr.as_uri()
+
+
+def _finance_catalog(tmp_path: Path, amount: int = 5) -> tuple[Path, Path, Path]:
+    raw = tmp_path / "files"
+    gfb = raw / "gfb.xlsx"
+    afr = raw / "afr.xlsx"
+    enrollment = raw / "enrollment.xlsx"
+    _gfb_book(gfb, amount)
+    _afr_book(afr)
+    _enrollment_book(enrollment)
+    catalog = tmp_path / "catalog.toml"
+    _catalog(catalog, gfb=gfb, afr=afr, enrollment=enrollment)
+    return tmp_path / "data", catalog, gfb
+
+
+def _corrupt_cached(data: Path, keep: set[str] | None = None) -> None:
+    kept = keep or set()
+    for record in load_index(data)["documents"].values():
+        if record["catalog_id"] in kept:
+            continue
+        Path(record["path"]).write_bytes(b"not a workbook")
+
+
+def _district_gfb(data: Path) -> float:
+    expenses = pd.read_parquet(data / "refined" / "gfb_expenditure.parquet")
+    district = expenses.loc[expenses["aun"] == "101260303"]
+    assert district["aun"].tolist()
+    assert all(isinstance(value, str) for value in district["aun"])
+    return float(district["amount"].sum())
+
+
+def test_unchanged_refine_keeps_tables_without_rereading(tmp_path: Path, capsys) -> None:
+    data, catalog, _gfb = _finance_catalog(tmp_path)
+    run(data, catalog)
+    capsys.readouterr()
+    _corrupt_cached(data)
+    run(data, catalog)
+    assert "kept refined tables" in capsys.readouterr().out
+    assert _district_gfb(data) == 5
+
+
+def test_stale_parser_fingerprint_reparses_that_document_only(tmp_path: Path) -> None:
+    data, catalog, _gfb = _finance_catalog(tmp_path)
+    run(data, catalog)
+    metas = list((data / "refined" / "_parts").glob("gfb-*/meta.json"))
+    assert len(metas) == 1
+    meta = json.loads(metas[0].read_text())
+    meta["fingerprint"] = "stale"
+    metas[0].write_text(json.dumps(meta))
+    stamp_path = data / "refined" / "_inputs.json"
+    stamp = json.loads(stamp_path.read_text())
+    for row in stamp["parsed"]:
+        if row["catalog_id"] == "gfb":
+            row["fingerprint"] = "stale"
+    stamp_path.write_text(json.dumps(stamp))
+    _corrupt_cached(data, keep={"gfb"})
+    run(data, catalog)
+    restored = json.loads(metas[0].read_text())
+    assert restored["fingerprint"] != "stale"
+    assert _district_gfb(data) == 5
+    actual = pd.read_parquet(data / "refined" / "afr_expenditure.parquet")
+    assert float(actual.loc[actual["fund_code"].astype(str) == "10", "total_amount"].sum()) == 5
+
+
+def test_a_new_hash_reparses_only_that_document(tmp_path: Path) -> None:
+    data, catalog, gfb = _finance_catalog(tmp_path)
+    run(data, catalog)
+    for record in load_index(data)["documents"].values():
+        path = Path(record["path"])
+        if record["catalog_id"] == "gfb":
+            path.unlink()
+        else:
+            path.write_bytes(b"not a workbook")
+    _gfb_book(gfb, amount=7)
+    run(data, catalog)
+    assert _district_gfb(data) == 7
+    actual = pd.read_parquet(data / "refined" / "afr_expenditure.parquet")
+    assert float(actual.loc[actual["fund_code"].astype(str) == "10", "total_amount"].sum()) == 5
+
+
+def test_a_bad_workbook_names_the_catalog_entry(tmp_path: Path) -> None:
+    raw = tmp_path / "files"
+    bad = raw / "bad.xlsx"
+    afr = raw / "afr.xlsx"
+    _afr_book(afr)
+    bad.write_bytes(b"not a workbook")
+    catalog = tmp_path / "catalog.toml"
+    catalog.write_text(
+        "\n".join(
+            [
+                "[[document]]",
+                'id = "gfb"',
+                'source_id = "test"',
+                f'source_url = "{bad.as_uri()}"',
+                f'page_url = "{bad.as_uri()}"',
+                'parser = "gfb"',
+                'status = "stable"',
+                "school_year = 2019",
+                "",
+                "[[document]]",
+                'id = "afr"',
+                'source_id = "test"',
+                f'source_url = "{afr.as_uri()}"',
+                f'page_url = "{afr.as_uri()}"',
+                'parser = "afr"',
+                'status = "stable"',
+                "school_year = 2024",
+                "",
+            ]
+        )
+    )
+    with pytest.raises(RuntimeError, match="gfb failed"):
+        run(tmp_path / "data", catalog)
 
 
 def test_a_second_hash_keeps_the_first_file(tmp_path: Path) -> None:

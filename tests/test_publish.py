@@ -8,6 +8,7 @@ import pandas as pd
 
 from pa_edu.publish import (
     EXPERIENCE_EDGES,
+    JSON_GZIP_LEVEL,
     _county_ranks,
     _experience_stats,
     _percent_points,
@@ -447,8 +448,11 @@ def test_write_json_stores_gzip_for_nginx(tmp_path: Path) -> None:
     target.write_text("stale", encoding="utf-8")
     _write_json(target, {"aun": "101260303", "years": {}})
     assert not target.exists()
-    stored = json.loads(gzip.decompress((tmp_path / "101260303.json.gz").read_bytes()))
+    compressed = (tmp_path / "101260303.json.gz").read_bytes()
+    stored = json.loads(gzip.decompress(compressed))
     assert stored == {"aun": "101260303", "years": {}}
+    assert JSON_GZIP_LEVEL == 1
+    assert compressed[8] == 4
 
 
 def test_directory_row_keeps_a_missing_actual() -> None:
