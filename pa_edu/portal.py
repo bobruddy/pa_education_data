@@ -28,7 +28,7 @@ from pa_edu.common import DATA_DIR, ROOT
 PUBLIC_SITE = "https://pdenumbers.org"
 PUBLIC_TABLE_ROOT = f"{PUBLIC_SITE}/download/tables"
 DUCKDB_NAME = "pdenumbers.duckdb"
-ASSET_VERSION = "20261114a"
+ASSET_VERSION = "20261114b"
 WEB_CSS = Path(__file__).resolve().parent / "web" / "download.css"
 PORTAL_SQL = ROOT / "sql" / "portal.sql"
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")

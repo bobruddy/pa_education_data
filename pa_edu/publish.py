@@ -6,7 +6,7 @@ LEA JSON is stored gzipped (`index.json.gz`, `lea/<aun>.json.gz`). nginx
 into an image, pushes it, and replaces the container on docker09. The download
 portal is `pde_site/download/`. Its DuckDB views read the Parquet already
 published at https://pdenumbers.org. `build.json` records the git commit and
-the UTC time publish finished; the footer reads that file.
+when publish finished. The footer shows those times in US/Eastern.
 """
 
 from __future__ import annotations

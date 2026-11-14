@@ -10,17 +10,22 @@ async function loadBuild() {
   }
 }
 
-function formatUtc(iso) {
+function formatEastern(iso) {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return String(iso ?? "");
-  const pad = (value) => String(value).padStart(2, "0");
-  const day = [
-    date.getUTCFullYear(),
-    pad(date.getUTCMonth() + 1),
-    pad(date.getUTCDate()),
-  ].join("-");
-  const time = [pad(date.getUTCHours()), pad(date.getUTCMinutes()), pad(date.getUTCSeconds())].join(":");
-  return `${day} ${time} UTC`;
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: "America/New_York",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(date);
+  const get = (type) => parts.find((part) => part.type === type)?.value ?? "";
+  const hour = get("hour") === "24" ? "00" : get("hour");
+  return `${get("year")}-${get("month")}-${get("day")} ${hour}:${get("minute")}:${get("second")} US/Eastern`;
 }
 
 export function applyBuildStamp(stamp) {
@@ -32,8 +37,8 @@ export function applyBuildStamp(stamp) {
   link.title = stamp.commit;
   const committed = el.querySelector("[data-committed]");
   const built = el.querySelector("[data-built]");
-  if (committed) committed.textContent = "Committed " + formatUtc(stamp.committedAt);
-  if (built) built.textContent = "Built " + formatUtc(stamp.generatedAt);
+  if (committed) committed.textContent = "Committed " + formatEastern(stamp.committedAt);
+  if (built) built.textContent = "Built " + formatEastern(stamp.generatedAt);
   el.hidden = false;
 }
 
@@ -50,8 +55,8 @@ export function applyFeedbackLinks(stamp) {
       params.set("build", [
         `Commit: ${stamp.commit}`,
         `Commit URL: ${stamp.commitUrl}`,
-        `Committed: ${stamp.committedAt}`,
-        `Built: ${stamp.generatedAt}`,
+        `Committed: ${formatEastern(stamp.committedAt)}`,
+        `Built: ${formatEastern(stamp.generatedAt)}`,
         `Page: ${page}`,
       ].join("\n"));
     }
