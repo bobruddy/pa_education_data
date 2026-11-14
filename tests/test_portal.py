@@ -108,6 +108,7 @@ def test_portal_packages_one_county_and_keeps_lookup_tables(tmp_path: Path) -> N
     assert 'href="../"' in page
     schema = (out / "schema.sql").read_text(encoding="utf-8")
     assert "https://pdenumbers.org/download/tables/lea.parquet" in schema
+    assert "schema=" not in schema
     assert "INSTALL httpfs;" in schema
 
     adams = _unzip(out / "counties" / "adams.zip", tmp_path / "adams")
@@ -167,6 +168,45 @@ def test_unknown_refined_table_is_rejected(tmp_path: Path) -> None:
     _write(refined / "extra.parquet", "SELECT 1 AS n")
     with pytest.raises(SystemExit, match="extra.parquet"):
         build_portal(tmp_path / "download", refined)
+
+
+def test_public_duckdb_binds_columns_without_fetching(tmp_path: Path) -> None:
+    tables = tmp_path / "tables"
+    tables.mkdir()
+    _write(tables / "lea.parquet", """
+        SELECT '101260303' AS aun, 'Albert Gallatin Area SD' AS lea_name,
+               'school_district' AS category, true AS in_directory
+    """)
+    database = tmp_path / "pdenumbers.duckdb"
+    write_duckdb(
+        database,
+        "https://127.0.0.1:9/download/tables",
+        ["lea"],
+        schema_from=tables,
+        extension_directory=tmp_path / "extensions",
+    )
+    connection = duckdb.connect(
+        str(database),
+        read_only=True,
+        config={
+            "extension_directory": str(tmp_path / "extensions"),
+            "home_directory": str(tmp_path / "extensions"),
+        },
+    )
+    try:
+        sql = connection.execute(
+            "SELECT sql FROM duckdb_views() WHERE view_name = 'lea'"
+        ).fetchone()[0]
+        assert "https://127.0.0.1:9/download/tables/lea.parquet" in sql
+        assert '"schema"' in sql
+        assert str(tables) not in sql
+        columns = connection.execute("DESCRIBE SELECT * FROM lea").fetchall()
+        assert [row[0] for row in columns] == ["aun", "lea_name", "category", "in_directory"]
+        assert [row[1] for row in columns] == ["VARCHAR", "VARCHAR", "VARCHAR", "BOOLEAN"]
+        district = connection.execute("DESCRIBE SELECT * FROM school_district").fetchall()
+        assert [row[0] for row in district] == ["aun", "lea_name", "category", "in_directory"]
+    finally:
+        connection.close()
 
 
 def test_duckdb_views_read_parquet_over_http(tmp_path: Path) -> None:

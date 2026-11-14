@@ -21,7 +21,7 @@ Keep the portal in the same change as a new or reshaped table:
 - New views go in `sql/portal.sql` with `-- view:`, `-- needs:`, and `-- about:`. They keep published grain. Do not sum budget with actuals, or a parent account with its children.
 - SPA links to `download/` use class `site-link`.
 
-The DuckDB views read `https://pdenumbers.org/download/tables/*.parquet`. DuckDB opens each file while the view is created. `python -m pa_edu.portal` is a local preview and points that database at local files. Do not put the preview database in the image.
+The DuckDB views read `https://pdenumbers.org/download/tables/*.parquet`. Publish binds each view's columns from the local Parquet, so a new table can be created before that URL is on the site. `schema.sql` stays the short form, without that column map. `python -m pa_edu.portal` is a local preview and points that database at local files. Do not put the preview database in the image.
 
 ## JSON shape
 

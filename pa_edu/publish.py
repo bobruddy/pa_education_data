@@ -271,6 +271,7 @@ def main() -> None:
         OUT / "download" / DUCKDB_NAME,
         PUBLIC_TABLE_ROOT,
         [item["name"] for item in manifest["tables"]],
+        schema_from=OUT / "download" / "tables",
     )
     print(f"wrote {OUT / 'download' / DUCKDB_NAME}")
 

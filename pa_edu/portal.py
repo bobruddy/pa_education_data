@@ -1,9 +1,9 @@
 """Download portal for the refined tables.
 
 `python -m pa_edu.publish` writes this under `pde_site/download/` and deploys it
-with the LEA browser. The DuckDB file is a second step: its views read the
-Parquet URLs on https://pdenumbers.org, and DuckDB opens those files while the
-views are created, so the tables have to be on the site first.
+with the LEA browser. The DuckDB file's views read the Parquet URLs on
+https://pdenumbers.org. Publish binds each view's columns from the local
+Parquet, so a new table can be created before that URL is on the site.
 
 `python -m pa_edu.portal` builds the same directory locally and points the
 DuckDB file at the local Parquet copies.
@@ -148,11 +148,18 @@ def views_for(tables: list[str], views: list[PortalView] | None = None) -> list[
     return chosen
 
 
-def schema_sql(parquet_base: str, tables: list[str], views: list[PortalView] | None = None) -> str:
+def schema_sql(
+    parquet_base: str,
+    tables: list[str],
+    views: list[PortalView] | None = None,
+    schemas: dict[str, str] | None = None,
+) -> str:
     """CREATE statements for base tables and the useful views.
 
     `parquet_base` is a URL or directory, with no trailing slash. An empty
     string means each view reads `name.parquet` from the working directory.
+    `schemas` maps a table to a DuckDB `MAP { ... }` of column types. Publish
+    passes that so DuckDB can create a public URL view before the file is online.
     """
     lines = [
         "-- Views over the refined Parquet tables.",
@@ -167,8 +174,13 @@ def schema_sql(parquet_base: str, tables: list[str], views: list[PortalView] | N
         ])
     for name in tables:
         _require_name(name)
+        clause = ""
+        if schemas is not None:
+            if name not in schemas:
+                raise SystemExit(f"{name} has no column schema")
+            clause = f", schema={schemas[name]}"
         lines.append(
-            f"CREATE OR REPLACE VIEW {name} AS SELECT * FROM read_parquet('{_parquet_ref(parquet_base, name)}');"
+            f"CREATE OR REPLACE VIEW {name} AS SELECT * FROM read_parquet('{_parquet_ref(parquet_base, name)}'{clause});"
         )
     lines.append("")
     for view in views_for(tables, views):
@@ -186,13 +198,19 @@ def write_duckdb(
     *,
     search_path: Path | None = None,
     extension_directory: Path | None = None,
+    schema_from: Path | None = None,
 ) -> None:
     """Create a DuckDB file whose views read `parquet_base`.
 
-    HTTP bases are retried. DuckDB reads each Parquet footer while it creates
-    the view, so those URLs have to respond before this returns.
+    Without `schema_from`, an HTTP base is retried. DuckDB reads each Parquet
+    footer while it creates the view, so those URLs have to respond first.
+    `schema_from` is a directory of local `<table>.parquet` files. Publish
+    passes the tables it just wrote. The view still names the public URL, and
+    the column types come from the local file, so a new table does not have to
+    be on the site yet.
     """
-    attempts = 5 if parquet_base.startswith("http") else 1
+    schemas = _column_schemas(schema_from, tables) if schema_from is not None else None
+    attempts = 5 if parquet_base.startswith("http") and schemas is None else 1
     for attempt in range(attempts):
         try:
             _write_duckdb_once(
@@ -201,6 +219,7 @@ def write_duckdb(
                 tables,
                 search_path=search_path,
                 extension_directory=extension_directory,
+                schemas=schemas,
             )
             return
         except duckdb.Error as error:
@@ -306,7 +325,7 @@ def render_html(
   </p>
 
   <h2 id="database">Database</h2>
-  <p><a href="{DUCKDB_NAME}">{DUCKDB_NAME}</a> is the view definitions. The rows stay in the Parquet files. Querying it needs a network connection. <a href="schema.sql">schema.sql</a> is the same SQL.</p>
+  <p><a href="{DUCKDB_NAME}">{DUCKDB_NAME}</a> is the view definitions. The rows stay in the Parquet files. Querying it needs a network connection. <a href="schema.sql">schema.sql</a> is those same views.</p>
   <pre>INSTALL httpfs;
 LOAD httpfs;
 
@@ -360,6 +379,40 @@ def main() -> None:
     print("python -m pa_edu.publish replaces it with views that read https://pdenumbers.org/download/tables/")
 
 
+def _column_schemas(directory: Path, tables: list[str]) -> dict[str, str]:
+    connection = duckdb.connect()
+    try:
+        schemas = {}
+        for name in tables:
+            _require_name(name)
+            path = directory / f"{name}.parquet"
+            if not path.exists():
+                raise SystemExit(f"{path} is missing")
+            schemas[name] = _schema_map(connection, path)
+        return schemas
+    finally:
+        connection.close()
+
+
+def _schema_map(connection: duckdb.DuckDBPyConnection, path: Path) -> str:
+    rows = connection.execute(
+        "DESCRIBE SELECT * FROM read_parquet(?)",
+        [str(path)],
+    ).fetchall()
+    if not rows:
+        raise SystemExit(f"{path.name} has no columns")
+    entries = []
+    for name, typ, *_rest in rows:
+        _require_name(str(name))
+        entries.append(
+            "{key}: {{'name': {key}, 'type': {typ}, 'default_value': NULL}}".format(
+                key=_sql_string(str(name)),
+                typ=_sql_string(str(typ)),
+            )
+        )
+    return "MAP {" + ", ".join(entries) + "}"
+
+
 def _write_duckdb_once(
     database: Path,
     parquet_base: str,
@@ -367,6 +420,7 @@ def _write_duckdb_once(
     *,
     search_path: Path | None,
     extension_directory: Path | None,
+    schemas: dict[str, str] | None = None,
 ) -> None:
     database.parent.mkdir(parents=True, exist_ok=True)
     if database.exists():
@@ -385,7 +439,7 @@ def _write_duckdb_once(
         elif parquet_base.startswith("http"):
             connection.execute("INSTALL httpfs")
             connection.execute("LOAD httpfs")
-        connection.execute(schema_sql(parquet_base, tables))
+        connection.execute(schema_sql(parquet_base, tables, schemas=schemas))
     except Exception:
         connection.close()
         database.unlink(missing_ok=True)
