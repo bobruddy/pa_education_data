@@ -205,6 +205,16 @@ h1 {
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--teal) 55%, transparent);
 }
 .stat-pick:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+.stat-link { position: relative; }
+.stat-hit {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+}
+.stat-link .rank-wrap { z-index: 2; }
+.stat-link:hover { border-color: color-mix(in srgb, var(--teal) 35%, var(--line)); }
+.stat-hit:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
 .stat .label-row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
 .stat .label { color: var(--muted); font-size: 0.85rem; }
 .rank-wrap { position: relative; flex: none; }

@@ -115,6 +115,11 @@ const KEYSTONE_SUBJECTS = [
 ];
 const KEYSTONE_SUBJECT_IDS = KEYSTONE_SUBJECTS.map(([id]) => id);
 const KEYSTONE_LABEL = Object.fromEntries(KEYSTONE_SUBJECTS);
+// Detail-page cards shown on the overview, one row per group.
+const OVERVIEW_CARDS = [
+  ["enrollment", "pssa.math", "pssa.ela", "perStudent"],
+  ["keystone.algebra_i", "keystone.literature", "keystone.biology"],
+];
 const KEYSTONE_METRICS = [
   ["pct", "Proficient+"],
   ["advanced", "Advanced"],
@@ -965,68 +970,143 @@ function paintLea(state) {
 }
 
 function financeStats(block, priorBlock, priorYear, year) {
-  const enrolled = enrollmentOf(block);
   const actual = sumMap(block.actual);
   const budget = sumMap(block.budget);
-  const priorEnrolled = enrollmentOf(priorBlock);
   const priorActual = sumMap(priorBlock.actual);
   const priorBudget = sumMap(priorBlock.budget);
-  const currentCost = perStudentCost(block, year);
-  const priorCost = perStudentCost(priorBlock, priorYear);
-  const perPupil = currentCost?.value ?? null;
-  const priorPerPupil = priorCost?.value ?? null;
-  const perLabel = currentCost?.basis === "budget" ? "Budget per student" : "Actual per student";
-  const ranks = block.countyRanks || {};
   return [
-    stat("October 1 enrollment", enrolled == null ? "Not published" : count(enrolled), yearDelta(enrolled, priorEnrolled, priorYear), year, ranks.enrollment, "count"),
-    stat("General fund actual", money(actual), yearDelta(actual, priorActual, priorYear), "", ranks.actual, "money"),
-    stat("General fund budget", money(budget), `${yearDelta(budget, priorBudget, priorYear)}${act1Note(block)}${millNote(block, priorBlock, priorYear)}`, "", ranks.budget, "money"),
-    stat(perLabel, perPupil == null ? "Not published" : money(perPupil, 0), `${yearDelta(perPupil, priorPerPupil, priorYear)}${currentCost?.note || ""}`, "", ranks.perStudent, "money0"),
+    renderStat(enrollmentCard({ year, yearNote: false })),
+    stat("General fund actual", money(actual), yearDelta(actual, priorActual, priorYear), "", block.countyRanks?.actual, "money"),
+    stat("General fund budget", money(budget), `${yearDelta(budget, priorBudget, priorYear)}${act1Note(block)}${millNote(block, priorBlock, priorYear)}`, "", block.countyRanks?.budget, "money"),
+    renderStat(perStudentCard({ year, yearNote: false, title: false })),
   ].join("");
 }
 
+function cardById(id) {
+  if (id === "enrollment") return enrollmentCard();
+  if (id === "perStudent") return perStudentCard();
+  const splitAt = id.indexOf(".");
+  if (splitAt === -1) return null;
+  const family = id.slice(0, splitAt);
+  const subject = id.slice(splitAt + 1);
+  if (family === "pssa" && PSSA_SUBJECT_IDS.includes(subject)) return proficiencyCard("pssa", subject);
+  if (family === "keystone" && KEYSTONE_SUBJECT_IDS.includes(subject)) return proficiencyCard("keystone", subject);
+  return null;
+}
+
+function enrollmentCard(options = {}) {
+  const year = Object.hasOwn(options, "year") ? String(options.year || "") : enrollmentAnchorYear();
+  const block = blockFor(year);
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const enrolled = enrollmentOf(block);
+  const priorEnrolled = priorYear ? enrollmentOf(blockFor(priorYear)) : null;
+  return {
+    published: Boolean(year) && enrolled != null,
+    label: "October 1 enrollment",
+    value: enrolled == null ? "Not published" : count(enrolled),
+    extra: `${yearDelta(enrolled, priorEnrolled, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`,
+    title: year,
+    rank: block.countyRanks?.enrollment,
+    kind: "count",
+    tab: "enrollment",
+    year,
+  };
+}
+
+function latestActualCostYear() {
+  const years = Object.keys(leaPack?.years || {})
+    .map(Number)
+    .filter((year) => perStudentCost(blockFor(year), year)?.basis === "actual")
+    .sort((a, b) => a - b);
+  return years.at(-1) ?? "";
+}
+
+function perStudentCard(options = {}) {
+  const year = Object.hasOwn(options, "year") ? String(options.year || "") : String(latestActualCostYear() || "");
+  const block = blockFor(year);
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const current = year ? perStudentCost(block, year) : null;
+  const prior = priorYear ? perStudentCost(blockFor(priorYear), priorYear) : null;
+  const value = current?.value ?? null;
+  const priorValue = prior?.value ?? null;
+  return {
+    published: current?.basis === "actual" && value != null,
+    label: current?.basis === "budget" ? "Budget per student" : "Actual per student",
+    value: value == null ? "Not published" : money(value, 0),
+    extra: `${yearDelta(value, priorValue, priorYear)}${current?.note || ""}${options.yearNote === false ? "" : yearNote(year)}`,
+    title: options.title === false ? "" : year,
+    rank: block.countyRanks?.perStudent,
+    kind: "money0",
+    tab: "financials",
+    year,
+  };
+}
+
+function proficiencyCard(family, subject) {
+  const keystone = family === "keystone";
+  const years = keystone ? keystoneYears(subject) : pssaYears(subject);
+  const year = years.length ? years[years.length - 1] : null;
+  const priorYear = year == null ? null : priorIn(years, year);
+  const cell = year == null ? null : (keystone ? keystoneCell(year, subject, "All Students") : pssaTotal(year, subject, "All Students"));
+  const prior = priorYear == null ? null : (keystone ? keystoneCell(priorYear, subject, "All Students") : pssaTotal(priorYear, subject, "All Students"));
+  const ranks = year == null ? {} : (blockFor(year).countyRanks || {});
+  const name = keystone ? KEYSTONE_LABEL[subject] : PSSA_SUBJECT_LABEL[subject];
+  const scored = keystone ? "grade 11" : "grades 3–8";
+  return {
+    published: year != null,
+    label: `${name} · proficient+`,
+    value: cell?.pct == null ? "Not published" : `${Number(cell.pct).toFixed(1)}%`,
+    extra: `${yearDeltaPoints(cell?.pct, prior?.pct, priorYear)}${cell?.n != null ? `<div class="note">${count(cell.n)} scored · ${scored}</div>` : ""}${yearNote(year)}`,
+    title: year,
+    rank: ranks[`${family}_${subject}`],
+    kind: "pct",
+    tab: family,
+    subject,
+    year,
+  };
+}
+
+function renderStat(card, options = {}) {
+  if (!card) return "";
+  return stat(card.label, card.value, card.extra, card.title, card.rank, card.kind, options);
+}
+
+function cardHref(card) {
+  const state = readState();
+  const tab = card.tab;
+  return link({
+    ...state,
+    tab,
+    subject: card.subject || (tab === "keystone" ? "algebra_i" : "math"),
+    year: tab === "financials" ? String(card.year || "") : "",
+    budget: "",
+    income: "",
+    spend: "",
+    unit: "student",
+  });
+}
+
+function statsGridClass(count) {
+  if (count === 2) return "stats stats-2";
+  if (count === 3) return "stats stats-3";
+  if (count >= 4) return "stats stats-wide";
+  return "stats";
+}
+
 function paintOverview() {
+  const host = app.querySelector("#overview-stats");
+  host.innerHTML = OVERVIEW_CARDS.map((ids) => {
+    const cards = ids.map((id) => cardById(id)).filter((card) => card?.published);
+    if (!cards.length) return "";
+    const html = cards.map((card) => renderStat(card, { href: cardHref(card) })).join("");
+    return `<div class="${statsGridClass(cards.length)}">${html}</div>`;
+  }).join("");
   const enrollYear = enrollmentAnchorYear();
   const enrollBlock = blockFor(enrollYear);
-  const priorEnrollYear = String(Number(enrollYear) - 1);
-  const pssaYear = latestYear((block) => block.pssa?.math?.total?.["All Students"] || block.pssa?.ela?.total?.["All Students"]);
-  const pssaBlock = blockFor(pssaYear);
-  const spendYear = latestYear((block) => enrollmentOf(block) && operatingActual(block) != null);
-  const spendBlock = blockFor(spendYear);
-  const enrolled = enrollmentOf(enrollBlock);
-  const pssaMath = pssaBlock.pssa?.math?.total?.["All Students"];
-  const pssaEla = pssaBlock.pssa?.ela?.total?.["All Students"];
-  const spending = operatingActual(spendBlock);
-  const spendEnrolled = enrollmentOf(spendBlock);
-  const perPupil = spendEnrolled && spending != null ? spending / spendEnrolled : null;
-  const host = app.querySelector("#overview-stats");
-  host.innerHTML = [
-    stat("October 1 enrollment", enrolled == null ? "Not published" : count(enrolled), `${yearDelta(enrolled, enrollmentOf(blockFor(priorEnrollYear)), priorEnrollYear)}${yearNote(enrollYear)}`, enrollYear, enrollBlock.countyRanks?.enrollment, "count"),
-    stat("PSSA math proficient+", pssaMath?.pct == null ? "Not published" : `${Number(pssaMath.pct).toFixed(1)}%`, pssaMath?.n != null ? `<div class="note">${count(pssaMath.n)} scored · ${yearLabel(pssaYear)}</div>` : yearNote(pssaYear)),
-    stat("PSSA ELA proficient+", pssaEla?.pct == null ? "Not published" : `${Number(pssaEla.pct).toFixed(1)}%`, pssaEla?.n != null ? `<div class="note">${count(pssaEla.n)} scored · ${yearLabel(pssaYear)}</div>` : yearNote(pssaYear)),
-    stat("Actual per student", perPupil == null ? "Not published" : money(perPupil, 0), `<div class="note">${spendYear ? yearLabel(spendYear) + " · " : ""}Excludes charter tuition</div>`, spendYear, spendBlock.countyRanks?.perStudent, "money0"),
-  ].join("");
-  const keystoneYear = latestYear((block) => KEYSTONE_SUBJECTS.some(([id]) => block.keystone?.[id]?.["011"]));
-  const keystoneHost = app.querySelector("#overview-keystone");
-  if (keystoneHost) {
-    const keystoneBlock = blockFor(keystoneYear);
-    const keystoneYearsList = keystoneYears();
-    const priorKeystoneYear = priorIn(keystoneYearsList, Number(keystoneYear));
-    const priorBlock = priorKeystoneYear == null ? {} : blockFor(priorKeystoneYear);
-    const cards = KEYSTONE_SUBJECTS.map(([id, label]) => {
-      const cell = keystoneBlock.keystone?.[id]?.["011"]?.["All Students"];
-      if (!cell) return "";
-      const prior = priorBlock.keystone?.[id]?.["011"]?.["All Students"];
-      const note = `${yearDeltaPoints(cell.pct, prior?.pct, priorKeystoneYear)}${cell.n != null ? `<div class="note">${count(cell.n)} scored · grade 11</div>` : ""}${yearNote(keystoneYear)}`;
-      const value = cell.pct == null ? "Not published" : `${Number(cell.pct).toFixed(1)}%`;
-      return stat(`Keystone ${label}`, value, note, keystoneYear, keystoneBlock.countyRanks?.[`keystone_${id}`], "pct");
-    }).filter(Boolean);
-    keystoneHost.innerHTML = cards.length ? `<div class="stats stats-3">${cards.join("")}</div>` : "";
-  }
   drawRace(app.querySelector("#overview-race"), enrollBlock.race || {}, enrollYear ? `Race / ethnicity · ${yearLabel(enrollYear)}` : "Race / ethnicity");
   drawGender(app.querySelector("#overview-gender"), enrollBlock.gender || {}, enrollYear ? `Gender · ${yearLabel(enrollYear)}` : "Gender");
   const blurb = app.querySelector("#overview-blurb");
-  blurb.innerHTML = `<p class="note">Each figure is the latest year published for that series. The year selector is on Financials. Enrollment follows classes as they move up. Keystone charts each exam across years on that tab.</p>`;
+  blurb.innerHTML = `<p class="note">Each figure is the latest year published for that series and matches the card on its detail page. Open a card to go there. The year selector is on Financials. Enrollment follows classes as they move up. Keystone charts each exam across years on that tab.</p>`;
 }
 
 function yearNote(year) {
@@ -1060,15 +1140,13 @@ function paintStaff(state) {
 function paintEnrollment(state) {
   const year = enrollmentAnchorYear();
   const block = blockFor(year);
-  const priorYear = String(Number(year) - 1);
-  const enrolled = enrollmentOf(block);
   const gradYearList = gradYears();
   const gradYear = gradYearList.length ? gradYearList[gradYearList.length - 1] : null;
   const grad = gradYear == null ? null : gradCell(gradYear);
   const priorGradYear = gradYearList.length > 1 ? gradYearList[gradYearList.length - 2] : null;
   const priorGrad = priorGradYear == null ? null : gradCell(priorGradYear);
   app.querySelector("#enrollment-stats").innerHTML = [
-    stat("October 1 enrollment", enrolled == null ? "Not published" : count(enrolled), `${yearDelta(enrolled, enrollmentOf(blockFor(priorYear)), priorYear)}${yearNote(year)}`, year, block.countyRanks?.enrollment, "count"),
+    renderStat(enrollmentCard()),
     stat("Schools reporting", count((block.schools || []).length), yearNote(year)),
     stat(
       "4-year graduation",
@@ -1212,20 +1290,10 @@ function paintPssa(state) {
   const all = year == null ? null : pssaTotal(yearNum, subject, "All Students");
   const gapRows = year == null ? [] : pssaGapRows(yearNum, subject, all?.pct ?? null);
 
-  stats.innerHTML = PSSA_SUBJECTS.map(([id, subLabel]) => {
-    const subYears = pssaYears(id);
-    const subYear = subYears.length ? subYears[subYears.length - 1] : null;
-    const priorYear = subYear == null ? null : priorIn(subYears, subYear);
-    const cell = subYear == null ? null : pssaTotal(subYear, id, "All Students");
-    const prior = priorYear == null ? null : pssaTotal(priorYear, id, "All Students");
-    const ranks = subYear == null ? {} : (blockFor(subYear).countyRanks || {});
-    const value = cell?.pct == null ? "Not published" : `${Number(cell.pct).toFixed(1)}%`;
-    const extra = `${yearDeltaPoints(cell?.pct, prior?.pct, priorYear)}${cell?.n != null ? `<div class="note">${count(cell.n)} scored · grades 3–8</div>` : ""}${yearNote(subYear)}`;
-    return stat(`${subLabel} · proficient+`, value, extra, subYear, ranks[`pssa_${id}`], "pct", {
-      pick: id,
-      selected: id === subject,
-    });
-  }).join("");
+  stats.innerHTML = PSSA_SUBJECTS.map(([id]) => renderStat(proficiencyCard("pssa", id), {
+    pick: id,
+    selected: id === subject,
+  })).join("");
 
   if (year == null || (!all && !leaPack.years[String(year)]?.pssa?.[subject])) {
     body.innerHTML = `<p class="note">Not enough data available for ${escapeHtml(label)}.</p>`;
@@ -1297,20 +1365,10 @@ function paintKeystone(state) {
   const selected = groups.length ? groups : [...PSSA_DEFAULT_GROUPS];
   const gapRows = year == null ? [] : keystoneGapRows(year, subject, metric);
 
-  stats.innerHTML = KEYSTONE_SUBJECTS.map(([id, subLabel]) => {
-    const subYears = keystoneYears(id);
-    const subYear = subYears.length ? subYears[subYears.length - 1] : null;
-    const priorYear = subYear == null ? null : priorIn(subYears, subYear);
-    const cell = subYear == null ? null : keystoneCell(subYear, id, "All Students");
-    const prior = priorYear == null ? null : keystoneCell(priorYear, id, "All Students");
-    const ranks = subYear == null ? {} : (blockFor(subYear).countyRanks || {});
-    const value = cell?.pct == null ? "Not published" : `${Number(cell.pct).toFixed(1)}%`;
-    const extra = `${yearDeltaPoints(cell?.pct, prior?.pct, priorYear)}${cell?.n != null ? `<div class="note">${count(cell.n)} scored · grade 11</div>` : ""}${yearNote(subYear)}`;
-    return stat(`${subLabel} · proficient+`, value, extra, subYear, ranks[`keystone_${id}`], "pct", {
-      pick: id,
-      selected: id === subject,
-    });
-  }).join("");
+  stats.innerHTML = KEYSTONE_SUBJECTS.map(([id]) => renderStat(proficiencyCard("keystone", id), {
+    pick: id,
+    selected: id === subject,
+  })).join("");
 
   const metricPills = KEYSTONE_METRICS.map(([id, metricName]) => {
     const color = KEYSTONE_METRIC_COLOR[id] || "#8888A8";
@@ -2095,11 +2153,16 @@ function rankBadge(label, rank, kind) {
 function stat(label, value, extra, title, rank, kind, options = {}) {
   const pick = options.pick;
   const selected = Boolean(options.selected);
-  const classes = pick ? "stat stat-pick" : "stat";
+  const href = options.href || "";
+  const classes = ["stat", pick ? "stat-pick" : "", href ? "stat-link" : ""].filter(Boolean).join(" ");
   const pickAttrs = pick
     ? ` data-subject="${escapeAttr(pick)}" data-value="${escapeAttr(pick)}" aria-pressed="${selected ? "true" : "false"}" tabindex="0"`
     : "";
+  const hit = href
+    ? `<a class="stat-hit" href="${escapeAttr(href)}" aria-label="${escapeAttr(label)}"></a>`
+    : "";
   return `<article class="${classes}"${pickAttrs}${title ? ` title="${escapeAttr(yearLabel(title))}"` : ""}>
+    ${hit}
     <div class="label-row"><div class="label">${escapeHtml(label)}</div>${rankBadge(label, rank, kind)}</div>
     <div class="value">${escapeHtml(value)}</div>${extra || ""}
   </article>`;
@@ -3922,8 +3985,7 @@ function leaHtml() {
     <div class="lea-tabs" role="tablist" aria-label="LEA sections">${tabs}</div>
 
     <div data-tab-panel="overview">
-      <div class="stats stats-wide" id="overview-stats"></div>
-      <div id="overview-keystone"></div>
+      <div id="overview-stats"></div>
       <div class="panels">
         <section class="panel" id="overview-race"></section>
         <section class="panel" id="overview-gender"></section>
