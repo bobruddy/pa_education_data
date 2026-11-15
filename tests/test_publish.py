@@ -101,9 +101,78 @@ def test_salaries_come_from_professional_staff_parquet(tmp_path: Path, monkeypat
     assert stats["retention"] == 0.5
     assert len(stats["hist"]) == len(SALARY_EDGES) + 1
     assert sum(stats["hist"]) == 2
-    assert retention["1"][2023] == {"rate": 0.5, "base": 2, "stayed": 1, "nextYear": 2024}
+    assert retention["1"][2023] == {
+        "rate": 0.5,
+        "base": 2,
+        "stayed": 1,
+        "nextYear": 2024,
+        "classroom": {"rate": 0.5, "base": 2, "stayed": 1, "nextYear": 2024},
+    }
     assert 2024 not in retention["1"]
     assert experience["1"][2023]["elementary"]["lea"]["n"] == 2
+
+
+def test_classroom_retention_excludes_administrators_and_support(tmp_path: Path, monkeypatch) -> None:
+    """Classroom retention is distinct teachers, not the LEA-wide professional rate.
+
+    A teacher who returns as an administrator still counts as stayed. The same
+    person in two classroom groups counts once. Administrators and professional
+    support are not in the base.
+    """
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    rows = [
+        # id, year, salary, fte, category
+        ("t1", 2023, 60_000.0, 100.0, "ELMTCH"),
+        ("t1", 2024, 90_000.0, 100.0, "SCHADM"),
+        ("t2", 2023, 60_000.0, 100.0, "SECTCH"),
+        ("t3", 2023, 55_000.0, 100.0, "UGTCH"),
+        ("t3", 2024, 56_000.0, 100.0, "UGTCH"),
+        ("t4", 2023, 50_000.0, 100.0, "ELMTCH"),
+        ("t4", 2023, 52_000.0, 100.0, "SECTCH"),
+        ("t4", 2024, 53_000.0, 100.0, "ELMTCH"),
+        ("a1", 2023, 120_000.0, 100.0, "LEAADM"),
+        ("a1", 2024, 121_000.0, 100.0, "LEAADM"),
+        ("s1", 2023, 70_000.0, 100.0, "GUI"),
+        ("s1", 2024, 71_000.0, 100.0, "GUI"),
+        ("p1", 2023, 40_000.0, 50.0, "ELMTCH"),
+        ("z1", 2023, 0.0, 100.0, "ELMTCH"),
+    ]
+    pd.DataFrame({
+        "aun": ["1"] * len(rows),
+        "school_year": [row[1] for row in rows],
+        "public_id": [row[0] for row in rows],
+        "annual_salary": [row[2] for row in rows],
+        "fte_percent": [row[3] for row in rows],
+        "edf_category": [row[4] for row in rows],
+        "years_in_lea": [1.0] * len(rows),
+        "years_in_education": [2.0] * len(rows),
+        "degree_code": ["1051"] * len(rows),
+    }).to_parquet(refined / "professional_staff.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+    salaries, _experience, retention = _salaries()
+    assert salaries["1"][2023]["elementary"]["n"] == 2  # t1, t4
+    assert salaries["1"][2023]["secondary"]["n"] == 2  # t2, t4
+    assert salaries["1"][2023]["ungraded"]["n"] == 1
+    assert salaries["1"][2023]["administrator"]["n"] == 1
+    assert salaries["1"][2023]["support"]["n"] == 1
+    assert retention["1"][2023]["base"] == 6
+    assert retention["1"][2023]["stayed"] == 5
+    assert retention["1"][2023]["rate"] == 0.83
+    assert retention["1"][2023]["classroom"] == {
+        "rate": 0.75,
+        "base": 4,
+        "stayed": 3,
+        "nextYear": 2024,
+    }
+    assert salaries["1"][2023]["elementary"]["retention"] == 1
+    assert 2024 not in retention["1"]
+    years = _years_for(
+        "1", {}, {}, {}, {}, {}, {}, {}, {}, {}, {},
+        salaries,
+        retention=retention,
+    )
+    assert years[2023]["retention"]["classroom"]["base"] == 4
 
 
 def test_salaries_duckdb_path_handles_many_rows(tmp_path: Path, monkeypatch) -> None:

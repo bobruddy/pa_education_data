@@ -119,7 +119,15 @@ const KEYSTONE_LABEL = Object.fromEntries(KEYSTONE_SUBJECTS);
 const OVERVIEW_CARDS = [
   ["enrollment", "pssa.math", "pssa.ela", "perStudent"],
   ["keystone.algebra_i", "keystone.literature", "keystone.biology"],
+  ["staff.classroom", "staff.retention", "staff.elementary", "staff.secondary"],
 ];
+const STAFF_CARDS = [
+  "staff.classroom",
+  "staff.retention",
+  "staff.elementary",
+  "staff.secondary",
+];
+const CLASSROOM_GROUPS = ["elementary", "secondary", "ungraded"];
 const KEYSTONE_METRICS = [
   ["pct", "Proficient+"],
   ["advanced", "Advanced"],
@@ -982,16 +990,126 @@ function financeStats(block, priorBlock, priorYear, year) {
   ].join("");
 }
 
-function cardById(id) {
-  if (id === "enrollment") return enrollmentCard();
-  if (id === "perStudent") return perStudentCard();
+function cardById(id, options = {}) {
+  if (id === "enrollment") return enrollmentCard(options);
+  if (id === "perStudent") return perStudentCard(options);
   const splitAt = id.indexOf(".");
   if (splitAt === -1) return null;
   const family = id.slice(0, splitAt);
   const subject = id.slice(splitAt + 1);
+  if (family === "staff") return staffCard(subject, options);
   if (family === "pssa" && PSSA_SUBJECT_IDS.includes(subject)) return proficiencyCard("pssa", subject);
   if (family === "keystone" && KEYSTONE_SUBJECT_IDS.includes(subject)) return proficiencyCard("keystone", subject);
   return null;
+}
+
+function staffCard(id, options) {
+  if (id === "classroom") return classroomEducatorsCard(options);
+  if (id === "retention") return classroomRetentionCard(options);
+  if (id === "elementary") return teacherMedianCard("elementary", "Elementary teacher median", options);
+  if (id === "secondary") return teacherMedianCard("secondary", "Secondary teacher median", options);
+  return null;
+}
+
+function classroomGroupIds() {
+  const ids = catalog?.classroomGroups;
+  return Array.isArray(ids) && ids.length ? ids : CLASSROOM_GROUPS;
+}
+
+function pinnedYear(options, predicate) {
+  if (Object.hasOwn(options, "year")) return String(options.year || "");
+  return latestYear(predicate);
+}
+
+function classroomHeadcount(block) {
+  const salaries = block?.salaries;
+  if (!salaries) return null;
+  let total = 0;
+  let any = false;
+  for (const id of classroomGroupIds()) {
+    const countOf = salaries[id]?.n;
+    if (countOf == null) continue;
+    any = true;
+    total += Number(countOf);
+  }
+  return any ? total : null;
+}
+
+function classroomRetentionOf(block) {
+  const cell = block?.retention?.classroom;
+  if (cell?.rate == null || cell.base == null || cell.stayed == null) return null;
+  if (!Number(cell.base)) return null;
+  return cell;
+}
+
+function classroomEducatorsCard(options = {}) {
+  const year = pinnedYear(options, (block) => classroomHeadcount(block) != null);
+  const block = blockFor(year);
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const current = year ? classroomHeadcount(block) : null;
+  const prior = priorYear ? classroomHeadcount(blockFor(priorYear)) : null;
+  return {
+    published: Boolean(year) && current != null,
+    label: "Classroom educators",
+    value: current == null ? "Not published" : count(current),
+    extra: `<div class="note">Full-time</div>${yearDelta(current, prior, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`,
+    title: year,
+    kind: "count",
+    tab: "staff",
+    year,
+  };
+}
+
+function classroomRetentionCard(options = {}) {
+  const year = pinnedYear(options, (block) => classroomRetentionOf(block));
+  const block = blockFor(year);
+  const cell = year ? classroomRetentionOf(block) : null;
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const prior = priorYear ? classroomRetentionOf(blockFor(priorYear)) : null;
+  const rate = cell ? Number(cell.rate) * 100 : null;
+  const priorRate = prior ? Number(prior.rate) * 100 : null;
+  return {
+    published: cell != null,
+    label: "Returned next year",
+    value: cell == null ? "Not published" : pct(cell.rate),
+    extra: cell
+      ? `<div class="note">${count(cell.stayed)} of ${count(cell.base)} full-time</div>${yearDeltaPoints(rate, priorRate, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`
+      : "",
+    title: year,
+    kind: "pct",
+    tab: "staff",
+    year,
+  };
+}
+
+function teacherMedian(block, groupId) {
+  const stats = block?.salaries?.[groupId];
+  if (!stats?.n || stats.median == null) return null;
+  return Number(stats.median);
+}
+
+function teacherMedianCard(groupId, label, options = {}) {
+  const year = pinnedYear(options, (block) => teacherMedian(block, groupId) != null);
+  const block = blockFor(year);
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const current = year ? teacherMedian(block, groupId) : null;
+  const prior = priorYear ? teacherMedian(blockFor(priorYear), groupId) : null;
+  return {
+    published: current != null,
+    label,
+    value: current == null ? "Not published" : money(current, 0),
+    extra: `<div class="note">Full-time</div>${yearDelta(current, prior, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`,
+    title: year,
+    kind: "money0",
+    tab: "staff",
+    year,
+  };
+}
+
+function staffStripCard(id, year) {
+  const pinned = cardById(id, { year, yearNote: false });
+  if (pinned?.published) return pinned;
+  return cardById(id);
 }
 
 function enrollmentCard(options = {}) {
@@ -1119,11 +1237,24 @@ function paintFinancials(block, priorBlock, priorYear, year, state) {
   app.querySelector("#sources").innerHTML = sourceLinks(year);
 }
 
-function paintStaff(state) {
-  const year = latestYear((block) =>
+function latestStaffYear() {
+  return latestYear((block) =>
     Object.values(block.salaries || {}).some((stats) => stats?.n)
     || Object.values(block.experience || {}).some((group) => group?.lea?.n || group?.edu?.n)
   );
+}
+
+function paintStaff(state) {
+  const year = latestStaffYear();
+  const statsHost = app.querySelector("#staff-stats");
+  if (statsHost) {
+    const cards = STAFF_CARDS
+      .map((id) => staffStripCard(id, year))
+      .filter((card) => card?.published);
+    statsHost.innerHTML = cards.length
+      ? `<div class="${statsGridClass(cards.length)}">${cards.map((card) => renderStat(card)).join("")}</div>`
+      : "";
+  }
   const mode = state.experience === "edu" ? "edu" : "lea";
   const heading = app.querySelector("#staff-heading");
   if (heading) heading.textContent = year ? `Full-time salaries · ${yearLabel(year)}` : "Full-time salaries";
@@ -3773,7 +3904,7 @@ function drawSalaries(salaries, retention) {
     ? `<p class="retention"><strong>${pct(retention.rate)}</strong> of full-time professional staff returned to this LEA in ${yearLabel(retention.nextYear)} (${count(retention.stayed)} of ${count(retention.base)}).</p>`
     : `<p class="note">Retention into the following year is not published yet for this staff year.</p>`;
   host.innerHTML = `${retentionLine}<div class="salary-grid">${cards.join("")}</div>
-    <p class="note">Full-time only (FTE 100%). Part-time and overload assignments are excluded. Elementary includes kindergarten and pre-K teachers. Support is counselors, specialists, and other non-classroom professional roles — not classified support aides. Retention is the share still employed at this LEA the next school year. Hover a salary bar for tenure and degree mix in that pay band.</p>`;
+    <p class="note">Full-time only (FTE 100%). Part-time and overload assignments are excluded. Elementary includes kindergarten and pre-K teachers. Support is counselors, specialists, and other non-classroom professional roles — not classified support aides. The return rate in this section is every full-time professional, including administrators and support. The cards above count elementary, secondary, and ungraded teachers only. Hover a salary bar for tenure and degree mix in that pay band.</p>`;
 }
 
 function pct(rate) {
@@ -4001,6 +4132,7 @@ function leaHtml() {
     </div>
 
     <div data-tab-panel="staff" hidden>
+      <div id="staff-stats"></div>
       <section class="panel">
         <h2 id="experience-heading">Full-time experience</h2>
         <div class="chips" aria-label="Experience measure">

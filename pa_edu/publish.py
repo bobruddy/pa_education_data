@@ -56,6 +56,8 @@ SALARY_GROUPS = [
     ("support", "Professional support"),
     ("ungraded", "Ungraded teachers"),
 ]
+# Classroom educators: teachers only. Administrators and professional support stay out.
+CLASSROOM_GROUPS = ("elementary", "secondary", "ungraded")
 SALARY_BIN_START = 25_000
 SALARY_BIN_STOP = 200_000
 SALARY_BIN_WIDTH = 5_000
@@ -216,6 +218,7 @@ def main() -> None:
     budget_year = catalog["budgetYear"]
     catalog["salaryYear"] = max((year for years in salaries.values() for year in years), default=None)
     catalog["salaryGroups"] = [{"id": code, "label": label} for code, label in SALARY_GROUPS]
+    catalog["classroomGroups"] = list(CLASSROOM_GROUPS)
     catalog["salaryEdges"] = SALARY_EDGES
     catalog["experienceEdges"] = EXPERIENCE_EDGES
     catalog["experienceModes"] = [{"id": code, "label": label} for code, label in EXPERIENCE_MODES]
@@ -1014,6 +1017,10 @@ def _salaries() -> tuple[dict, dict, dict]:
 
     Aggregates in DuckDB over ``professional_staff.parquet`` so publish stays
     seconds, not minutes of Python groupby loops.
+
+    ``retention`` counts every full-time professional. ``retention[..]["classroom"]``
+    is elementary, secondary, and ungraded teachers only — the share of that
+    group still employed at this LEA the next year, in any professional role.
     """
     path = REFINED / "professional_staff.parquet"
     if not path.exists():
@@ -1155,6 +1162,23 @@ def _salaries() -> tuple[dict, dict, dict]:
             GROUP BY 1, 2, 3
             """
         ).df()
+        classroom_list = ", ".join(repr(group) for group in CLASSROOM_GROUPS)
+        retention_classroom = connection.execute(
+            f"""
+            SELECT b.aun, b.school_year,
+                   count(DISTINCT b.public_id)::BIGINT AS base,
+                   count(DISTINCT CASE WHEN n.public_id IS NOT NULL THEN b.public_id END)::BIGINT AS stayed
+            FROM staff b
+            INNER JOIN (SELECT DISTINCT aun, school_year FROM staff) y
+              ON b.aun = y.aun AND y.school_year = b.school_year + 1
+            LEFT JOIN staff n
+              ON b.aun = n.aun
+             AND b.public_id = n.public_id
+             AND n.school_year = b.school_year + 1
+            WHERE b.grp IN ({classroom_list})
+            GROUP BY 1, 2
+            """
+        ).df()
     finally:
         connection.close()
 
@@ -1164,6 +1188,10 @@ def _salaries() -> tuple[dict, dict, dict]:
     group_retention = {
         (str(row.aun), int(row.school_year), str(row.grp)): row
         for row in retention_group.itertuples(index=False)
+    }
+    classroom_retention = {
+        (str(row.aun), int(row.school_year)): row
+        for row in retention_classroom.itertuples(index=False)
     }
     lea_by_key = {
         (str(row.aun), int(row.school_year), str(row.grp)): row
@@ -1238,12 +1266,22 @@ def _salaries() -> tuple[dict, dict, dict]:
             continue
         aun = str(row.aun)
         year = int(row.school_year)
-        retention.setdefault(aun, {})[year] = {
+        payload = {
             "rate": _number(int(row.stayed) / base),
             "base": base,
             "stayed": int(row.stayed),
             "nextYear": year + 1,
         }
+        classroom = classroom_retention.get((aun, year))
+        if classroom is not None and int(classroom.base):
+            classroom_base = int(classroom.base)
+            payload["classroom"] = {
+                "rate": _number(int(classroom.stayed) / classroom_base),
+                "base": classroom_base,
+                "stayed": int(classroom.stayed),
+                "nextYear": year + 1,
+            }
+        retention.setdefault(aun, {})[year] = payload
 
     print(f"salary stats for {len(grouped)} LEAs")
     return grouped, experience, retention
