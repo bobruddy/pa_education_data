@@ -720,16 +720,15 @@ def _county_ranks(
                     )
                     if per_thousand is not None:
                         buckets["leaAdmPerThousand"].append({**row, "value": per_thousand})
-                # Charter share is object 562 over the general-fund budget.
-                # Same-year 562 when published, otherwise the latest earlier
-                # AFR. School districts only. No 562 means the peer is left
-                # out, not ranked at 0%. Actual spending is not the denominator.
-                if profile.get("category") == "school_district" and adopted is not None and adopted != 0:
-                    published = _published_charter(charter.get(aun, {}), year)
-                    if published is not None:
+                # Charter share is same-year object 562 over that year's general-fund
+                # actual. School districts only. A budget year is not ranked,
+                # and a missing 562 is left out rather than filled from an earlier year.
+                if profile.get("category") == "school_district" and spent is not None and spent != 0:
+                    amount = charter.get(aun, {}).get(year)
+                    if amount is not None:
                         buckets["charterShare"].append({
                             **row,
-                            "value": round(published[0] / adopted * 100, 4),
+                            "value": round(float(amount) / spent * 100, 4),
                         })
                 if enrolled:
                     service = debt_service.get(aun, {}).get(year)

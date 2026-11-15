@@ -747,30 +747,32 @@ def test_object_562_and_debt_service_stay_absent_when_unpublished() -> None:
     assert 2029 not in years
 
 
-def test_charter_share_rank_uses_the_budget_and_the_latest_published_562() -> None:
+def test_charter_share_rank_uses_same_year_actuals_only() -> None:
     profiles = [
         {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
         {"aun": "2", "name": "Beta", "county": "Fayette", "category": "school_district"},
         {"aun": "3", "name": "Charter", "county": "Fayette", "category": "charter_school"},
         {"aun": "4", "name": "No tuition", "county": "Fayette", "category": "school_district"},
-        {"aun": "5", "name": "Actual only", "county": "Fayette", "category": "school_district"},
     ]
-    budget = {
-        "1": {2025: {"1000": 800, "2000": 200}},
-        "2": {2025: {"1000": 500, "2000": 500}},
-        "3": {2025: {"1000": 1000}},
-        "4": {2025: {"1000": 1000}},
+    actual = {
+        "1": {2024: {"1000": 800, "2000": 200}},
+        "2": {2024: {"1000": 750, "2000": 250}},
+        "3": {2024: {"1000": 1000}},
+        "4": {2024: {"1000": 1000}},
     }
-    actual = {"2": {2025: {"1000": 9000}}, "5": {2025: {"1000": 100}}}
-    charter = {"1": {2024: 100.0}, "2": {2025: 250.0, 2024: 1.0}, "3": {2025: 500.0}, "5": {2025: 50.0}}
+    budget = {
+        "1": {2025: {"1000": 9000}},
+        "2": {2025: {"1000": 9000}},
+    }
+    charter = {"1": {2024: 100.0}, "2": {2024: 250.0, 2023: 1.0}, "3": {2024: 500.0}}
     ranks = _county_ranks(profiles, {}, actual, budget, charter)
-    peers = {peer["aun"]: peer["value"] for peer in ranks["1"][2025]["charterShare"]["peers"]}
+    peers = {peer["aun"]: peer["value"] for peer in ranks["1"][2024]["charterShare"]["peers"]}
     assert peers == {"2": 25.0, "1": 10.0}
-    assert ranks["2"][2025]["charterShare"]["rank"] == 1
-    assert ranks["1"][2025]["charterShare"]["of"] == 2
-    assert "charterShare" not in ranks.get("3", {}).get(2025, {})
-    assert "charterShare" not in ranks.get("4", {}).get(2025, {})
-    assert "charterShare" not in ranks.get("5", {}).get(2025, {})
+    assert ranks["2"][2024]["charterShare"]["rank"] == 1
+    assert ranks["1"][2024]["charterShare"]["of"] == 2
+    assert "charterShare" not in ranks.get("3", {}).get(2024, {})
+    assert "charterShare" not in ranks.get("4", {}).get(2024, {})
+    assert "charterShare" not in ranks.get("1", {}).get(2025, {})
 
 
 def test_debt_and_instruction_ranks_do_not_mix_budget_with_actual() -> None:

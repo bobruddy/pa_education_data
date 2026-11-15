@@ -1214,81 +1214,38 @@ function perStudentCard(options = {}) {
   };
 }
 
-function object562Of(year) {
-  const amount = blockFor(year).object562;
-  if (amount == null) return null;
-  return { year: String(year), amount: Number(amount) };
-}
-
-/** Same-year object 562, or the latest earlier published year. Missing is not zero. */
-function charterForShare(year) {
-  const own = object562Of(year);
-  if (own) return { ...own, estimated: false };
-  const earlier = Object.keys(leaPack?.years || {})
-    .filter((candidate) => Number(candidate) < Number(year) && object562Of(candidate))
-    .sort((a, b) => Number(a) - Number(b));
-  const found = earlier.at(-1);
-  if (!found) return null;
-  return { ...object562Of(found), estimated: true };
-}
-
 function charterShare(year) {
   if (leaPack?.category !== "school_district") return null;
-  const tuition = charterForShare(year);
-  if (!tuition) return null;
   const block = blockFor(year);
-  const budget = sumMap(block.budget);
+  const amount = block.object562;
   const actualTotal = sumMap(block.actual);
-  const own = object562Of(year);
-  const budgetPercent = budget ? (tuition.amount / budget) * 100 : null;
-  const actualPercent = own && actualTotal ? (own.amount / actualTotal) * 100 : null;
-  if (budgetPercent == null && actualPercent == null) return null;
-  return { tuition, budgetPercent, actualPercent, own };
+  if (amount == null || !actualTotal) return null;
+  return { amount: Number(amount), percent: Number(amount) / actualTotal * 100 };
 }
 
+/** Latest AFR year. A later budget does not stand in, and an older 562 is not carried forward. */
 function latestCharterShareYear() {
   const years = Object.keys(leaPack?.years || {})
-    .filter((year) => charterShare(year))
+    .filter((year) => sumMap(blockFor(year).actual) != null)
     .sort((a, b) => Number(a) - Number(b));
-  return years.at(-1) || "";
+  const year = years.at(-1) || "";
+  return year && charterShare(year) ? year : "";
 }
 
-function charterShareCard(options = {}) {
-  const year = Object.hasOwn(options, "year") ? String(options.year || "") : latestCharterShareYear();
+function charterShareCard() {
+  const year = latestCharterShareYear();
   const share = year ? charterShare(year) : null;
   const priorYear = year ? String(Number(year) - 1) : "";
   const prior = priorYear ? charterShare(priorYear) : null;
-  const basis = share?.budgetPercent != null ? "budget" : share?.actualPercent != null ? "actual" : "";
-  const priorBasis = prior?.budgetPercent != null ? "budget" : prior?.actualPercent != null ? "actual" : "";
-  const value = basis === "budget" ? share.budgetPercent : basis === "actual" ? share.actualPercent : null;
-  const priorValue = basis && basis === priorBasis
-    ? (basis === "budget" ? prior.budgetPercent : prior.actualPercent)
-    : null;
-  const dollars = share ? money(share.tuition.amount) : "";
-  const basisNote = basis === "budget"
-    ? `Share of the ${yearLabel(year)} general-fund budget`
-    : basis === "actual"
-      ? `Share of the ${yearLabel(year)} general-fund actual`
-      : "";
-  const estimate = share?.tuition.estimated ? `Estimated from ${yearLabel(share.tuition.year)} object 562` : "";
-  const actualLine = basis === "budget" && share?.actualPercent != null
-    ? `Actual ${share.actualPercent.toFixed(1)}% of the ${yearLabel(year)} general fund`
-    : "";
-  const notes = [
-    dollars ? `${dollars} object 562` : "",
-    estimate,
-    basisNote,
-    actualLine,
-  ].filter(Boolean).map((line) => `<div class="note">${line}</div>`).join("");
   return {
     published: share != null,
     label: "Charter tuition",
-    value: value == null ? "Not published" : `${value.toFixed(1)}%`,
+    value: share == null ? "Not published" : `${share.percent.toFixed(1)}%`,
     extra: share
-      ? `${notes}${yearDeltaPoints(value, priorValue, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`
+      ? `<div class="note">${money(share.amount)} object 562</div><div class="note">Share of the ${yearLabel(year)} general-fund actual</div>${yearDeltaPoints(share.percent, prior?.percent, priorYear)}${yearNote(year)}`
       : "",
     title: year,
-    rank: basis === "budget" ? blockFor(year).countyRanks?.charterShare : null,
+    rank: year ? blockFor(year).countyRanks?.charterShare : null,
     kind: "pct",
     tab: "financials",
     year,
@@ -4238,7 +4195,7 @@ function sourceLinks(year) {
   const note = leaPack.category === "career_and_technical_center"
     ? " Part-day students here can also be counted in a school district."
     : "";
-  return `<p class="note">Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. Income is general-fund revenue from the AFR revenue sheet and the budget revenue sheet: local, state, federal, and other financing sources. It is not added to spending. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. The chart’s Per student view divides each actual, budget, and income account by that same October 1 count. Object 562 is left out of the actual, and those dollars are left out of the budget’s purchased services. A budget year with no annual financial report yet uses the latest object 562, by function, as the estimate. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books. When that year’s AFR is not published, the card uses the general fund budget divided by October 1 enrollment, with estimated charter tuition removed, and compares that with the prior year. Charter tuition is object 562 as a percent of that year’s general-fund budget, and the county rank uses that percent. A year without its own object 562 uses the latest earlier AFR amount and names that year. When the same year published object 562, the card also shows it as a percent of general-fund actual. Debt service per student is AFR function 5110 divided by October 1 enrollment for the year of that actual. Instruction per student is general-fund budget function 1000 divided by October 1 enrollment, with the actual beside it when that year’s AFR published function 1000. A missing account is left off those cards.${note}</p>
+  return `<p class="note">Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. Income is general-fund revenue from the AFR revenue sheet and the budget revenue sheet: local, state, federal, and other financing sources. It is not added to spending. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. The chart’s Per student view divides each actual, budget, and income account by that same October 1 count. Object 562 is left out of the actual, and those dollars are left out of the budget’s purchased services. A budget year with no annual financial report yet uses the latest object 562, by function, as the estimate. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books. When that year’s AFR is not published, the card uses the general fund budget divided by October 1 enrollment, with estimated charter tuition removed, and compares that with the prior year. Charter tuition is object 562 as a percent of general-fund actual for the latest year with an annual financial report, and the county rank uses that percent. A later budget year does not get an estimate. Debt service per student is AFR function 5110 divided by October 1 enrollment for the year of that actual. Instruction per student is general-fund budget function 1000 divided by October 1 enrollment, with the actual beside it when that year’s AFR published function 1000. A missing account is left off those cards.${note}</p>
     <p class="sources note">${items.join(" · ") || "Source files are listed in the catalog."}</p>`;
 }
 
