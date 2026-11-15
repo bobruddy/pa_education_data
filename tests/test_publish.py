@@ -264,6 +264,48 @@ def test_county_ranks_order_highest_first() -> None:
     assert "3" not in ranks or 2024 not in ranks.get("3", {}) or "actual" not in ranks.get("3", {}).get(2024, {})
 
 
+def test_staff_ranks_use_classroom_teachers_and_enrollment() -> None:
+    profiles = [
+        {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "2", "name": "Beta", "county": "Fayette", "category": "school_district"},
+        {"aun": "3", "name": "Admins", "county": "Fayette", "category": "school_district"},
+    ]
+    grades = {
+        "1": {2024: {"012": 300}},
+        "2": {2024: {"012": 200}},
+        "3": {2024: {"012": 100}},
+    }
+    salaries = {
+        "1": {2024: {
+            "elementary": {"n": 10, "median": 70_000},
+            "secondary": {"n": 10, "median": 80_000},
+            "administrator": {"n": 40, "median": 120_000},
+        }},
+        "2": {2024: {
+            "elementary": {"n": 10, "median": 60_000},
+            "secondary": {"n": 10, "median": 90_000},
+        }},
+        "3": {2024: {"administrator": {"n": 5, "median": 100_000}}},
+    }
+    retention = {
+        "1": {2024: {"classroom": {"rate": 0.9, "base": 20, "stayed": 18, "nextYear": 2025}}},
+        "2": {2024: {"classroom": {"rate": 0.5, "base": 20, "stayed": 10, "nextYear": 2025}}},
+    }
+    ranks = _county_ranks(
+        profiles, grades, {}, {}, {},
+        salaries=salaries, retention=retention,
+    )
+    ratio = ranks["1"][2024]["studentsPerTeacher"]
+    assert ratio["rank"] == 1
+    assert ratio["of"] == 2
+    assert [peer["value"] for peer in ratio["peers"]] == [15.0, 10.0]
+    assert "studentsPerTeacher" not in ranks["3"][2024]
+    assert ranks["1"][2024]["elementaryMedian"]["rank"] == 1
+    assert ranks["2"][2024]["secondaryMedian"]["rank"] == 1
+    assert ranks["1"][2024]["classroomRetention"]["rank"] == 1
+    assert ranks["1"][2024]["classroomRetention"]["peers"][0]["value"] == 90.0
+
+
 def test_per_student_rank_uses_budget_when_actuals_are_absent() -> None:
     profiles = [
         {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},

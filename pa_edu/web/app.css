@@ -316,6 +316,15 @@ a.tip-rank:hover { color: #fff; }
 .stats-wide { grid-template-columns: repeat(4, 1fr); }
 .stats-2 { grid-template-columns: repeat(2, 1fr); }
 .stats-3 { grid-template-columns: repeat(3, 1fr); }
+.overview-kicker {
+  margin: 18px 0 0;
+  font-size: 0.95rem;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.overview-group:first-child .overview-kicker { margin-top: 0; }
+.overview-group .stats { margin-top: 6px; margin-bottom: 4px; }
+.overview-group:last-child .stats { margin-bottom: 16px; }
 .table-scroll { overflow-x: auto; }
 .panel h3 { font-size: 0.95rem; margin: 0 0 8px; font-weight: 600; }
 .pssa-h2 { font-size: 1.15rem; margin: 22px 0 6px; font-weight: 650; letter-spacing: -0.02em; }

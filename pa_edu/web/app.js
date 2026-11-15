@@ -115,14 +115,17 @@ const KEYSTONE_SUBJECTS = [
 ];
 const KEYSTONE_SUBJECT_IDS = KEYSTONE_SUBJECTS.map(([id]) => id);
 const KEYSTONE_LABEL = Object.fromEntries(KEYSTONE_SUBJECTS);
-// Detail-page cards shown on the overview, one row per group.
+// Detail-page cards on the overview. Labels match the detail tabs.
+// A group with no published cards is omitted.
 const OVERVIEW_CARDS = [
-  ["enrollment", "pssa.math", "pssa.ela", "perStudent"],
-  ["keystone.algebra_i", "keystone.literature", "keystone.biology"],
-  ["staff.classroom", "staff.retention", "staff.elementary", "staff.secondary"],
+  { label: "Enrollment", cards: ["enrollment"] },
+  { label: "PSSA", cards: ["pssa.math", "pssa.ela"] },
+  { label: "Keystone", cards: ["keystone.algebra_i", "keystone.literature", "keystone.biology"] },
+  { label: "Financials", cards: ["perStudent"] },
+  { label: "Staff", cards: ["staff.students", "staff.retention", "staff.elementary", "staff.secondary"] },
 ];
 const STAFF_CARDS = [
-  "staff.classroom",
+  "staff.students",
   "staff.retention",
   "staff.elementary",
   "staff.secondary",
@@ -1004,7 +1007,7 @@ function cardById(id, options = {}) {
 }
 
 function staffCard(id, options) {
-  if (id === "classroom") return classroomEducatorsCard(options);
+  if (id === "students") return studentsPerTeacherCard(options);
   if (id === "retention") return classroomRetentionCard(options);
   if (id === "elementary") return teacherMedianCard("elementary", "Elementary teacher median", options);
   if (id === "secondary") return teacherMedianCard("secondary", "Secondary teacher median", options);
@@ -1042,19 +1045,29 @@ function classroomRetentionOf(block) {
   return cell;
 }
 
-function classroomEducatorsCard(options = {}) {
-  const year = pinnedYear(options, (block) => classroomHeadcount(block) != null);
+function studentsPerTeacher(block) {
+  const teachers = classroomHeadcount(block);
+  const enrolled = enrollmentOf(block);
+  if (teachers == null || enrolled == null || !teachers || !enrolled) return null;
+  return { enrolled, teachers, value: enrolled / teachers };
+}
+
+function studentsPerTeacherCard(options = {}) {
+  const year = pinnedYear(options, (block) => studentsPerTeacher(block));
   const block = blockFor(year);
   const priorYear = year ? String(Number(year) - 1) : "";
-  const current = year ? classroomHeadcount(block) : null;
-  const prior = priorYear ? classroomHeadcount(blockFor(priorYear)) : null;
+  const current = year ? studentsPerTeacher(block) : null;
+  const prior = priorYear ? studentsPerTeacher(blockFor(priorYear)) : null;
   return {
-    published: Boolean(year) && current != null,
-    label: "Classroom educators",
-    value: current == null ? "Not published" : count(current),
-    extra: `<div class="note">Full-time</div>${yearDelta(current, prior, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`,
+    published: current != null,
+    label: "Students per classroom teacher",
+    value: current == null ? "Not published" : current.value.toFixed(1),
+    extra: current
+      ? `<div class="note">${count(current.enrolled)} students · ${count(current.teachers)} full-time</div>${yearDelta(current.value, prior?.value, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`
+      : "",
     title: year,
-    kind: "count",
+    rank: block.countyRanks?.studentsPerTeacher,
+    kind: "ratio",
     tab: "staff",
     year,
   };
@@ -1076,6 +1089,7 @@ function classroomRetentionCard(options = {}) {
       ? `<div class="note">${count(cell.stayed)} of ${count(cell.base)} full-time</div>${yearDeltaPoints(rate, priorRate, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`
       : "",
     title: year,
+    rank: block.countyRanks?.classroomRetention,
     kind: "pct",
     tab: "staff",
     year,
@@ -1100,6 +1114,7 @@ function teacherMedianCard(groupId, label, options = {}) {
     value: current == null ? "Not published" : money(current, 0),
     extra: `<div class="note">Full-time</div>${yearDelta(current, prior, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`,
     title: year,
+    rank: block.countyRanks?.[groupId === "elementary" ? "elementaryMedian" : "secondaryMedian"],
     kind: "money0",
     tab: "staff",
     year,
@@ -1213,11 +1228,14 @@ function statsGridClass(count) {
 
 function paintOverview() {
   const host = app.querySelector("#overview-stats");
-  host.innerHTML = OVERVIEW_CARDS.map((ids) => {
-    const cards = ids.map((id) => cardById(id)).filter((card) => card?.published);
+  host.innerHTML = OVERVIEW_CARDS.map((group) => {
+    const cards = group.cards.map((id) => cardById(id)).filter((card) => card?.published);
     if (!cards.length) return "";
     const html = cards.map((card) => renderStat(card, { href: cardHref(card) })).join("");
-    return `<div class="${statsGridClass(cards.length)}">${html}</div>`;
+    return `<section class="overview-group">
+      <h2 class="overview-kicker">${escapeHtml(group.label)}</h2>
+      <div class="${statsGridClass(cards.length)}">${html}</div>
+    </section>`;
   }).join("");
   const enrollYear = enrollmentAnchorYear();
   const enrollBlock = blockFor(enrollYear);
@@ -2247,6 +2265,7 @@ function formatMills(value) {
 function formatRankValue(value, kind) {
   if (kind === "count") return count(value);
   if (kind === "pct") return Number(value).toFixed(1) + "%";
+  if (kind === "ratio") return Number(value).toFixed(1);
   if (kind === "money0") return money(value, 0);
   return money(value);
 }

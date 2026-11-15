@@ -212,7 +212,10 @@ def main() -> None:
     act1 = _act1_index(connection)
     act1_base = _act1_base(connection)
     mills = _real_estate_tax(connection)
-    ranks = _county_ranks(profiles, grades, actual, budget, charter, keystone, pssa, graduation)
+    ranks = _county_ranks(
+        profiles, grades, actual, budget, charter, keystone, pssa, graduation,
+        salaries, retention,
+    )
     enrollment_year = catalog["enrollmentYear"]
     actual_year = catalog["actualYear"]
     budget_year = catalog["budgetYear"]
@@ -524,6 +527,28 @@ def _charter_as_of(amounts: dict, year: int) -> float:
     return amounts[max(earlier)] or 0.0
 
 
+def _classroom_n(groups: dict | None) -> int | None:
+    """Full-time elementary, secondary, and ungraded teachers. Admins and support stay out."""
+    if not groups:
+        return None
+    total = 0
+    found = False
+    for name in CLASSROOM_GROUPS:
+        stats = groups.get(name)
+        if not isinstance(stats, dict) or stats.get("n") is None:
+            continue
+        found = True
+        total += int(stats["n"])
+    return total if found else None
+
+
+def _group_median(groups: dict | None, name: str) -> float | None:
+    stats = (groups or {}).get(name) or {}
+    if not stats.get("n") or stats.get("median") is None:
+        return None
+    return float(stats["median"])
+
+
 def _county_ranks(
     profiles: list[dict],
     grades: dict,
@@ -533,17 +558,21 @@ def _county_ranks(
     keystone: dict | None = None,
     pssa: dict | None = None,
     graduation: dict | None = None,
+    salaries: dict | None = None,
+    retention: dict | None = None,
 ) -> dict:
     """Rank each LEA against others in its county for the top-card metrics."""
     keystone = keystone or {}
     pssa = pssa or {}
     graduation = graduation or {}
+    salaries = salaries or {}
+    retention = retention or {}
     by_county: dict[str, list[dict]] = {}
     for profile in profiles:
         by_county.setdefault(profile["county"], []).append(profile)
 
     years: set[int] = set()
-    for nested in (grades, actual, budget, keystone, pssa, graduation):
+    for nested in (grades, actual, budget, keystone, pssa, graduation, salaries, retention):
         for lea_years in nested.values():
             years.update(lea_years)
 
@@ -560,6 +589,10 @@ def _county_ranks(
                 "pssa_math": [],
                 "pssa_ela": [],
                 "graduation": [],
+                "studentsPerTeacher": [],
+                "classroomRetention": [],
+                "elementaryMedian": [],
+                "secondaryMedian": [],
             }
             actual_per_student: list[dict] = []
             budget_per_student: list[dict] = []
@@ -613,6 +646,26 @@ def _county_ranks(
                 grad = graduation.get(aun, {}).get(year, {}).get("4")
                 if grad and grad.get("rate") is not None:
                     buckets["graduation"].append({**row, "value": float(grad["rate"]) * 100})
+                staff = salaries.get(aun, {}).get(year) or {}
+                teachers = _classroom_n(staff)
+                if enrolled and teachers:
+                    buckets["studentsPerTeacher"].append({
+                        **row,
+                        "value": round(enrolled / teachers, 4),
+                    })
+                for metric, group in (
+                    ("elementaryMedian", "elementary"),
+                    ("secondaryMedian", "secondary"),
+                ):
+                    median = _group_median(staff, group)
+                    if median is not None:
+                        buckets[metric].append({**row, "value": median})
+                classroom = (retention.get(aun, {}).get(year) or {}).get("classroom") or {}
+                if classroom.get("rate") is not None and classroom.get("base"):
+                    buckets["classroomRetention"].append({
+                        **row,
+                        "value": round(float(classroom["rate"]) * 100, 4),
+                    })
             # A year with any AFR stays on actuals. Budget per student ranks only
             # when nobody in the county has actuals yet, so the two are never mixed.
             buckets["perStudent"] = actual_per_student or budget_per_student
