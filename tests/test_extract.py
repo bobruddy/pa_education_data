@@ -8,7 +8,8 @@ import requests
 from openpyxl import Workbook
 
 from pa_edu.catalog import CatalogEntry
-from pa_edu.extract import ensure_extract, read_workbook
+from pa_edu.codes import read_sheet
+from pa_edu.extract import ensure_extract, read_workbook, use_extract
 from pa_edu.storage import load_index, store_bytes
 
 
@@ -100,6 +101,17 @@ def test_a_changed_extract_code_rebuilds(tmp_path: Path, monkeypatch) -> None:
     ensure_extract(data, load_index(data), record)
     assert calls["n"] == 1
     assert json.loads(meta_path.read_text())["extract_code"] != "stale"
+
+
+def test_a_sheet_index_reads_the_extracted_sheet(tmp_path: Path) -> None:
+    book = tmp_path / "codes.xlsx"
+    _book(book)
+    data, index, record = _record(tmp_path, book)
+    record = ensure_extract(data, index, record)
+    with use_extract(book, record["extract_path"]):
+        frame = read_sheet(book, 0)
+    assert list(frame.columns) == ["AUN", "School Number", "Amount"]
+    assert frame["AUN"].iloc[0] == "101260303"
 
 
 def test_a_missing_discovered_link_is_skipped(tmp_path: Path, monkeypatch, capsys) -> None:

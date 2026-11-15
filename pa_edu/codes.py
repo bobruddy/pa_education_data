@@ -65,32 +65,44 @@ def find_sheet(path: Path, preferred: str) -> str:
     raise ValueError(f"{path.name} has no sheet {preferred!r} in {names}")
 
 
+def sheet_at(path: Path, sheet: str | int) -> str:
+    """Sheet name. An integer is a position, which is how pandas reads ``0``."""
+    if isinstance(sheet, str):
+        return sheet
+    names = sheet_names(path)
+    if isinstance(sheet, int) and -len(names) <= sheet < len(names):
+        return names[sheet]
+    raise ValueError(f"{path.name} has no sheet {sheet!r} in {names}")
+
+
 def sheets_starting(path: Path, prefix: str) -> list[str]:
     folded = prefix.casefold()
     return [name for name in sheet_names(path) if name.casefold().startswith(folded)]
 
 
-def read_sheet(path: Path, sheet: str, skiprows: int = 0) -> pd.DataFrame:
+def read_sheet(path: Path, sheet: str | int, skiprows: int = 0) -> pd.DataFrame:
     from pa_edu.extract import published_sheet
 
-    extracted = published_sheet(path, sheet)
+    name = sheet_at(path, sheet)
+    extracted = published_sheet(path, name)
     if extracted is not None:
         return extracted
     engine = "xlrd" if path.suffix.lower() == ".xls" else "openpyxl"
-    frame = pd.read_excel(path, sheet_name=sheet, skiprows=skiprows, engine=engine)
+    frame = pd.read_excel(path, sheet_name=name, skiprows=skiprows, engine=engine)
     frame.columns = [str(column).strip() for column in frame.columns]
     return frame
 
 
-def read_grid(path: Path, sheet: str) -> pd.DataFrame:
+def read_grid(path: Path, sheet: str | int) -> pd.DataFrame:
     """Headerless rows. An active extract rebuilds them without opening Excel."""
     from pa_edu.extract import published_sheet
 
-    extracted = published_sheet(path, sheet)
+    name = sheet_at(path, sheet)
+    extracted = published_sheet(path, name)
     if extracted is not None:
         return _grid_from_published(extracted)
     engine = "xlrd" if path.suffix.lower() == ".xls" else "openpyxl"
-    return pd.read_excel(path, sheet_name=sheet, header=None, engine=engine)
+    return pd.read_excel(path, sheet_name=name, header=None, engine=engine)
 
 
 def read_headed(path: Path, sheet: str, skiprows: int) -> pd.DataFrame:
