@@ -328,7 +328,7 @@ def _cell_text(value: object) -> str | None:
             return None
         if value.is_integer():
             return str(int(value))
-        return format(value, "f").rstrip("0").rstrip(".")
+        return format(value, ".17g")
     text = str(value).replace("\r\n", "\n").replace("\r", "\n").strip()
     if text == "":
         return None

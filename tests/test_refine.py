@@ -1063,6 +1063,7 @@ def test_cohort_grad_reads_a_blank_header_from_the_extract(tmp_path: Path) -> No
         extracted = parse_cohort_grad(path, document)["cohort_graduation"]
     assert list(extracted["aun"]) == list(direct["aun"])
     assert int(extracted.iloc[0]["graduates"]) == 262
+    assert extracted.iloc[0]["rate"] == direct.iloc[0]["rate"]
 
 
 def test_cohort_grad_accepts_the_layout_without_later_groups(tmp_path: Path) -> None:
