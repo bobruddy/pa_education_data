@@ -488,7 +488,8 @@ table.schools td.num, table.schools th.num { text-align: right; }
   text-underline-offset: 2px;
 }
 .drill .here { color: var(--ink); text-decoration: none; font-weight: 600; }
-.sun-measures { margin: 2px 0 12px; }
+.sun-measures { margin: 2px 0 8px; }
+.sun-units { margin: 0 0 12px; }
 .sun-layout {
   display: grid;
   grid-template-columns: minmax(260px, 1.15fr) minmax(220px, 0.85fr);

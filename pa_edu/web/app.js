@@ -302,6 +302,7 @@ function readState() {
     budget: query.get("budget") || "",
     income: query.get("income") || "",
     spend: query.get("spend") === "budget" ? "budget" : query.get("spend") === "income" ? "income" : query.get("spend") === "actual" ? "actual" : "",
+    unit: query.get("unit") === "student" ? "student" : "",
   };
 }
 
@@ -321,6 +322,7 @@ function writeUrl(state, mode) {
   if (state.budget) query.set("budget", state.budget);
   if (state.income) query.set("income", state.income);
   if (state.spend === "actual" || state.spend === "budget" || state.spend === "income") query.set("spend", state.spend);
+  if (state.unit === "student" && state.aun && state.tab === "financials") query.set("unit", "student");
   const next = location.pathname + (query.toString() ? "?" + query : "");
   if (next === location.pathname + location.search) return;
   if (mode === "push") history.pushState(null, "", next);
@@ -459,6 +461,9 @@ function link(state) {
   if (!state.categoryAll) query.set("category", state.category.join(","));
   query.set("status", state.status.join(","));
   if (state.budget) query.set("budget", state.budget);
+  if (state.aun && state.income) query.set("income", state.income);
+  if (state.aun && (state.spend === "actual" || state.spend === "budget" || state.spend === "income")) query.set("spend", state.spend);
+  if (state.aun && state.unit === "student") query.set("unit", "student");
   const text = query.toString();
   return text ? "?" + text : "./";
 }
@@ -584,6 +589,16 @@ function bindLea() {
         }
         more.textContent = open ? "less" : "more";
       }
+      return;
+    }
+    const unitMode = event.target.closest("#spend [data-unit]");
+    if (unitMode) {
+      hideTip();
+      const state = readState();
+      state.tab = "financials";
+      state.unit = unitMode.dataset.unit === "student" ? "student" : "";
+      writeUrl(state, "replace");
+      paintLea(state);
       return;
     }
     const spendMode = event.target.closest("#spend [data-spend]");
@@ -2995,10 +3010,11 @@ function spendAmountText(node, series, published) {
   return moneyFull(signedSpend(node, series));
 }
 
-function seriesPhrase(label, node, series, published) {
+function seriesPhrase(label, node, series, published, perStudent) {
   if (!published) return `${label} not published`;
   if (!hasSpend(node, series)) return series === "budget" ? "Not in the budget" : "Not in the actual";
-  return `${label} ${moneyFull(signedSpend(node, series))}`;
+  const suffix = perStudent ? " per student" : "";
+  return `${label} ${moneyFull(signedSpend(node, series))}${suffix}`;
 }
 
 function chartText(node, income, field) {
@@ -3026,11 +3042,11 @@ function tipTitle(node) {
   return heading;
 }
 
-function spendTip(node, measure, yearActual, yearBudget) {
+function spendTip(node, measure, yearActual, yearBudget, perStudent) {
   const lines = [];
   if (node.account) lines.push(`<span class="tip-muted">${escapeHtml(node.account)}</span>`);
-  lines.push(seriesPhrase("Actual", node, "actual", yearActual));
-  lines.push(seriesPhrase("Budget", node, "budget", yearBudget));
+  lines.push(seriesPhrase("Actual", node, "actual", yearActual, perStudent));
+  lines.push(seriesPhrase("Budget", node, "budget", yearBudget, perStudent));
   if (node.parent) {
     const share = pctText(wedgeValue(node, measure), wedgeValue(node.parent, measure));
     if (share) lines.push(`${share} of ${escapeHtml(node.parent.label)}`);
@@ -3106,9 +3122,9 @@ function wedgeLabel(slice, radius, fontSize) {
   return `<path id="${id}" class="sun-arc" d="${arc}"></path><text class="${cls}" fill="${inkFor(slice.fill)}"><textPath href="#${id}" startOffset="50%" text-anchor="middle">${escapeHtml(name)}</textPath></text>`;
 }
 
-function wedgeMarkup(slice, r0, r1, measure, yearActual, yearBudget) {
+function wedgeMarkup(slice, r0, r1, measure, yearActual, yearBudget, perStudent) {
   const path = ringPath(210, 210, r0, r1, slice.start, slice.end);
-  const tip = spendTip(slice.node, measure, yearActual, yearBudget);
+  const tip = spendTip(slice.node, measure, yearActual, yearBudget, perStudent);
   const radius = (r0 + r1) / 2;
   const fontSize = r1 - r0 > 50 ? 12 : 10.5;
   return `<path class="sun-wedge" fill="${slice.fill}" fill-rule="evenodd" stroke="#f3efe6" stroke-width="1.5" d="${path}" data-budget="${escapeAttr(slice.node.path)}" data-slice="${escapeAttr(slice.node.path)}" data-tip="${escapeAttr(tip)}"></path>${wedgeLabel(slice, radius, fontSize)}`;
@@ -3154,7 +3170,7 @@ function spendCrumb(node, allLabel = "All functions") {
   return `<div class="drill">${parts.join(" / ")}</div>`;
 }
 
-function spendCard(node, measure, root, yearActual, yearBudget, drawn) {
+function spendCard(node, measure, root, yearActual, yearBudget, drawn, perStudent) {
   const series = drawn || measure;
   const amount = money(signedSpend(node, series));
   const parentShare = node.parent ? pctText(signedSpend(node, series), signedSpend(node.parent, series)) : "";
@@ -3170,9 +3186,10 @@ function spendCard(node, measure, root, yearActual, yearBudget, drawn) {
   let gap = "";
   if (yearActual && yearBudget && hasSpend(node, "actual") && hasSpend(node, "budget")) {
     const diff = signedSpend(node, "actual") - signedSpend(node, "budget");
+    const unit = perStudent ? " per student" : "";
     gap = Math.abs(diff) < 1
       ? "Actual matches the budget"
-      : `Actual is ${money(Math.abs(diff))} ${diff > 0 ? "above" : "below"} the budget`;
+      : `Actual is ${money(Math.abs(diff))}${unit} ${diff > 0 ? "above" : "below"} the budget`;
   }
   const splitBits = [];
   if (node.elem) splitBits.push(`Elementary ${money(node.elem)}`);
@@ -3182,8 +3199,9 @@ function spendCard(node, measure, root, yearActual, yearBudget, drawn) {
   const source = node.kind !== "root" && node.kind !== "major" && node.kind !== "school" && extraSources.length
     ? `Actual lines ${extraSources.slice(0, 4).join(", ")}${extraSources.length > 4 ? `, and ${extraSources.length - 4} more` : ""}.`
     : "";
+  const kind = measure === "income" ? "Income" : series === "actual" ? "Actual" : "Budget";
   return `<div class="sun-card">
-    <p class="sun-kicker">${measure === "income" ? "Income" : series === "actual" ? "Actual" : "Budget"}${node.account ? ` · ${escapeHtml(node.account)}` : ""}</p>
+    <p class="sun-kicker">${kind}${perStudent ? " per student" : ""}${node.account ? ` · ${escapeHtml(node.account)}` : ""}</p>
     <p class="sun-figure">${escapeHtml(amount)}</p>
     <p class="sun-shareline">${escapeHtml(share)}</p>
     <div class="sun-pair">
@@ -3197,12 +3215,12 @@ function spendCard(node, measure, root, yearActual, yearBudget, drawn) {
   </div>`;
 }
 
-function spendList(nodes, measure, yearActual, yearBudget) {
+function spendList(nodes, measure, yearActual, yearBudget, perStudent) {
   if (!nodes.length) return `<p class="note">No further breakdown is published under this slice.</p>`;
   const total = nodes.reduce((sum, node) => sum + wedgeValue(node, measure), 0);
   return `<div class="sun-list">${nodes.map((node, index) => {
     const fill = sliceFill(node, index);
-    const tip = spendTip(node, measure, yearActual, yearBudget);
+    const tip = spendTip(node, measure, yearActual, yearBudget, perStudent);
     return `<button type="button" class="sun-row" data-budget="${escapeAttr(node.path)}" data-slice="${escapeAttr(node.path)}" data-tip="${escapeAttr(tip)}">
       <span class="sun-swatch" style="background:${fill}"></span>
       <span class="sun-name">${escapeHtml(node.label)}<small>${escapeHtml(node.account || node.code)}</small>${listDescription(node.description)}</span>
@@ -3330,6 +3348,168 @@ function buildIncomeTree(block) {
   return linkSpend(root);
 }
 
+// Per student uses this year's October 1 count. Object 562 is tuition for
+// students counted at the charter, so those dollars come out of the actual
+// and out of the budget's purchased services.
+function charterLines(block) {
+  const lines = [];
+  for (const [fn, objects] of Object.entries(block?.actualDetail || {})) {
+    const amount = amountOf(objects?.["562"]);
+    if (amount > 0) lines.push({ summary: summaryOf(String(fn)), amount });
+  }
+  return lines;
+}
+
+function charterSource(block, year) {
+  const own = charterLines(block);
+  if (own.length) return { lines: own, estimatedYear: "" };
+  const earlier = Object.keys(leaPack?.years || {})
+    .filter((candidate) => Number(candidate) < Number(year) && charterLines(blockFor(candidate)).length)
+    .sort((a, b) => Number(a) - Number(b));
+  const found = earlier.at(-1);
+  if (!found) return { lines: [], estimatedYear: "" };
+  return { lines: charterLines(blockFor(found)), estimatedYear: found };
+}
+
+function charterLeaves(root) {
+  const found = [];
+  const walk = (node) => {
+    if ((node.kind === "detail" || node.kind === "object") && node.code === "562") found.push(node);
+    node.children.forEach(walk);
+  };
+  walk(root);
+  return found;
+}
+
+function clearActual(node) {
+  node.actual = 0;
+  node.elem = 0;
+  node.sec = 0;
+  node.fed = 0;
+  node.credits = (node.credits || []).filter((row) => row.series !== "actual");
+  node.children.forEach(clearActual);
+}
+
+function stripCharterActual(root) {
+  for (const leaf of charterLeaves(root)) {
+    const amount = leaf.actual;
+    const elem = leaf.elem || 0;
+    const sec = leaf.sec || 0;
+    const fed = leaf.fed || 0;
+    clearActual(leaf);
+    let current = leaf.parent;
+    while (current) {
+      current.actual = Math.max(0, current.actual - amount);
+      current.elem = Math.max(0, current.elem - elem);
+      current.sec = Math.max(0, current.sec - sec);
+      current.fed = Math.max(0, current.fed - fed);
+      current = current.parent;
+    }
+  }
+}
+
+function reduceBudgetDown(node, amount) {
+  let left = amount;
+  const kids = node.children.filter((child) => child.budget > 0).sort((a, b) => b.budget - a.budget);
+  for (const child of kids) {
+    if (left <= 0) break;
+    const childTake = Math.min(child.budget, left);
+    child.budget -= childTake;
+    reduceBudgetDown(child, childTake);
+    left -= childTake;
+  }
+}
+
+function consumeBudget(node, amount) {
+  const take = Math.min(Math.max(node.budget, 0), amount);
+  if (take <= 0) return amount;
+  let current = node;
+  while (current) {
+    current.budget -= take;
+    current = current.parent;
+  }
+  // The budget line is stored on this object and on its published child.
+  reduceBudgetDown(node, take);
+  return amount - take;
+}
+
+function placeCharterBudget(root, summary, amount) {
+  const objects = [];
+  const walk = (node) => {
+    if (node.kind === "object" && node.code === "500" && node.budget > 0) objects.push(node);
+    node.children.forEach(walk);
+  };
+  walk(root);
+  const preferred = objects.filter((node) => node.account === `${summary}-500`);
+  const rest = objects
+    .filter((node) => node.account !== `${summary}-500`)
+    .sort((a, b) => b.budget - a.budget || a.account.localeCompare(b.account));
+  let left = amount;
+  for (const node of [...preferred, ...rest]) {
+    left = consumeBudget(node, left);
+    if (left <= 0.5) return 0;
+  }
+  if (left > 0.005) root.budget = Math.max(0, root.budget - left);
+  return left > 0.5 ? left : 0;
+}
+
+function excludeCharter(root, block, year) {
+  const source = charterSource(block, year);
+  if (!source.estimatedYear) stripCharterActual(root);
+  const bySummary = new Map();
+  for (const line of source.lines) {
+    bySummary.set(line.summary, (bySummary.get(line.summary) || 0) + line.amount);
+  }
+  let removed = 0;
+  let unallocated = 0;
+  for (const [summary, amount] of bySummary) {
+    removed += amount;
+    unallocated += placeCharterBudget(root, summary, amount);
+  }
+  return { estimatedYear: source.estimatedYear, removed, unallocated };
+}
+
+function scaleSpend(node, enrolled) {
+  node.budget /= enrolled;
+  node.actual /= enrolled;
+  node.elem /= enrolled;
+  node.sec /= enrolled;
+  node.fed /= enrolled;
+  node.credits = (node.credits || []).map((row) => ({
+    series: row.series,
+    amount: row.amount / enrolled,
+    source: row.source,
+  }));
+  node.children.forEach((child) => scaleSpend(child, enrolled));
+}
+
+function unitChips(unit) {
+  const choices = [["dollars", "Dollars"], ["student", "Per student"]];
+  return `<div class="chips sun-units" aria-label="Dollars or per student">${choices.map(([id, label]) => `<button type="button" class="chip" data-unit="${id}" data-value="${id}" aria-pressed="${unit === id ? "true" : "false"}">${label}</button>`).join("")}</div>`;
+}
+
+function perStudentFootnote(measure, year, info) {
+  const base = measure === "income"
+    ? `Per student divides each revenue account by the ${yearLabel(year)} October 1 enrollment (${count(info.enrolled)} students).`
+    : `Per student divides each account by the ${yearLabel(year)} October 1 enrollment (${count(info.enrolled)} students).`;
+  const ctc = leaPack.category === "career_and_technical_center"
+    ? " Part-day students here can also be counted in a school district."
+    : "";
+  if (measure === "income") {
+    return `${base} Charter tuition is an expenditure, so it is not part of income.${ctc}`;
+  }
+  if (!info.removed) {
+    return `${base} No tuition to charter schools (object 562) is published for this LEA, so none is removed.${ctc}`;
+  }
+  const body = info.estimatedYear
+    ? `Estimated charter tuition is object 562 from ${yearLabel(info.estimatedYear)}. Those dollars are left out of this year’s purchased services (object 500). This year’s budget does not publish object 562 on its own.`
+    : "Tuition to brick-and-mortar and cyber charters (object 562) is left out of the actual, because those students are counted in the charter’s enrollment. The same dollars are left out of purchased services in the budget.";
+  const gap = info.unallocated > 1
+    ? ` ${moneyFull(info.unallocated)} of that tuition did not fit on a purchased-services line and is left off the total only.`
+    : "";
+  return `${base} ${body}${gap}${ctc}`;
+}
+
 function drawSpend(block, state) {
   const host = app.querySelector("#spend");
   if (!host) return;
@@ -3351,8 +3531,35 @@ function drawSpend(block, state) {
   const drawn = incomeMode ? incomeWedgeSeries(block) : measure;
   const publishedActual = incomeMode ? incomeActualOn : yearActual;
   const publishedBudget = incomeMode ? incomeBudgetOn : yearBudget;
+  const choices = [];
+  if (yearActual) choices.push(["actual", "Actual"]);
+  if (yearBudget) choices.push(["budget", "Budget"]);
+  if (incomeActualOn || incomeBudgetOn) choices.push(["income", "Income"]);
+  const measures = choices.length > 1
+    ? `<div class="chips sun-measures" aria-label="Amounts to draw">${choices.map(([id, label]) => `<button type="button" class="chip" data-spend="${id}" data-value="${id}" aria-pressed="${measure === id ? "true" : "false"}">${label}</button>`).join("")}</div>`
+    : "";
+  const perStudent = state.unit === "student";
+  if (perStudent) {
+    const enrolledNow = enrollmentOf(block);
+    if (!(enrolledNow > 0)) {
+      host.dataset.kind = incomeMode ? "income" : "";
+      const why = enrolledNow === 0
+        ? `October 1 enrollment for ${yearLabel(state.year)} is 0, so a per-student breakdown is not available.`
+        : `October 1 enrollment is not published for ${yearLabel(state.year)}, so a per-student breakdown is not available.`;
+      host.innerHTML = `${measures}${unitChips("student")}<p class="note">${escapeHtml(why)}</p>`;
+      return;
+    }
+  }
   const root = incomeMode ? buildIncomeTree(block) : buildSpendTree(block);
   stampDescriptions(root, incomeMode);
+  let perStudentInfo = null;
+  if (perStudent) {
+    const enrolledNow = enrollmentOf(block);
+    perStudentInfo = incomeMode
+      ? { enrolled: enrolledNow, estimatedYear: "", removed: 0, unallocated: 0 }
+      : { enrolled: enrolledNow, ...excludeCharter(root, block, state.year) };
+    scaleSpend(root, enrolledNow);
+  }
   const focusKey = incomeMode ? (state.income || "") : (state.budget || "");
   const focus = visibleSpendNode(findSpendNode(root, focusKey), drawn);
   if (focusKey !== focus.path) {
@@ -3366,33 +3573,29 @@ function drawSpend(block, state) {
   const inner = layoutRing(innerNodes, drawn, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2);
   const outer = inner.flatMap((slice) => layoutRing(orderedChildren(slice.node, drawn), drawn, slice.start, slice.end));
   const wedges = [
-    ...outer.map((slice) => wedgeMarkup(slice, 160, 198, drawn, publishedActual, publishedBudget)),
-    ...inner.map((slice) => wedgeMarkup(slice, 86, 152, drawn, publishedActual, publishedBudget)),
+    ...outer.map((slice) => wedgeMarkup(slice, 160, 198, drawn, publishedActual, publishedBudget, perStudent)),
+    ...inner.map((slice) => wedgeMarkup(slice, 86, 152, drawn, publishedActual, publishedBudget, perStudent)),
   ].join("");
   const disk = inner.length ? "" : fillOf(focus, drawn);
-  const chart = `<svg class="sun-chart" viewBox="0 0 420 420" role="img" aria-label="${escapeAttr(`${focus.label}, ${incomeMode ? "income" : drawn}`)}">${wedges}${centerMarkup(focus, drawn, inner.length ? "" : disk)}</svg>`;
-  const choices = [];
-  if (yearActual) choices.push(["actual", "Actual"]);
-  if (yearBudget) choices.push(["budget", "Budget"]);
-  if (incomeActualOn || incomeBudgetOn) choices.push(["income", "Income"]);
-  const measures = choices.length > 1
-    ? `<div class="chips sun-measures" aria-label="Amounts to draw">${choices.map(([id, label]) => `<button type="button" class="chip" data-spend="${id}" data-value="${id}" aria-pressed="${measure === id ? "true" : "false"}">${label}</button>`).join("")}</div>`
-    : "";
+  const unitPhrase = perStudent ? ", per student" : "";
+  const chart = `<svg class="sun-chart" viewBox="0 0 420 420" role="img" aria-label="${escapeAttr(`${focus.label}, ${incomeMode ? "income" : drawn}${unitPhrase}`)}">${wedges}${centerMarkup(focus, drawn, inner.length ? "" : disk)}</svg>`;
   const notes = [
-    incomeMode ? "" : reconcileNote(block, focus, drawn),
-    childGapNote(focus, drawn),
+    perStudent || incomeMode ? "" : reconcileNote(block, focus, drawn),
+    perStudentInfo?.unallocated > 1 ? "" : childGapNote(focus, drawn),
     creditNote(focus, drawn),
   ].filter(Boolean);
-  const footnote = incomeMode
-    ? `Wedge size is the share of this view in ${drawn === "budget" ? "budgeted " : ""}general-fund revenue. The first cut is the chart’s major class: local, state, federal, and other financing sources. Each step inside that is a published account. Rollup accounts group the drill; a parent row is not added on top of its children. Income is not added to spending. A missing account is left out.`
-    : measure === "budget"
-      ? "Wedge size is the share of this view in the adopted general-fund budget. The budget stops at the function and the major object. Actual opens each published subfunction and object, then the building when PDE reported one."
-      : "Wedge size is the share of this view in the general-fund actual. Each step is a published account: subfunction, then object, then building when PDE reported one. Elementary, secondary, and federal are a split of that actual, not extra dollars. A missing account is left out.";
-  host.innerHTML = `${measures}${spendCrumb(focus, incomeMode ? "All sources" : "All functions")}
-    <div class="sun-layout">${chart}${spendCard(focus, measure, root, publishedActual, publishedBudget, drawn)}</div>
-    ${spendList(innerNodes, drawn, publishedActual, publishedBudget)}
+  const footnote = perStudent
+    ? perStudentFootnote(measure, state.year, perStudentInfo)
+    : incomeMode
+      ? `Wedge size is the share of this view in ${drawn === "budget" ? "budgeted " : ""}general-fund revenue. The first cut is the chart’s major class: local, state, federal, and other financing sources. Each step inside that is a published account. Rollup accounts group the drill; a parent row is not added on top of its children. Income is not added to spending. A missing account is left out.`
+      : measure === "budget"
+        ? "Wedge size is the share of this view in the adopted general-fund budget. The budget stops at the function and the major object. Actual opens each published subfunction and object, then the building when PDE reported one."
+        : "Wedge size is the share of this view in the general-fund actual. Each step is a published account: subfunction, then object, then building when PDE reported one. Elementary, secondary, and federal are a split of that actual, not extra dollars. A missing account is left out.";
+  host.innerHTML = `${measures}${unitChips(perStudent ? "student" : "dollars")}${spendCrumb(focus, incomeMode ? "All sources" : "All functions")}
+    <div class="sun-layout">${chart}${spendCard(focus, measure, root, publishedActual, publishedBudget, drawn, perStudent)}</div>
+    ${spendList(innerNodes, drawn, publishedActual, publishedBudget, perStudent)}
     ${notes.map((note) => `<p class="note">${escapeHtml(note)}</p>`).join("")}
-    <p class="note">${footnote}</p>`;
+    <p class="note">${escapeHtml(footnote)}</p>`;
   fitListDescriptions(host);
 }
 
@@ -3619,7 +3822,7 @@ function sourceLinks(year) {
   const note = leaPack.category === "career_and_technical_center"
     ? " Part-day students here can also be counted in a school district."
     : "";
-  return `<p class="note">Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. Income is general-fund revenue from the AFR revenue sheet and the budget revenue sheet: local, state, federal, and other financing sources. It is not added to spending. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books. When that year’s AFR is not published, the card uses the general fund budget divided by October 1 enrollment, with estimated charter tuition removed, and compares that with the prior year.${note}</p>
+  return `<p class="note">Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. Income is general-fund revenue from the AFR revenue sheet and the budget revenue sheet: local, state, federal, and other financing sources. It is not added to spending. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. The chart’s Per student view divides each actual, budget, and income account by that same October 1 count. Object 562 is left out of the actual, and those dollars are left out of the budget’s purchased services. A budget year with no annual financial report yet uses the latest object 562, by function, as the estimate. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books. When that year’s AFR is not published, the card uses the general fund budget divided by October 1 enrollment, with estimated charter tuition removed, and compares that with the prior year.${note}</p>
     <p class="sources note">${items.join(" · ") || "Source files are listed in the catalog."}</p>`;
 }
 
