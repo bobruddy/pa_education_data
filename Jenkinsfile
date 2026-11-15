@@ -3,7 +3,31 @@ pipeline {
     options {
         disableConcurrentBuilds(abortPrevious: true)
     }
+    triggers {
+        // Daily acquisition / model refresh. No site image on a timer build.
+        cron('H 6 * * *')
+    }
+    parameters {
+        booleanParam(
+            name: 'FORCE_DATA_REFRESH',
+            defaultValue: false,
+            description: 'Rebuild the data image and run refine/personnel/check even when data code is unchanged'
+        )
+    }
     stages {
+        stage('decide') {
+            steps {
+                script {
+                    def timed = !currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').isEmpty()
+                    def forced = params.FORCE_DATA_REFRESH
+                    def changed = sh(script: 'chmod +x scripts/data-code-changed.sh scripts/refresh-data.sh scripts/docker09-data.sh scripts/docker09.sh; scripts/data-code-changed.sh', returnStatus: true) == 0
+                    env.DO_DATA_REFRESH = (timed || forced || changed) ? '1' : '0'
+                    // Timer builds refresh data only. SCM / manual builds still publish the site.
+                    env.DO_SITE_BUILD = timed ? '0' : '1'
+                    echo "timed=${timed} forced=${forced} dataCodeChanged=${changed} DO_DATA_REFRESH=${env.DO_DATA_REFRESH} DO_SITE_BUILD=${env.DO_SITE_BUILD}"
+                }
+            }
+        }
         stage('test') {
             steps {
                 sh '''
@@ -15,6 +39,9 @@ pipeline {
             }
         }
         stage('data') {
+            when {
+                environment name: 'DO_DATA_REFRESH', value: '1'
+            }
             steps {
                 sh '''
                     set -eu
@@ -23,24 +50,37 @@ pipeline {
                     docker build -f Dockerfile.data --build-arg PDE_GIT_SHA="$tag" -t "$image" .
                     docker push "$image"
                     scripts/docker09-data.sh "$tag"
-                    ssh docker09 'set -eu
-                        ready=0
-                        for _ in 1 2 3 4 5 6 7 8 9 10; do
-                            if docker exec pde-data python -c "import pa_edu.refine"; then
-                                ready=1
-                                break
-                            fi
-                            sleep 2
-                        done
-                        test "$ready" = 1
-                        docker exec pde-data python -m pa_edu.refine
-                        docker exec pde-data python -m pa_edu.personnel
-                        docker exec pde-data python -m pa_edu.check
-                    '
+                    scripts/refresh-data.sh
                 '''
             }
         }
-        // Site publish and the nginx image stay off until the data container
-        // has been checked. Restore both stages after that.
+        stage('publish') {
+            when {
+                environment name: 'DO_SITE_BUILD', value: '1'
+            }
+            steps {
+                sh '''
+                    set -eu
+                    export PDE_REFINED_URL=http://192.168.10.116:8091/refined
+                    .venv/bin/python -m pa_edu.publish
+                '''
+            }
+        }
+        stage('image') {
+            when {
+                environment name: 'DO_SITE_BUILD', value: '1'
+            }
+            steps {
+                sh '''
+                    set -eu
+                    tag=$(git rev-parse HEAD)
+                    image="192.168.150.59:443/pdenumbers:${tag}"
+                    docker build -t "$image" -t "192.168.150.59:443/pdenumbers:latest" .
+                    docker push "$image"
+                    docker push "192.168.150.59:443/pdenumbers:latest"
+                    scripts/docker09.sh "$tag"
+                '''
+            }
+        }
     }
 }

@@ -8,6 +8,7 @@ import pandas as pd
 
 from pa_edu.publish import (
     EXPERIENCE_EDGES,
+    SALARY_EDGES,
     JSON_GZIP_LEVEL,
     _county_ranks,
     _experience_stats,
@@ -96,9 +97,43 @@ def test_salaries_come_from_professional_staff_parquet(tmp_path: Path, monkeypat
     stats = salaries["1"][2023]["elementary"]
     assert stats["n"] == 2
     assert stats["mean"] == 60_000
+    assert stats["mastersPct"] == 50
+    assert stats["retention"] == 0.5
+    assert len(stats["hist"]) == len(SALARY_EDGES) + 1
+    assert sum(stats["hist"]) == 2
     assert retention["1"][2023] == {"rate": 0.5, "base": 2, "stayed": 1, "nextYear": 2024}
     assert 2024 not in retention["1"]
     assert experience["1"][2023]["elementary"]["lea"]["n"] == 2
+
+
+def test_salaries_duckdb_path_handles_many_rows(tmp_path: Path, monkeypatch) -> None:
+    """Regression guard: aggregation stays vectorized (seconds, not minutes)."""
+    import time
+
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    rows = 80_000
+    years = np.asarray([2022 + (index % 3) for index in range(rows)])
+    frame = pd.DataFrame({
+        "aun": [str(index % 200) for index in range(rows)],
+        "school_year": years,
+        "public_id": [str(index) for index in range(rows)],
+        "annual_salary": np.linspace(20_000, 210_000, rows),
+        "fte_percent": np.full(rows, 100.0),
+        "edf_category": np.where(np.arange(rows) % 2 == 0, "ELMTCH", "SECTCH"),
+        "years_in_lea": np.linspace(0, 45, rows),
+        "years_in_education": np.linspace(0, 45, rows),
+        "degree_code": np.where(np.arange(rows) % 3 == 0, "1054", "1051"),
+    })
+    frame.to_parquet(refined / "professional_staff.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+    started = time.perf_counter()
+    salaries, experience, retention = _salaries()
+    elapsed = time.perf_counter() - started
+    assert elapsed < 8.0, f"_salaries took {elapsed:.1f}s on {rows} rows"
+    assert len(salaries) == 200
+    assert experience
+    assert retention
 
 
 def test_experience_hist_bins_integer_years() -> None:

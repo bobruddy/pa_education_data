@@ -1010,86 +1010,366 @@ def _school_detail(connection: duckdb.DuckDBPyConnection) -> dict:
 
 
 def _salaries() -> tuple[dict, dict, dict]:
-    """Full-time professional staff salary + experience stats and same-LEA retention."""
+    """Full-time professional staff salary + experience stats and same-LEA retention.
+
+    Aggregates in DuckDB over ``professional_staff.parquet`` so publish stays
+    seconds, not minutes of Python groupby loops.
+    """
     path = REFINED / "professional_staff.parquet"
     if not path.exists():
         print("no professional_staff.parquet; salary panel skipped")
         return {}, {}, {}
     connection = duckdb.connect()
     try:
-        frame = connection.execute(
-            """
-            SELECT aun, school_year, public_id, annual_salary, edf_category,
-                   years_in_lea, years_in_education, degree_code
-            FROM read_parquet(?)
+        connection.execute(
+            f"""
+            CREATE TEMP TABLE staff AS
+            SELECT
+              CAST(aun AS VARCHAR) AS aun,
+              CAST(school_year AS INTEGER) AS school_year,
+              CAST(public_id AS VARCHAR) AS public_id,
+              CAST(annual_salary AS DOUBLE) AS annual_salary,
+              CAST(years_in_lea AS DOUBLE) AS years_in_lea,
+              CAST(years_in_education AS DOUBLE) AS years_in_education,
+              CASE
+                WHEN degree_code IS NULL THEN NULL
+                ELSE CAST(degree_code AS VARCHAR)
+              END AS degree_code,
+              {_salary_group_sql("edf_category")} AS grp,
+              {_salary_bin_sql("annual_salary")} AS salary_bin,
+              {_experience_bin_sql("years_in_lea")} AS lea_bin,
+              {_experience_bin_sql("years_in_education")} AS edu_bin
+            FROM read_parquet('{_sql_path(path)}')
             WHERE annual_salary > 0
               AND fte_percent = 100
-            """,
-            [str(path)],
+            """
+        )
+        connection.execute("DELETE FROM staff WHERE grp IS NULL")
+        if connection.execute("SELECT count(*) FROM staff").fetchone()[0] == 0:
+            return {}, {}, {}
+
+        masters = _masters_sql("degree_code")
+        summaries = connection.execute(
+            f"""
+            SELECT aun, school_year, grp,
+                   count(*)::BIGINT AS n,
+                   min(annual_salary) AS min_salary,
+                   avg(annual_salary) AS mean_salary,
+                   median(annual_salary) AS median_salary,
+                   max(annual_salary) AS max_salary,
+                   avg(years_in_lea) AS lea_years,
+                   avg(years_in_education) AS edu_years,
+                   {masters} AS masters_pct
+            FROM staff
+            GROUP BY 1, 2, 3
+            """
+        ).df()
+        salary_bins = connection.execute(
+            f"""
+            SELECT aun, school_year, grp, salary_bin AS bin,
+                   count(*)::BIGINT AS n,
+                   avg(years_in_lea) AS lea_years,
+                   avg(years_in_education) AS edu_years,
+                   {masters} AS masters_pct
+            FROM staff
+            GROUP BY 1, 2, 3, 4
+            """
+        ).df()
+        lea_summary = connection.execute(
+            f"""
+            SELECT aun, school_year, grp,
+                   count(*)::BIGINT AS n,
+                   min(years_in_lea) AS min_years,
+                   avg(years_in_lea) AS mean_years,
+                   median(years_in_lea) AS median_years,
+                   max(years_in_lea) AS max_years
+            FROM staff
+            WHERE years_in_lea IS NOT NULL
+            GROUP BY 1, 2, 3
+            """
+        ).df()
+        lea_bins = connection.execute(
+            f"""
+            SELECT aun, school_year, grp, lea_bin AS bin,
+                   count(*)::BIGINT AS n,
+                   avg(annual_salary) AS mean_salary,
+                   avg(years_in_education) AS other_years,
+                   {masters} AS masters_pct
+            FROM staff
+            WHERE years_in_lea IS NOT NULL AND lea_bin IS NOT NULL
+            GROUP BY 1, 2, 3, 4
+            """
+        ).df()
+        edu_summary = connection.execute(
+            f"""
+            SELECT aun, school_year, grp,
+                   count(*)::BIGINT AS n,
+                   min(years_in_education) AS min_years,
+                   avg(years_in_education) AS mean_years,
+                   median(years_in_education) AS median_years,
+                   max(years_in_education) AS max_years
+            FROM staff
+            WHERE years_in_education IS NOT NULL
+            GROUP BY 1, 2, 3
+            """
+        ).df()
+        edu_bins = connection.execute(
+            f"""
+            SELECT aun, school_year, grp, edu_bin AS bin,
+                   count(*)::BIGINT AS n,
+                   avg(annual_salary) AS mean_salary,
+                   avg(years_in_lea) AS other_years,
+                   {masters} AS masters_pct
+            FROM staff
+            WHERE years_in_education IS NOT NULL AND edu_bin IS NOT NULL
+            GROUP BY 1, 2, 3, 4
+            """
+        ).df()
+        retention_all = connection.execute(
+            """
+            SELECT b.aun, b.school_year,
+                   count(DISTINCT b.public_id)::BIGINT AS base,
+                   count(DISTINCT CASE WHEN n.public_id IS NOT NULL THEN b.public_id END)::BIGINT AS stayed
+            FROM staff b
+            INNER JOIN (SELECT DISTINCT aun, school_year FROM staff) y
+              ON b.aun = y.aun AND y.school_year = b.school_year + 1
+            LEFT JOIN staff n
+              ON b.aun = n.aun
+             AND b.public_id = n.public_id
+             AND n.school_year = b.school_year + 1
+            GROUP BY 1, 2
+            """
+        ).df()
+        retention_group = connection.execute(
+            """
+            SELECT b.aun, b.school_year, b.grp,
+                   count(DISTINCT b.public_id)::BIGINT AS base,
+                   count(DISTINCT CASE WHEN n.public_id IS NOT NULL THEN b.public_id END)::BIGINT AS stayed
+            FROM staff b
+            INNER JOIN (SELECT DISTINCT aun, school_year FROM staff) y
+              ON b.aun = y.aun AND y.school_year = b.school_year + 1
+            LEFT JOIN staff n
+              ON b.aun = n.aun
+             AND b.public_id = n.public_id
+             AND n.school_year = b.school_year + 1
+            GROUP BY 1, 2, 3
+            """
         ).df()
     finally:
         connection.close()
-    if frame.empty:
-        return {}, {}, {}
-    frame["group"] = frame["edf_category"].map(_salary_group)
-    frame = frame.loc[frame["group"].notna()].copy()
-    frame["aun"] = frame["aun"].map(str)
-    frame["school_year"] = frame["school_year"].astype(int)
-    frame["public_id"] = frame["public_id"].map(str)
-    next_ids = {
-        (aun, year): set(ids)
-        for (aun, year), ids in frame.groupby(["aun", "school_year"])["public_id"]
+
+    salary_bin_map = _bin_lookup(salary_bins, len(SALARY_EDGES) + 1, kind="salary")
+    lea_bin_map = _bin_lookup(lea_bins, len(EXPERIENCE_EDGES) + 1, kind="experience")
+    edu_bin_map = _bin_lookup(edu_bins, len(EXPERIENCE_EDGES) + 1, kind="experience")
+    group_retention = {
+        (str(row.aun), int(row.school_year), str(row.grp)): row
+        for row in retention_group.itertuples(index=False)
     }
-    edges = np.asarray(SALARY_EDGES, dtype=float)
-    experience_edges = np.asarray(EXPERIENCE_EDGES, dtype=float)
+    lea_by_key = {
+        (str(row.aun), int(row.school_year), str(row.grp)): row
+        for row in lea_summary.itertuples(index=False)
+    }
+    edu_by_key = {
+        (str(row.aun), int(row.school_year), str(row.grp)): row
+        for row in edu_summary.itertuples(index=False)
+    }
+
     grouped: dict[str, dict[int, dict]] = {}
     experience: dict[str, dict[int, dict]] = {}
+    for row in summaries.itertuples(index=False):
+        aun = str(row.aun)
+        year = int(row.school_year)
+        group = str(row.grp)
+        key = (aun, year, group)
+        hist, bins = salary_bin_map.get(key, ([0] * (len(SALARY_EDGES) + 1), [None] * (len(SALARY_EDGES) + 1)))
+        payload = {
+            "n": int(row.n),
+            "min": _number(row.min_salary),
+            "mean": _number(row.mean_salary),
+            "median": _number(row.median_salary),
+            "max": _number(row.max_salary),
+            "hist": hist,
+            "bins": bins,
+            "leaYears": _nullable_number(row.lea_years),
+            "eduYears": _nullable_number(row.edu_years),
+            "mastersPct": _nullable_number(row.masters_pct),
+        }
+        retained = group_retention.get(key)
+        if retained is not None and int(retained.base):
+            payload["retention"] = _number(int(retained.stayed) / int(retained.base))
+        grouped.setdefault(aun, {}).setdefault(year, {})[group] = payload
+
+        experience_payload = {}
+        lea_row = lea_by_key.get(key)
+        if lea_row is not None:
+            lea_hist, lea_bin_list = lea_bin_map.get(
+                key, ([0] * (len(EXPERIENCE_EDGES) + 1), [None] * (len(EXPERIENCE_EDGES) + 1))
+            )
+            experience_payload["lea"] = {
+                "n": int(lea_row.n),
+                "min": _number(lea_row.min_years),
+                "mean": _number(lea_row.mean_years),
+                "median": _number(lea_row.median_years),
+                "max": _number(lea_row.max_years),
+                "hist": lea_hist,
+                "bins": _experience_bin_payloads(lea_bin_list, other_key="eduYears"),
+            }
+        edu_row = edu_by_key.get(key)
+        if edu_row is not None:
+            edu_hist, edu_bin_list = edu_bin_map.get(
+                key, ([0] * (len(EXPERIENCE_EDGES) + 1), [None] * (len(EXPERIENCE_EDGES) + 1))
+            )
+            experience_payload["edu"] = {
+                "n": int(edu_row.n),
+                "min": _number(edu_row.min_years),
+                "mean": _number(edu_row.mean_years),
+                "median": _number(edu_row.median_years),
+                "max": _number(edu_row.max_years),
+                "hist": edu_hist,
+                "bins": _experience_bin_payloads(edu_bin_list, other_key="leaYears"),
+            }
+        if experience_payload:
+            experience.setdefault(aun, {}).setdefault(year, {})[group] = experience_payload
+
     retention: dict[str, dict[int, dict]] = {}
-    for (aun, year), year_frame in frame.groupby(["aun", "school_year"]):
-        stayed_ids = next_ids.get((aun, year + 1))
-        if stayed_ids is not None:
-            base_ids = set(year_frame["public_id"])
-            stayed = len(base_ids & stayed_ids)
-            retention.setdefault(aun, {})[int(year)] = {
-                "rate": _number(stayed / len(base_ids)) if base_ids else None,
-                "base": int(len(base_ids)),
-                "stayed": int(stayed),
-                "nextYear": int(year + 1),
-            }
-        for group, subset in year_frame.groupby("group"):
-            values = subset["annual_salary"].to_numpy(dtype=float)
-            counts, _ = np.histogram(values, bins=edges)
-            under = int(np.sum(values < edges[0]))
-            over = int(np.sum(values >= edges[-1]))
-            hist = [under, *[int(count) for count in counts], over]
-            bins = _salary_bins(subset, edges)
-            payload = {
-                "n": int(len(values)),
-                "min": _number(values.min()),
-                "mean": _number(values.mean()),
-                "median": _number(float(np.median(values))),
-                "max": _number(values.max()),
-                "hist": hist,
-                "bins": bins,
-                "leaYears": _optional_mean(subset["years_in_lea"]),
-                "eduYears": _optional_mean(subset["years_in_education"]),
-                "mastersPct": _masters_pct(subset["degree_code"]),
-            }
-            if stayed_ids is not None:
-                group_ids = set(subset["public_id"])
-                stayed = len(group_ids & stayed_ids)
-                payload["retention"] = _number(stayed / len(group_ids)) if group_ids else None
-            grouped.setdefault(aun, {}).setdefault(int(year), {})[str(group)] = payload
-            experience_payload = {
-                "lea": _experience_stats(subset, "years_in_lea", "years_in_education", experience_edges),
-                "edu": _experience_stats(subset, "years_in_education", "years_in_lea", experience_edges),
-            }
-            if experience_payload["lea"] or experience_payload["edu"]:
-                experience.setdefault(aun, {}).setdefault(int(year), {})[str(group)] = {
-                    key: value for key, value in experience_payload.items() if value
-                }
+    for row in retention_all.itertuples(index=False):
+        base = int(row.base)
+        if not base:
+            continue
+        aun = str(row.aun)
+        year = int(row.school_year)
+        retention.setdefault(aun, {})[year] = {
+            "rate": _number(int(row.stayed) / base),
+            "base": base,
+            "stayed": int(row.stayed),
+            "nextYear": year + 1,
+        }
+
     print(f"salary stats for {len(grouped)} LEAs")
     return grouped, experience, retention
+
+
+def _sql_path(path: Path) -> str:
+    return str(path).replace("'", "''")
+
+
+def _salary_group_sql(column: str) -> str:
+    """SQL expression matching ``_salary_group``."""
+    return f"""
+    CASE
+      WHEN {column} IS NULL OR trim(CAST({column} AS VARCHAR)) = '' THEN NULL
+      WHEN upper(trim(CAST({column} AS VARCHAR))) IN (
+        'ELMTCH', 'KGTCH', 'PKTCH',
+        'ELEMENTARY TEACHERS', 'KINDERGARTEN TEACHERS', 'PRE-KINDERGARTEN TEACHERS'
+      ) THEN 'elementary'
+      WHEN upper(trim(CAST({column} AS VARCHAR))) IN ('SECTCH', 'SECONDARY TEACHERS') THEN 'secondary'
+      WHEN upper(trim(CAST({column} AS VARCHAR))) IN (
+        'SCHADM', 'LEAADM', 'CORSUP', 'SCHOOL ADMINISTRATORS', 'LEA ADMINISTRATORS'
+      ) THEN 'administrator'
+      WHEN upper(trim(CAST({column} AS VARCHAR))) IN ('UGTCH', 'UNGRADED TEACHERS') THEN 'ungraded'
+      ELSE 'support'
+    END
+    """
+
+
+def _salary_bin_sql(column: str) -> str:
+    start = SALARY_BIN_START
+    stop = SALARY_BIN_STOP
+    width = SALARY_BIN_WIDTH
+    over = len(SALARY_EDGES)
+    return f"""
+    CASE
+      WHEN {column} < {start} THEN 0
+      WHEN {column} >= {stop} THEN {over}
+      ELSE CAST(floor(({column} - {start}) / {width}) AS INTEGER) + 1
+    END
+    """
+
+
+def _experience_bin_sql(column: str) -> str:
+    over = len(EXPERIENCE_EDGES)
+    return f"""
+    CASE
+      WHEN {column} IS NULL THEN NULL
+      WHEN {column} < 1 THEN 0
+      WHEN {column} >= 40 THEN {over}
+      ELSE CAST(floor({column}) AS INTEGER)
+    END
+    """
+
+
+def _masters_sql(column: str) -> str:
+    codes = ", ".join(f"'{code}'" for code in sorted(MASTERS_PLUS))
+    return f"""
+    CASE
+      WHEN count({column}) = 0 THEN NULL
+      ELSE 100.0 * sum(CASE WHEN {column} IN ({codes}) THEN 1 ELSE 0 END)
+           / count({column})
+    END
+    """
+
+
+def _nullable_number(value: object) -> float | None:
+    if value is None or _missing(value):
+        return None
+    number = float(value)
+    if number != number:
+        return None
+    return _number(number)
+
+
+def _bin_lookup(
+    frame: pd.DataFrame,
+    size: int,
+    *,
+    kind: str = "salary",
+) -> dict[tuple[str, int, str], tuple[list[int], list[dict | None]]]:
+    """Map (aun, year, group) → (hist counts, sparse bin payloads)."""
+    grouped: dict[tuple[str, int, str], tuple[list[int], list[dict | None]]] = {}
+    if frame.empty:
+        return grouped
+    for row in frame.itertuples(index=False):
+        key = (str(row.aun), int(row.school_year), str(row.grp))
+        hist, bins = grouped.get(key) or ([0] * size, [None] * size)
+        index = int(row.bin)
+        if index < 0 or index >= size:
+            continue
+        hist[index] = int(row.n)
+        if kind == "salary":
+            payload: dict[str, object] = {
+                "n": int(row.n),
+                "leaYears": _nullable_number(row.lea_years),
+                "eduYears": _nullable_number(row.edu_years),
+                "mastersPct": _nullable_number(row.masters_pct),
+            }
+        else:
+            payload = {
+                "n": int(row.n),
+                "meanSalary": _nullable_number(row.mean_salary),
+                "otherYears": _nullable_number(row.other_years),
+                "mastersPct": _nullable_number(row.masters_pct),
+            }
+        bins[index] = payload
+        grouped[key] = (hist, bins)
+    return grouped
+
+
+def _experience_bin_payloads(
+    bins: list[dict | None],
+    *,
+    other_key: str,
+) -> list[dict | None]:
+    out: list[dict | None] = [None] * len(bins)
+    for index, payload in enumerate(bins):
+        if not payload:
+            continue
+        out[index] = {
+            "n": payload["n"],
+            "meanSalary": payload.get("meanSalary"),
+            other_key: payload.get("otherYears"),
+            "mastersPct": payload.get("mastersPct"),
+        }
+    return out
 
 
 def _salary_bins(subset: pd.DataFrame, edges: np.ndarray) -> list[dict | None]:
