@@ -317,15 +317,34 @@ a.tip-rank:hover { color: #fff; }
 .stats-5 { grid-template-columns: repeat(5, 1fr); }
 .stats-2 { grid-template-columns: repeat(2, 1fr); }
 .stats-3 { grid-template-columns: repeat(3, 1fr); }
+#overview-stats {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 16px 12px;
+  margin: 0 0 16px;
+}
+.overview-group {
+  --cards: 1;
+  flex: var(--cards) 1 0;
+  min-width: min(100%, calc(var(--cards) * 200px));
+  max-width: 100%;
+  display: flex;
+  flex-direction: column;
+}
 .overview-kicker {
-  margin: 18px 0 0;
+  margin: 0 0 6px;
   font-size: 0.95rem;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
-.overview-group:first-child .overview-kicker { margin-top: 0; }
-.overview-group .stats { margin-top: 6px; margin-bottom: 4px; }
-.overview-group:last-child .stats { margin-bottom: 16px; }
+.overview-cards {
+  display: grid;
+  grid-template-columns: repeat(var(--cards), minmax(0, 1fr));
+  gap: 12px;
+  flex: 1;
+}
+.overview-cards .stat { height: 100%; }
 .table-scroll { overflow-x: auto; }
 .panel h3 { font-size: 0.95rem; margin: 0 0 8px; font-weight: 600; }
 .pssa-h2 { font-size: 1.15rem; margin: 22px 0 6px; font-weight: 650; letter-spacing: -0.02em; }
@@ -615,6 +634,7 @@ table.schools td.num, table.schools th.num { text-align: right; }
 .grade-row, .meter { cursor: default; }
 
 @media (max-width: 800px) {
+  .overview-group { min-width: min(100%, calc(var(--cards) * 170px)); }
   .sun-layout { grid-template-columns: 1fr; }
   .brand-note { display: none; }
   .site-foot-row { flex-direction: column; }
@@ -625,6 +645,8 @@ table.schools td.num, table.schools th.num { text-align: right; }
   .salary-stats { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 560px) {
+  .overview-group { flex-basis: 100%; min-width: 100%; }
+  .overview-cards { grid-template-columns: 1fr; }
   .stats, .stats-wide, .stats-5, .stats-2, .stats-3, .salary-grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {

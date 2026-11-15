@@ -1264,9 +1264,9 @@ function paintOverview() {
     const cards = group.cards.map((id) => cardById(id)).filter((card) => card?.published);
     if (!cards.length) return "";
     const html = cards.map((card) => renderStat(card, { href: cardHref(card) })).join("");
-    return `<section class="overview-group">
+    return `<section class="overview-group" style="--cards:${cards.length}">
       <h2 class="overview-kicker">${escapeHtml(group.label)}</h2>
-      <div class="${statsGridClass(cards.length)}">${html}</div>
+      <div class="overview-cards">${html}</div>
     </section>`;
   }).join("");
   const enrollYear = enrollmentAnchorYear();
