@@ -3,6 +3,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import duckdb
 import numpy as np
 import pandas as pd
 
@@ -11,10 +12,12 @@ from pa_edu.publish import (
     SALARY_EDGES,
     JSON_GZIP_LEVEL,
     _county_ranks,
+    _debt_service,
     _experience_stats,
     _lea_administrators,
     _lea_admins_per_thousand,
     _percent_points,
+    _published_charter,
     _salaries,
     _salary_group,
     _short_title,
@@ -708,6 +711,121 @@ def test_lea_administrators_per_thousand_counts_full_time_leaadm_only(tmp_path: 
     assert ranks["1"][2023]["leaAdmPerThousand"]["of"] == 2
     assert "leaAdmPerThousand" not in ranks.get("3", {}).get(2023, {})
     assert "leaAdmPerThousand" not in ranks.get("9", {}).get(2023, {})
+
+
+def test_published_charter_keeps_a_zero_and_skips_a_missing_year() -> None:
+    assert _published_charter({2023: 10.0, 2021: 4.0}, 2025) == (10.0, 2023)
+    assert _published_charter({2024: 0.0, 2023: 10.0}, 2024) == (0.0, 2024)
+    assert _published_charter({2026: 10.0}, 2025) is None
+    assert _published_charter({}, 2025) is None
+
+
+def test_object_562_and_debt_service_stay_absent_when_unpublished() -> None:
+    years = _years_for(
+        "1",
+        {"1": {2023: {"012": 10}, 2024: {"012": 10}, 2025: {"012": 10}}},
+        {},
+        {},
+        {},
+        {},
+        {"1": {2023: {"1000": 5}, 2024: {"1000": 6}}},
+        {"1": {2024: {"1000": 7}, 2025: {"1000": 8}}},
+        {},
+        {},
+        {},
+        {},
+        charter={"1": {2024: 2.5}},
+        debt_service={"1": {2023: 0, 2024: 40, 2029: 9}},
+    )
+    assert years[2024]["object562"] == 2.5
+    assert years[2024]["charterTuition"] == 2.5
+    assert "object562" not in years[2023]
+    assert years[2023]["charterTuition"] == 0.0
+    assert years[2023]["debtService"] == 0
+    assert years[2024]["debtService"] == 40
+    assert "debtService" not in years[2025]
+    assert 2029 not in years
+
+
+def test_charter_share_rank_uses_the_budget_and_the_latest_published_562() -> None:
+    profiles = [
+        {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "2", "name": "Beta", "county": "Fayette", "category": "school_district"},
+        {"aun": "3", "name": "Charter", "county": "Fayette", "category": "charter_school"},
+        {"aun": "4", "name": "No tuition", "county": "Fayette", "category": "school_district"},
+        {"aun": "5", "name": "Actual only", "county": "Fayette", "category": "school_district"},
+    ]
+    budget = {
+        "1": {2025: {"1000": 800, "2000": 200}},
+        "2": {2025: {"1000": 500, "2000": 500}},
+        "3": {2025: {"1000": 1000}},
+        "4": {2025: {"1000": 1000}},
+    }
+    actual = {"2": {2025: {"1000": 9000}}, "5": {2025: {"1000": 100}}}
+    charter = {"1": {2024: 100.0}, "2": {2025: 250.0, 2024: 1.0}, "3": {2025: 500.0}, "5": {2025: 50.0}}
+    ranks = _county_ranks(profiles, {}, actual, budget, charter)
+    peers = {peer["aun"]: peer["value"] for peer in ranks["1"][2025]["charterShare"]["peers"]}
+    assert peers == {"2": 25.0, "1": 10.0}
+    assert ranks["2"][2025]["charterShare"]["rank"] == 1
+    assert ranks["1"][2025]["charterShare"]["of"] == 2
+    assert "charterShare" not in ranks.get("3", {}).get(2025, {})
+    assert "charterShare" not in ranks.get("4", {}).get(2025, {})
+    assert "charterShare" not in ranks.get("5", {}).get(2025, {})
+
+
+def test_debt_and_instruction_ranks_do_not_mix_budget_with_actual() -> None:
+    profiles = [
+        {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "2", "name": "Beta", "county": "Fayette", "category": "school_district"},
+        {"aun": "3", "name": "Gamma", "county": "Fayette", "category": "charter_school"},
+        {"aun": "4", "name": "Zero instruction", "county": "Fayette", "category": "school_district"},
+    ]
+    grades = {
+        "1": {2024: {"012": 100}},
+        "2": {2024: {"012": 100}},
+        "3": {2024: {"012": 100}},
+        "4": {2024: {"012": 100}},
+    }
+    budget = {
+        "1": {2024: {"1000": 10_000, "5000": 9_000}},
+        "2": {2024: {"1000": 5_000, "5000": 9_000}},
+        "3": {2024: {"5000": 50_000}},
+        "4": {2024: {"1000": 0}},
+    }
+    actual = {
+        "1": {2024: {"1000": 1}},
+        "3": {2024: {"1000": 99_999}},
+    }
+    ranks = _county_ranks(
+        profiles,
+        grades,
+        actual,
+        budget,
+        {},
+        debt_service={"1": {2024: 500}, "2": {2024: 200}},
+    )
+    debt = {peer["aun"]: peer["value"] for peer in ranks["1"][2024]["debtPerStudent"]["peers"]}
+    assert debt == {"1": 5, "2": 2}
+    assert ranks["1"][2024]["debtPerStudent"]["rank"] == 1
+    assert "debtPerStudent" not in ranks.get("3", {}).get(2024, {})
+    instruction = {peer["aun"]: peer["value"] for peer in ranks["1"][2024]["instructionPerStudent"]["peers"]}
+    assert instruction == {"1": 100, "2": 50, "4": 0}
+    assert ranks["2"][2024]["instructionPerStudent"]["rank"] == 2
+    assert "instructionPerStudent" not in ranks.get("3", {}).get(2024, {})
+
+
+def test_debt_service_sums_afr_function_5110_only(tmp_path: Path, monkeypatch) -> None:
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    pd.DataFrame({
+        "aun": ["1", "1", "1", "1", "2"],
+        "school_year": [2024, 2024, 2024, 2024, 2024],
+        "fund_code": ["10", "10", "10", "20", "10"],
+        "function_code": ["5110", "5110", "5120", "5110", "5110"],
+        "total_amount": [10.0, 5.5, 100.0, 80.0, 0.0],
+    }).to_parquet(refined / "afr_expenditure.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+    assert _debt_service(duckdb.connect()) == {"1": {2024: 15.5}, "2": {2024: 0}}
 
 
 def test_lea_administrator_count_runs_without_a_lea_type_column(tmp_path: Path, monkeypatch) -> None:

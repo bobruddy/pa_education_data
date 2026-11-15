@@ -118,11 +118,11 @@ const KEYSTONE_LABEL = Object.fromEntries(KEYSTONE_SUBJECTS);
 // Detail-page cards on the overview. Labels match the detail tabs.
 // A group with no published cards is omitted.
 const OVERVIEW_CARDS = [
-  { label: "Enrollment", cards: ["enrollment"] },
-  { label: "PSSA", cards: ["pssa.math", "pssa.ela"] },
-  { label: "Keystone", cards: ["keystone.algebra_i", "keystone.literature", "keystone.biology"] },
-  { label: "Financials", cards: ["perStudent"] },
-  { label: "Staff", cards: ["staff.students", "staff.retention", "staff.elementary", "staff.secondary", "staff.leaAdm"] },
+  { label: "Enrollment", family: "enrollment", cards: ["enrollment"] },
+  { label: "PSSA", family: "pssa", cards: ["pssa.math", "pssa.ela"] },
+  { label: "Keystone", family: "keystone", cards: ["keystone.algebra_i", "keystone.literature", "keystone.biology"] },
+  { label: "Financials", family: "financials", cards: ["perStudent", "charterShare", "debtPerStudent", "instructionPerStudent"] },
+  { label: "Staff", family: "staff", cards: ["staff.students", "staff.retention", "staff.elementary", "staff.secondary", "staff.leaAdm"] },
 ];
 const STAFF_CARDS = [
   "staff.students",
@@ -986,17 +986,25 @@ function financeStats(block, priorBlock, priorYear, year) {
   const budget = sumMap(block.budget);
   const priorActual = sumMap(priorBlock.actual);
   const priorBudget = sumMap(priorBlock.budget);
-  return [
-    renderStat(enrollmentCard({ year, yearNote: false })),
-    stat("General fund actual", money(actual), yearDelta(actual, priorActual, priorYear), "", block.countyRanks?.actual, "money"),
-    stat("General fund budget", money(budget), `${yearDelta(budget, priorBudget, priorYear)}${act1Note(block)}${millNote(block, priorBlock, priorYear)}`, "", block.countyRanks?.budget, "money"),
-    renderStat(perStudentCard({ year, yearNote: false, title: false })),
-  ].join("");
+  const parts = [
+    renderStat(enrollmentCard({ year })),
+    stat("General fund actual", money(actual), `${yearDelta(actual, priorActual, priorYear)}${yearNote(year)}`, "", block.countyRanks?.actual, "money"),
+    stat("General fund budget", money(budget), `${yearDelta(budget, priorBudget, priorYear)}${act1Note(block)}${millNote(block, priorBlock, priorYear)}${yearNote(year)}`, "", block.countyRanks?.budget, "money"),
+    renderStat(perStudentCard({ year, title: false })),
+  ];
+  for (const id of ["charterShare", "debtPerStudent", "instructionPerStudent"]) {
+    const card = cardById(id, { year });
+    if (card?.published) parts.push(renderStat(card));
+  }
+  return parts;
 }
 
 function cardById(id, options = {}) {
   if (id === "enrollment") return enrollmentCard(options);
   if (id === "perStudent") return perStudentCard(options);
+  if (id === "charterShare") return charterShareCard(options);
+  if (id === "debtPerStudent") return debtPerStudentCard(options);
+  if (id === "instructionPerStudent") return instructionPerStudentCard(options);
   const splitAt = id.indexOf(".");
   if (splitAt === -1) return null;
   const family = id.slice(0, splitAt);
@@ -1065,7 +1073,7 @@ function studentsPerTeacherCard(options = {}) {
     label: "Students per classroom teacher",
     value: current == null ? "Not published" : current.value.toFixed(1),
     extra: current
-      ? `<div class="note">${count(current.enrolled)} students · ${count(current.teachers)} full-time</div>${yearDelta(current.value, prior?.value, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`
+      ? `<div class="note">${count(current.enrolled)} students · ${count(current.teachers)} full-time</div>${yearDelta(current.value, prior?.value, priorYear)}${yearNote(year)}`
       : "",
     title: year,
     rank: block.countyRanks?.studentsPerTeacher,
@@ -1088,7 +1096,7 @@ function classroomRetentionCard(options = {}) {
     label: "Returned next year",
     value: cell == null ? "Not published" : pct(cell.rate),
     extra: cell
-      ? `<div class="note">${count(cell.stayed)} of ${count(cell.base)} full-time</div>${yearDeltaPoints(rate, priorRate, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`
+      ? `<div class="note">${count(cell.stayed)} of ${count(cell.base)} full-time</div>${yearDeltaPoints(rate, priorRate, priorYear)}${yearNote(year)}`
       : "",
     title: year,
     rank: block.countyRanks?.classroomRetention,
@@ -1143,7 +1151,7 @@ function teacherMedianCard(groupId, label, options = {}) {
     published: current != null,
     label,
     value: current == null ? "Not published" : money(current, 0),
-    extra: `<div class="note">Full-time</div>${yearDelta(current, prior, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`,
+    extra: `<div class="note">Full-time</div>${yearDelta(current, prior, priorYear)}${yearNote(year)}`,
     title: year,
     rank: block.countyRanks?.[groupId === "elementary" ? "elementaryMedian" : "secondaryMedian"],
     kind: "money0",
@@ -1153,7 +1161,7 @@ function teacherMedianCard(groupId, label, options = {}) {
 }
 
 function staffStripCard(id, year) {
-  const pinned = cardById(id, { year, yearNote: false });
+  const pinned = cardById(id, { year });
   if (pinned?.published) return pinned;
   return cardById(id);
 }
@@ -1168,7 +1176,7 @@ function enrollmentCard(options = {}) {
     published: Boolean(year) && enrolled != null,
     label: "October 1 enrollment",
     value: enrolled == null ? "Not published" : count(enrolled),
-    extra: `${yearDelta(enrolled, priorEnrolled, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`,
+    extra: `${yearDelta(enrolled, priorEnrolled, priorYear)}${yearNote(year)}`,
     title: year,
     rank: block.countyRanks?.enrollment,
     kind: "count",
@@ -1197,9 +1205,166 @@ function perStudentCard(options = {}) {
     published: current?.basis === "actual" && value != null,
     label: current?.basis === "budget" ? "Budget per student" : "Actual per student",
     value: value == null ? "Not published" : money(value, 0),
-    extra: `${yearDelta(value, priorValue, priorYear)}${current?.note || ""}${options.yearNote === false ? "" : yearNote(year)}`,
+    extra: `${yearDelta(value, priorValue, priorYear)}${current?.note || ""}${yearNote(year)}`,
     title: options.title === false ? "" : year,
     rank: block.countyRanks?.perStudent,
+    kind: "money0",
+    tab: "financials",
+    year,
+  };
+}
+
+function object562Of(year) {
+  const amount = blockFor(year).object562;
+  if (amount == null) return null;
+  return { year: String(year), amount: Number(amount) };
+}
+
+/** Same-year object 562, or the latest earlier published year. Missing is not zero. */
+function charterForShare(year) {
+  const own = object562Of(year);
+  if (own) return { ...own, estimated: false };
+  const earlier = Object.keys(leaPack?.years || {})
+    .filter((candidate) => Number(candidate) < Number(year) && object562Of(candidate))
+    .sort((a, b) => Number(a) - Number(b));
+  const found = earlier.at(-1);
+  if (!found) return null;
+  return { ...object562Of(found), estimated: true };
+}
+
+function charterShare(year) {
+  if (leaPack?.category !== "school_district") return null;
+  const tuition = charterForShare(year);
+  if (!tuition) return null;
+  const block = blockFor(year);
+  const budget = sumMap(block.budget);
+  const actualTotal = sumMap(block.actual);
+  const own = object562Of(year);
+  const budgetPercent = budget ? (tuition.amount / budget) * 100 : null;
+  const actualPercent = own && actualTotal ? (own.amount / actualTotal) * 100 : null;
+  if (budgetPercent == null && actualPercent == null) return null;
+  return { tuition, budgetPercent, actualPercent, own };
+}
+
+function latestCharterShareYear() {
+  const years = Object.keys(leaPack?.years || {})
+    .filter((year) => charterShare(year))
+    .sort((a, b) => Number(a) - Number(b));
+  return years.at(-1) || "";
+}
+
+function charterShareCard(options = {}) {
+  const year = Object.hasOwn(options, "year") ? String(options.year || "") : latestCharterShareYear();
+  const share = year ? charterShare(year) : null;
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const prior = priorYear ? charterShare(priorYear) : null;
+  const basis = share?.budgetPercent != null ? "budget" : share?.actualPercent != null ? "actual" : "";
+  const priorBasis = prior?.budgetPercent != null ? "budget" : prior?.actualPercent != null ? "actual" : "";
+  const value = basis === "budget" ? share.budgetPercent : basis === "actual" ? share.actualPercent : null;
+  const priorValue = basis && basis === priorBasis
+    ? (basis === "budget" ? prior.budgetPercent : prior.actualPercent)
+    : null;
+  const dollars = share ? money(share.tuition.amount) : "";
+  const basisNote = basis === "budget"
+    ? `Share of the ${yearLabel(year)} general-fund budget`
+    : basis === "actual"
+      ? `Share of the ${yearLabel(year)} general-fund actual`
+      : "";
+  const estimate = share?.tuition.estimated ? `Estimated from ${yearLabel(share.tuition.year)} object 562` : "";
+  const actualLine = basis === "budget" && share?.actualPercent != null
+    ? `Actual ${share.actualPercent.toFixed(1)}% of the ${yearLabel(year)} general fund`
+    : "";
+  const notes = [
+    dollars ? `${dollars} object 562` : "",
+    estimate,
+    basisNote,
+    actualLine,
+  ].filter(Boolean).map((line) => `<div class="note">${line}</div>`).join("");
+  return {
+    published: share != null,
+    label: "Charter tuition",
+    value: value == null ? "Not published" : `${value.toFixed(1)}%`,
+    extra: share
+      ? `${notes}${yearDeltaPoints(value, priorValue, priorYear)}${options.yearNote === false ? "" : yearNote(year)}`
+      : "",
+    title: year,
+    rank: basis === "budget" ? blockFor(year).countyRanks?.charterShare : null,
+    kind: "pct",
+    tab: "financials",
+    year,
+  };
+}
+
+function debtServiceOf(block) {
+  if (block?.debtService == null) return null;
+  const enrolled = enrollmentOf(block);
+  if (!enrolled) return null;
+  return {
+    amount: Number(block.debtService),
+    enrolled,
+    value: Number(block.debtService) / enrolled,
+  };
+}
+
+function debtYear(options) {
+  if (Object.hasOwn(options, "year")) {
+    const selected = Number(options.year);
+    if (!selected) return "";
+    const years = Object.keys(leaPack?.years || {})
+      .map(Number)
+      .filter((candidate) => candidate <= selected && debtServiceOf(blockFor(candidate)))
+      .sort((a, b) => a - b);
+    return years.length ? String(years.at(-1)) : "";
+  }
+  return latestYear((block) => debtServiceOf(block));
+}
+
+function debtPerStudentCard(options = {}) {
+  const year = debtYear(options);
+  const current = year ? debtServiceOf(blockFor(year)) : null;
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const prior = priorYear ? debtServiceOf(blockFor(priorYear)) : null;
+  return {
+    published: current != null,
+    label: "Debt service per student",
+    value: current == null ? "Not published" : money(current.value, 0),
+    extra: current
+      ? `<div class="note">${money(current.amount)} function 5110 · ${count(current.enrolled)} students</div>${yearDelta(current.value, prior?.value, priorYear)}<div class="note">Actual · ${yearLabel(year)}</div>`
+      : "",
+    title: year,
+    rank: year ? blockFor(year).countyRanks?.debtPerStudent : null,
+    kind: "money0",
+    tab: "financials",
+    year,
+  };
+}
+
+function instructionOf(block) {
+  const enrolled = enrollmentOf(block);
+  const budget = block?.budget?.["1000"];
+  if (budget == null || !enrolled) return null;
+  const actual = block?.actual?.["1000"];
+  return {
+    enrolled,
+    perStudent: Number(budget) / enrolled,
+    actualPerStudent: actual == null ? null : Number(actual) / enrolled,
+  };
+}
+
+function instructionPerStudentCard(options = {}) {
+  const year = pinnedYear(options, (block) => instructionOf(block));
+  const current = year ? instructionOf(blockFor(year)) : null;
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const prior = priorYear ? instructionOf(blockFor(priorYear)) : null;
+  return {
+    published: current != null,
+    label: "Instruction per student",
+    value: current == null ? "Not published" : money(current.perStudent, 0),
+    extra: current
+      ? `${yearDelta(current.perStudent, prior?.perStudent, priorYear)}${current.actualPerStudent == null ? "" : `<div class="note">Actual ${money(current.actualPerStudent, 0)}</div>`}<div class="note">General-fund budget · function 1000 · ${count(current.enrolled)} students</div>${options.yearNote === false ? "" : yearNote(year)}`
+      : "",
+    title: year,
+    rank: year ? blockFor(year).countyRanks?.instructionPerStudent : null,
     kind: "money0",
     tab: "financials",
     year,
@@ -1264,7 +1429,7 @@ function paintOverview() {
     const cards = group.cards.map((id) => cardById(id)).filter((card) => card?.published);
     if (!cards.length) return "";
     const html = cards.map((card) => renderStat(card, { href: cardHref(card) })).join("");
-    return `<section class="overview-group" style="--cards:${cards.length}">
+    return `<section class="overview-group" data-family="${escapeAttr(group.family)}" style="--cards:${cards.length}">
       <h2 class="overview-kicker">${escapeHtml(group.label)}</h2>
       <div class="overview-cards">${html}</div>
     </section>`;
@@ -1282,7 +1447,10 @@ function yearNote(year) {
 }
 
 function paintFinancials(block, priorBlock, priorYear, year, state) {
-  app.querySelector("#finance-stats").innerHTML = financeStats(block, priorBlock, priorYear, year);
+  const parts = financeStats(block, priorBlock, priorYear, year);
+  const host = app.querySelector("#finance-stats");
+  host.className = statsGridClass(parts.length);
+  host.innerHTML = parts.join("");
   drawSpend(block, state);
   app.querySelector("#sources").innerHTML = sourceLinks(year);
 }
@@ -4070,7 +4238,7 @@ function sourceLinks(year) {
   const note = leaPack.category === "career_and_technical_center"
     ? " Part-day students here can also be counted in a school district."
     : "";
-  return `<p class="note">Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. Income is general-fund revenue from the AFR revenue sheet and the budget revenue sheet: local, state, federal, and other financing sources. It is not added to spending. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. The chart’s Per student view divides each actual, budget, and income account by that same October 1 count. Object 562 is left out of the actual, and those dollars are left out of the budget’s purchased services. A budget year with no annual financial report yet uses the latest object 562, by function, as the estimate. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books. When that year’s AFR is not published, the card uses the general fund budget divided by October 1 enrollment, with estimated charter tuition removed, and compares that with the prior year.${note}</p>
+  return `<p class="note">Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. Income is general-fund revenue from the AFR revenue sheet and the budget revenue sheet: local, state, federal, and other financing sources. It is not added to spending. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. The chart’s Per student view divides each actual, budget, and income account by that same October 1 count. Object 562 is left out of the actual, and those dollars are left out of the budget’s purchased services. A budget year with no annual financial report yet uses the latest object 562, by function, as the estimate. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books. When that year’s AFR is not published, the card uses the general fund budget divided by October 1 enrollment, with estimated charter tuition removed, and compares that with the prior year. Charter tuition is object 562 as a percent of that year’s general-fund budget, and the county rank uses that percent. A year without its own object 562 uses the latest earlier AFR amount and names that year. When the same year published object 562, the card also shows it as a percent of general-fund actual. Debt service per student is AFR function 5110 divided by October 1 enrollment for the year of that actual. Instruction per student is general-fund budget function 1000 divided by October 1 enrollment, with the actual beside it when that year’s AFR published function 1000. A missing account is left off those cards.${note}</p>
     <p class="sources note">${items.join(" · ") || "Source files are listed in the catalog."}</p>`;
 }
 

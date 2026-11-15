@@ -151,6 +151,8 @@ def lea_document(profile: dict, years: dict) -> dict:
                 "experience",
                 "retention",
                 "charterTuition",
+                "object562",
+                "debtService",
                 "countyRanks",
                 "act1",
                 "act1Base",
@@ -213,9 +215,10 @@ def main() -> None:
     act1 = _act1_index(connection)
     act1_base = _act1_base(connection)
     mills = _real_estate_tax(connection)
+    debt_service = _debt_service(connection)
     ranks = _county_ranks(
         profiles, grades, actual, budget, charter, keystone, pssa, graduation,
-        salaries, retention, lea_administrators,
+        salaries, retention, lea_administrators, debt_service,
     )
     enrollment_year = catalog["enrollmentYear"]
     actual_year = catalog["actualYear"]
@@ -269,6 +272,7 @@ def main() -> None:
                 income_actual,
                 income_budget,
                 lea_administrators,
+                debt_service,
             ),
         )
         _write_json(data_dir / f"{aun}.json", document)
@@ -426,6 +430,7 @@ def _years_for(
     income_actual: dict | None = None,
     income_budget: dict | None = None,
     lea_administrators: dict | None = None,
+    debt_service: dict | None = None,
 ) -> dict:
     experience = experience or {}
     retention = retention or {}
@@ -443,6 +448,7 @@ def _years_for(
     income_actual = income_actual or {}
     income_budget = income_budget or {}
     lea_administrators = lea_administrators or {}
+    debt_service = debt_service or {}
     years = (
         set(grades.get(aun, {}))
         | set(schools.get(aun, {}))
@@ -479,11 +485,21 @@ def _years_for(
             "salaries": salaries.get(aun, {}).get(year, {}),
             "experience": experience.get(aun, {}).get(year, {}),
             "retention": retention.get(aun, {}).get(year),
+            # Per-student cost treats a published AFR with no object 562 as zero.
+            # object562 is only the rows PDE actually published, including a real zero.
             "charterTuition": (
                 charter_years.get(year, 0.0) if year in actual_years else charter_years.get(year)
             ),
             "countyRanks": ranks.get(aun, {}).get(year, {}),
         }
+        published_562 = charter_years.get(year)
+        if published_562 is not None:
+            block["object562"] = published_562
+        # AFR function 5110. A missing function stays off the block; a reported
+        # zero stays zero. It does not open a year by itself.
+        service = debt_service.get(aun, {}).get(year)
+        if service is not None:
+            block["debtService"] = service
         rate = act1.get(aun, {}).get(year)
         if rate is not None:
             block["act1"] = rate
@@ -526,14 +542,28 @@ def _years_for(
 
 def _charter_as_of(amounts: dict, year: int) -> float:
     """Object 562 for this year, or the latest earlier year when that AFR is not in yet."""
-    if not amounts:
+    published = _published_charter(amounts, year)
+    if published is None:
         return 0.0
+    return published[0] or 0.0
+
+
+def _published_charter(amounts: dict, year: int) -> tuple[float, int] | None:
+    """Object 562 and the school year it was published.
+
+    Same-year rows win, including a reported zero. A missing object is absence,
+    so the search continues to the latest earlier year that did publish one.
+    Nothing published is None, not zero.
+    """
+    if not amounts:
+        return None
     if year in amounts and amounts[year] is not None:
-        return amounts[year] or 0.0
+        return float(amounts[year]), year
     earlier = [item for item in amounts if item < year and amounts[item] is not None]
     if not earlier:
-        return 0.0
-    return amounts[max(earlier)] or 0.0
+        return None
+    found = max(earlier)
+    return float(amounts[found]), found
 
 
 def _classroom_n(groups: dict | None) -> int | None:
@@ -570,6 +600,7 @@ def _county_ranks(
     salaries: dict | None = None,
     retention: dict | None = None,
     lea_administrators: dict | None = None,
+    debt_service: dict | None = None,
 ) -> dict:
     """Rank each LEA against others in its county for the top-card metrics."""
     keystone = keystone or {}
@@ -578,12 +609,13 @@ def _county_ranks(
     salaries = salaries or {}
     retention = retention or {}
     lea_administrators = lea_administrators or {}
+    debt_service = debt_service or {}
     by_county: dict[str, list[dict]] = {}
     for profile in profiles:
         by_county.setdefault(profile["county"], []).append(profile)
 
     years: set[int] = set()
-    for nested in (grades, actual, budget, keystone, pssa, graduation, salaries, retention):
+    for nested in (grades, actual, budget, keystone, pssa, graduation, salaries, retention, debt_service):
         for lea_years in nested.values():
             years.update(lea_years)
 
@@ -605,6 +637,9 @@ def _county_ranks(
                 "elementaryMedian": [],
                 "secondaryMedian": [],
                 "leaAdmPerThousand": [],
+                "charterShare": [],
+                "debtPerStudent": [],
+                "instructionPerStudent": [],
             }
             actual_per_student: list[dict] = []
             budget_per_student: list[dict] = []
@@ -685,6 +720,30 @@ def _county_ranks(
                     )
                     if per_thousand is not None:
                         buckets["leaAdmPerThousand"].append({**row, "value": per_thousand})
+                # Charter share is object 562 over the general-fund budget.
+                # Same-year 562 when published, otherwise the latest earlier
+                # AFR. School districts only. No 562 means the peer is left
+                # out, not ranked at 0%. Actual spending is not the denominator.
+                if profile.get("category") == "school_district" and adopted is not None and adopted != 0:
+                    published = _published_charter(charter.get(aun, {}), year)
+                    if published is not None:
+                        buckets["charterShare"].append({
+                            **row,
+                            "value": round(published[0] / adopted * 100, 4),
+                        })
+                if enrolled:
+                    service = debt_service.get(aun, {}).get(year)
+                    if service is not None:
+                        buckets["debtPerStudent"].append({
+                            **row,
+                            "value": _number(float(service) / enrolled),
+                        })
+                    instruction = (budget.get(aun, {}).get(year) or {}).get("1000")
+                    if instruction is not None:
+                        buckets["instructionPerStudent"].append({
+                            **row,
+                            "value": _number(float(instruction) / enrolled),
+                        })
             # A year with any AFR stays on actuals. Budget per student ranks only
             # when nobody in the county has actuals yet, so the two are never mixed.
             buckets["perStudent"] = actual_per_student or budget_per_student
@@ -1635,6 +1694,24 @@ def _masters_pct(series: pd.Series) -> float | None:
     if codes.empty:
         return None
     return _number(100.0 * codes.isin(MASTERS_PLUS).mean())
+
+
+def _debt_service(connection: duckdb.DuckDBPyConnection) -> dict:
+    """General-fund AFR function 5110, debt service.
+
+    Budget function 5100 mixes debt service with other financing uses, so it
+    stays out. A reported zero is kept. A year with no 5110 row is absent.
+    """
+    frame = connection.sql(f"""
+        SELECT aun, school_year, round(sum(total_amount), 2) AS amount
+        FROM '{REFINED / "afr_expenditure.parquet"}'
+        WHERE fund_code = '10' AND function_code = '5110'
+        GROUP BY 1, 2
+    """).df()
+    grouped: dict[str, dict[int, float]] = {}
+    for row in frame.itertuples(index=False):
+        grouped.setdefault(str(row.aun), {})[int(row.school_year)] = _number(row.amount)
+    return grouped
 
 
 def _charter_tuition(connection: duckdb.DuckDBPyConnection) -> dict:
