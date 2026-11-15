@@ -16,6 +16,12 @@ image=$1
 host=$2
 export_path=$3
 sha=$4
+repo=${image%:*}
+docker images "$repo" --format '{{.ID}}' | sort -u | while read -r id; do
+  if [ -z "$(docker ps -aq --filter ancestor="$id")" ]; then
+    docker rmi "$id" >/dev/null 2>&1 || true
+  fi
+done
 docker pull "$image"
 if ! docker volume inspect pde-nfs >/dev/null 2>&1; then
   docker volume create --driver local \
