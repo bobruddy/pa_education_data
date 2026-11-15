@@ -248,6 +248,50 @@ def test_afr_revenue_uses_the_filled_total_or_amount1(tmp_path: Path) -> None:
     assert "6990" not in set(frame["account_code"])
 
 
+def test_enrollment_school_numbers_drop_leading_zeros(tmp_path: Path) -> None:
+    book = tmp_path / "enrollment.xlsx"
+    junk = ["title"]
+    header = ["AUN", "LEA Name", "LEA Type", "County", "School Number", "School Name", "012", "Total"]
+    gender_header = [*header[:6], "Student Gender Code", "012", "Total"]
+    _save(
+        book,
+        {
+            "LEA and School": [
+                junk, junk, junk, junk, header,
+                [101260303, "Albert Gallatin Area SD", "SD", "Fayette", 0, "Office", 5, 5],
+                [101260303, "Albert Gallatin Area SD", "SD", "Fayette", 326, "Elem", 10, 10],
+            ],
+            "LEA, School and Gender": [
+                junk, junk, junk, junk, gender_header,
+                [101260303, "Albert Gallatin Area SD", "SD", "Fayette", "0000", "Office", "Female", 5, 5],
+                [101260303, "Albert Gallatin Area SD", "SD", "Fayette", "0326", "Elem", "Male", 10, 10],
+            ],
+        },
+    )
+    from pa_edu.extract import ensure_extract, use_extract
+    from pa_edu.parse_enrollment import parse_enrollment
+
+    data = tmp_path / "data"
+    index = load_index(data)
+    entry = CatalogEntry(
+        id="enrollment-2024",
+        source_id="enrollment",
+        source_url=book.as_uri(),
+        page_url=book.as_uri(),
+        parser="enrollment",
+        status="stable",
+        school_year=2024,
+    )
+    record = store_bytes(entry, book.read_bytes(), data, index, book.name)
+    record = ensure_extract(data, index, record)
+    document = {"school_year": 2024, "document_id": record["document_id"]}
+    with use_extract(book, record["extract_path"]):
+        parsed = parse_enrollment(book, document)
+    assert set(parsed["enrollment"]["school_number"]) == {"0", "326"}
+    assert set(parsed["enrollment_gender"]["school_number"]) == {"0", "326"}
+    assert parsed["enrollment_gender"]["enrollment"].sum() == parsed["enrollment"]["enrollment"].sum()
+
+
 def test_enrollment_grain_and_total_row(tmp_path: Path) -> None:
     book = tmp_path / "enrollment.xlsx"
     _enrollment_book(book)

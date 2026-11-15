@@ -117,8 +117,27 @@ def _prepare(frame: pd.DataFrame) -> pd.DataFrame:
         frame["AUN"] = as_code(frame["AUN"], 9)
         frame = frame.loc[frame["AUN"].str.fullmatch(r"\d{9}", na=False)].copy()
     if "School Number" in frame.columns:
-        frame["School Number"] = as_code(frame["School Number"])
+        frame["School Number"] = _school_number(frame["School Number"])
     return frame
+
+
+def _school_number(values: pd.Series) -> pd.Series:
+    """Digits only, without leading zeros.
+
+    One sheet stores ``0326`` as text and another stores the number 326.
+    Both are the same school. ``LEAW`` stays text.
+    """
+    codes = as_code(values)
+
+    def one(value: object) -> object:
+        if value is None or pd.isna(value):
+            return pd.NA
+        token = str(value)
+        if token.isdigit():
+            return token.lstrip("0") or "0"
+        return token
+
+    return codes.map(one).astype("string")
 
 
 def _melt_grades(
