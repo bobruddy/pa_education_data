@@ -302,7 +302,7 @@ function readState() {
     budget: query.get("budget") || "",
     income: query.get("income") || "",
     spend: query.get("spend") === "budget" ? "budget" : query.get("spend") === "income" ? "income" : query.get("spend") === "actual" ? "actual" : "",
-    unit: query.get("unit") === "student" ? "student" : "",
+    unit: query.get("unit") === "dollars" ? "dollars" : "student",
   };
 }
 
@@ -322,7 +322,7 @@ function writeUrl(state, mode) {
   if (state.budget) query.set("budget", state.budget);
   if (state.income) query.set("income", state.income);
   if (state.spend === "actual" || state.spend === "budget" || state.spend === "income") query.set("spend", state.spend);
-  if (state.unit === "student" && state.aun && state.tab === "financials") query.set("unit", "student");
+  if (state.unit === "dollars" && state.aun && state.tab === "financials") query.set("unit", "dollars");
   const next = location.pathname + (query.toString() ? "?" + query : "");
   if (next === location.pathname + location.search) return;
   if (mode === "push") history.pushState(null, "", next);
@@ -463,7 +463,7 @@ function link(state) {
   if (state.budget) query.set("budget", state.budget);
   if (state.aun && state.income) query.set("income", state.income);
   if (state.aun && (state.spend === "actual" || state.spend === "budget" || state.spend === "income")) query.set("spend", state.spend);
-  if (state.aun && state.unit === "student") query.set("unit", "student");
+  if (state.aun && state.unit === "dollars") query.set("unit", "dollars");
   const text = query.toString();
   return text ? "?" + text : "./";
 }
@@ -596,7 +596,7 @@ function bindLea() {
       hideTip();
       const state = readState();
       state.tab = "financials";
-      state.unit = unitMode.dataset.unit === "student" ? "student" : "";
+      state.unit = unitMode.dataset.unit === "dollars" ? "dollars" : "student";
       writeUrl(state, "replace");
       paintLea(state);
       return;
@@ -908,13 +908,16 @@ function hasFinance(block) {
 }
 
 function financeYears() {
-  return Object.keys(leaPack.years).filter((year) => hasFinance(leaPack.years[year]));
+  return Object.keys(leaPack.years)
+    .filter((year) => hasFinance(leaPack.years[year]))
+    .sort((a, b) => Number(a) - Number(b));
 }
 
 function financeYear(state) {
   const years = financeYears();
   if (state.year && years.includes(String(state.year))) return String(state.year);
-  return years.at(-1) || "";
+  const withActual = years.filter((year) => seriesPublished(leaPack.years[year], "actual"));
+  return withActual.at(-1) || years.at(-1) || "";
 }
 
 function enrollmentOf(block) {
@@ -3538,7 +3541,7 @@ function drawSpend(block, state) {
   const measures = choices.length > 1
     ? `<div class="chips sun-measures" aria-label="Amounts to draw">${choices.map(([id, label]) => `<button type="button" class="chip" data-spend="${id}" data-value="${id}" aria-pressed="${measure === id ? "true" : "false"}">${label}</button>`).join("")}</div>`
     : "";
-  const perStudent = state.unit === "student";
+  const perStudent = state.unit !== "dollars";
   if (perStudent) {
     const enrolledNow = enrollmentOf(block);
     if (!(enrolledNow > 0)) {
