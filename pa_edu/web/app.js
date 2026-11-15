@@ -1391,10 +1391,6 @@ function paintOverview() {
       <div class="overview-cards">${html}</div>
     </section>`;
   }).join("");
-  const enrollYear = enrollmentAnchorYear();
-  const enrollBlock = blockFor(enrollYear);
-  drawRace(app.querySelector("#overview-race"), enrollBlock.race || {}, enrollYear ? `Race / ethnicity · ${yearLabel(enrollYear)}` : "Race / ethnicity");
-  drawGender(app.querySelector("#overview-gender"), enrollBlock.gender || {}, enrollYear ? `Gender · ${yearLabel(enrollYear)}` : "Gender");
   const blurb = app.querySelector("#overview-blurb");
   blurb.innerHTML = `<p class="note">Each figure is the latest year published for that series and matches the card on its detail page. Open a card to go there. The year selector is on Financials. Enrollment follows classes as they move up. Keystone charts each exam across years on that tab.</p>`;
 }
@@ -2175,35 +2171,6 @@ function demoYears(selected) {
     for (const year of iepYears()) years.add(year);
   }
   return [...years].sort((a, b) => a - b);
-}
-
-function raceMetersHtml(race) {
-  const rows = (RACE_ORDER.filter((key) => race[key] > 0).length
-    ? RACE_ORDER.filter((key) => race[key] > 0)
-    : Object.keys(race).filter((key) => race[key] > 0)
-  ).map((key) => [key, race[key]]);
-  if (!rows.length) return `<p class="note">No race counts published.</p>`;
-  const total = rows.reduce((sum, [, value]) => sum + value, 0) || 1;
-  const max = Math.max(...rows.map(([, value]) => value)) || 1;
-  return rows.map(([key, value]) => {
-    const width = Math.max(2, (value / max) * 100);
-    const tip = tipLines(raceLabel(key), [`${count(value)} students`, `${((value / total) * 100).toFixed(1)}% of reported`]);
-    return `<div class="grade-row" data-tip="${escapeAttr(tip)}"><span>${escapeHtml(raceLabel(key))}</span><div class="meter"><span style="width:${width}%"></span></div><b>${count(value)}</b></div>`;
-  }).join("");
-}
-
-function drawRace(host, race, title) {
-  if (!host) return;
-  if (!title) {
-    host.innerHTML = raceMetersHtml(race);
-    return;
-  }
-  const body = raceMetersHtml(race);
-  if (body.startsWith("<p class=\"note\">No race")) {
-    host.innerHTML = `<h3>${escapeHtml(title)}</h3>${body}`;
-    return;
-  }
-  host.innerHTML = `<h3>${escapeHtml(title)}</h3>${body}`;
 }
 
 function drawRaceTrend(host, selectedKeys) {
@@ -4293,10 +4260,6 @@ function leaHtml() {
 
     <div data-tab-panel="overview">
       <div id="overview-stats"></div>
-      <div class="panels">
-        <section class="panel" id="overview-race"></section>
-        <section class="panel" id="overview-gender"></section>
-      </div>
       <div id="overview-blurb"></div>
     </div>
 
