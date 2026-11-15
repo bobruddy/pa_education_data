@@ -10,6 +10,8 @@ RUN pip install --no-cache-dir .
 ENV PDE_ROOT=/app
 ENV PDE_DATA=/var/pde
 ENV PDE_DATA_PORT=8091
+ARG PDE_GIT_SHA=
+ENV PDE_GIT_SHA=${PDE_GIT_SHA}
 EXPOSE 8091
 
 CMD ["python", "-m", "pa_edu.serve"]

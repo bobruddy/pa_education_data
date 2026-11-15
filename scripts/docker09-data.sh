@@ -4,17 +4,18 @@
 #
 # NFS is blackhole:/mnt/tank04/pde_data, mounted at /var/pde inside the
 # container. That container is the only writer. It serves refined parquet
-# on port 8091, not 8090.
+# and a status page on port 8091, not 8090.
 set -eu
 tag=${1:?usage: scripts/docker09-data.sh <git sha>}
 image="192.168.150.59:443/pde-data:${tag}"
 nfs_host=blackhole
 nfs_path=/mnt/tank04/pde_data
-ssh docker09 sh -s "$image" "$nfs_host" "$nfs_path" <<'EOF'
+ssh docker09 sh -s "$image" "$nfs_host" "$nfs_path" "$tag" <<'EOF'
 set -eu
 image=$1
 host=$2
 export_path=$3
+sha=$4
 docker pull "$image"
 if ! docker volume inspect pde-nfs >/dev/null 2>&1; then
   docker volume create --driver local \
@@ -34,7 +35,9 @@ docker run -d --name pde-data --restart unless-stopped \
   -e PDE_ROOT=/app \
   -e PDE_DATA=/var/pde \
   -e PDE_DATA_PORT=8091 \
+  -e PDE_GIT_SHA="$sha" \
   -v pde-nfs:/var/pde \
   "$image"
 EOF
+echo "http://192.168.10.116:8091/  ${image}"
 echo "http://192.168.10.116:8091/refined/  ${image}"

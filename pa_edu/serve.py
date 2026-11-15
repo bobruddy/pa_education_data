@@ -1,8 +1,11 @@
-"""Serve refined Parquet over HTTP. Workbooks and raw extracts stay off this port.
+"""Serve refined Parquet and a status page. Workbooks stay off this port.
 
 DuckDB ``httpfs`` reads ``/refined/<table>.parquet``. Range requests are
 supported so a query can fetch the row groups it needs. Files are replaced
 by rename, and names that are not a finished table are not served.
+
+``/`` and ``/status`` are the check and inventory page. ``/status.json`` is
+the same report for a monitor. Both read ``<data>/status/runs.json``.
 """
 
 from __future__ import annotations
@@ -15,6 +18,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from pa_edu.common import DATA_DIR
+from pa_edu.status import render_status, status_report
 
 TABLE_NAME = re.compile(r"[A-Za-z0-9_]+\.parquet")
 PORT = int(os.environ.get("PDE_DATA_PORT", "8091"))
@@ -34,6 +38,9 @@ class Handler(BaseHTTPRequestHandler):
 
     def _handle(self, send_body: bool) -> None:
         path = urllib.parse.unquote(urllib.parse.urlparse(self.path).path)
+        if path in {"/", "/status", "/status.json"}:
+            self._status(send_body, as_json=path == "/status.json")
+            return
         if path in {"/refined", "/refined/"}:
             self._list(send_body)
             return
@@ -46,6 +53,30 @@ class Handler(BaseHTTPRequestHandler):
             self.send_error(404)
             return
         self._send_file(file, send_body)
+
+    def _status(self, send_body: bool, *, as_json: bool) -> None:
+        try:
+            report = status_report(self.root.parent)
+            if as_json:
+                body = (json.dumps(report, indent=2) + "\n").encode()
+                content_type = "application/json"
+            else:
+                body = render_status(report).encode()
+                content_type = "text/html; charset=utf-8"
+        except Exception:
+            body = b"status unavailable\n"
+            self._send_bytes(body, "text/plain; charset=utf-8", send_body, status=500)
+            return
+        self._send_bytes(body, content_type, send_body)
+
+    def _send_bytes(self, body: bytes, content_type: str, send_body: bool, status: int = 200) -> None:
+        self.send_response(status)
+        self.send_header("Content-Type", content_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        if send_body:
+            self.wfile.write(body)
 
     def _list(self, send_body: bool) -> None:
         if self.root.is_dir():

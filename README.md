@@ -42,7 +42,7 @@ Raw bytes land under `data/raw/<source_id>/<sha256>/`. Refined tables under `dat
 
 A push to `main` runs the job on the education build host. The job runs the tests, then `refine`, `personnel`, and `check` inside the data container on docker09, then `python -m pa_edu.publish` against that service. It pushes `192.168.150.59:443/pdenumbers:<git sha>` and the same image as `pdenumbers:latest`, then updates the site container on docker09. It does not copy files to elm and it does not change https://pdenumbers.org/.
 
-`scripts/docker09.sh <sha>` pulls that image. It starts `pdenumbers` on port 8090 if the container is absent, and replaces it if it is already there. The site is http://192.168.10.116:8090/. The data service is a separate container, `scripts/docker09-data.sh`, on port 8091. It mounts `blackhole:/mnt/tank04/pde_data` at `/var/pde`.
+`scripts/docker09.sh <sha>` pulls that image. It starts `pdenumbers` on port 8090 if the container is absent, and replaces it if it is already there. The site is http://192.168.10.116:8090/. The data service is a separate container, `scripts/docker09-data.sh`, on port 8091. It mounts `blackhole:/mnt/tank04/pde_data` at `/var/pde`. Open http://192.168.10.116:8091/ for the last check and the refined inventory. Parquet stays at `/refined/`.
 
 https://pdenumbers.org/ is the elm container. Jenkins job `pdenumbers-install` is the button that moves it. Leave the parameter at `latest` to install the newest push, or paste a 40-character git sha to install that build. `scripts/elm.sh` does the same thing from a shell on education. The tag in use is `/data/pdenumbers/.env` (`PDENUMBERS_TAG`). The `latest` push in the Jenkinsfile takes effect on the next build after this file is on `main`.
 

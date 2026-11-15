@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 import pandas as pd
+import requests
 from openpyxl import Workbook
 
 from pa_edu.catalog import CatalogEntry
@@ -99,3 +100,32 @@ def test_a_changed_extract_code_rebuilds(tmp_path: Path, monkeypatch) -> None:
     ensure_extract(data, load_index(data), record)
     assert calls["n"] == 1
     assert json.loads(meta_path.read_text())["extract_code"] != "stale"
+
+
+def test_a_missing_discovered_link_is_skipped(tmp_path: Path, monkeypatch, capsys) -> None:
+    import pa_edu.extract as extract
+
+    page = "https://example.test/reports"
+    gone = "https://www.pa.gov/portals/66/gone.xlsx"
+    kept = "https://www.pa.gov/portals/66/kept.xlsx"
+    monkeypatch.setattr(extract, "PAGES", [page])
+    monkeypatch.setattr(extract, "fetch_hrefs", lambda url: [gone, kept])
+    seen = []
+
+    def materialize(entry, data_dir, index):
+        seen.append(entry.source_url)
+        if entry.source_url == gone:
+            response = requests.Response()
+            response.status_code = 404
+            response.url = gone
+            raise requests.HTTPError("404", response=response)
+        return {"path": str(data_dir / "kept.xlsx")}
+
+    monkeypatch.setattr(extract, "materialize", materialize)
+    monkeypatch.setattr(extract, "ensure_extract", lambda *args: None)
+    extract.ingest_discovered(tmp_path / "data", {"current": {}, "documents": {}})
+    assert seen == [gone, kept]
+    output = capsys.readouterr().out
+    assert "missing " in output
+    assert "gone.xlsx" in output
+    assert "kept.xlsx" in output

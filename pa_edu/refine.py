@@ -37,6 +37,7 @@ from pa_edu.parse_homeschool import parse_homeschool
 from pa_edu.parse_iep import parse_iep
 from pa_edu.parse_low_income import parse_low_income
 from pa_edu.parse_retax import parse_retax
+from pa_edu.status import public_error, record_run
 from pa_edu.storage import load_index, materialize
 
 PARSERS = {
@@ -226,7 +227,11 @@ SHARD_VERSION = 1
 
 
 def main() -> None:
-    run()
+    try:
+        run()
+    except Exception as exc:
+        record_run("refine", ok=False, error=public_error(exc))
+        raise
 
 
 def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
@@ -260,6 +265,7 @@ def run(data_dir: Path | None = None, catalog_path: Path | None = None) -> Path:
     _ensure_personnel(refined)
     _duckdb(data_dir / "pde.duckdb", refined)
     print(f"wrote {data_dir / 'pde.duckdb'}")
+    record_run("refine", ok=True, documents=len(jobs), data_dir=data_dir)
     return refined
 
 

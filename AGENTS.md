@@ -21,7 +21,7 @@ pa_edu/extract.py        workbook bytes → one table per sheet, beside data/raw
 pa_edu/parse_*.py        one parser family per source shape
 pa_edu/refine.py         download → extract stable workbooks → refined parquet
 pa_edu/check.py          offline identity, grain, and cell checks against the workbooks
-pa_edu/serve.py          refined Parquet over HTTP for the education build
+pa_edu/serve.py          refined Parquet over HTTP, and /status for the data service
 sql/model.sql            DuckDB views over local parquet
 sql/portal.sql           convenience views (school district, fund 10, labeled lines)
 pa_edu/portal.py         download page: Parquet, county zips, remote DuckDB
@@ -30,6 +30,8 @@ pa_edu/web/              LEA browser UI; download.css is the portal stylesheet
 ```
 
 `school_year` is the **four-digit start year** (`2024` = 2024–25). Take it from the catalog entry, not from a workbook header string.
+
+`check`, `refine`, and `personnel` write a run record under `data/status/runs.json` (on the data host, `/var/pde/status/runs.json`). The data service reads it at `/` and `/status.json`. That page does not serve workbooks or the data directory path.
 
 Commands (always use `.venv/bin/python`):
 

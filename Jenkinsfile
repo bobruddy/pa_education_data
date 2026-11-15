@@ -20,7 +20,7 @@ pipeline {
                     set -eu
                     tag=$(git rev-parse HEAD)
                     image="192.168.150.59:443/pde-data:${tag}"
-                    docker build -f Dockerfile.data -t "$image" .
+                    docker build -f Dockerfile.data --build-arg PDE_GIT_SHA="$tag" -t "$image" .
                     docker push "$image"
                     scripts/docker09-data.sh "$tag"
                     ssh docker09 'set -eu

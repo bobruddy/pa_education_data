@@ -19,6 +19,7 @@ from datetime import date, datetime
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 from pa_edu.catalog import CatalogEntry, load_catalog
 from pa_edu.common import DATA_DIR, ROOT, absolute_url, fetch_hrefs
@@ -85,7 +86,14 @@ def ingest_discovered(data_dir: Path, index: dict) -> None:
                 parser="",
                 status="review",
             )
-            record = materialize(entry, data_dir, index)
+            try:
+                record = materialize(entry, data_dir, index)
+            except requests.HTTPError as exc:
+                status = exc.response.status_code if exc.response is not None else None
+                if status != 404:
+                    raise
+                print(f"missing {entry.id}: {Path(url).name}")
+                continue
             print(f"review {entry.id}: {Path(record['path']).name}")
             ensure_extract(data_dir, index, record)
             known.add(_url_key(url))

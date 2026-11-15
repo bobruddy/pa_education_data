@@ -11,6 +11,7 @@ from pa_edu.catalog import load_checks
 from pa_edu.codes import as_code, find_sheet, read_headed, read_sheet, sheet_names
 from pa_edu.parse_act1 import YEAR_COLUMN
 from pa_edu.common import DATA_DIR, ROOT
+from pa_edu.status import public_error, record_run
 from pa_edu.parse_enrollment import _grade_label
 from pa_edu.storage import load_index
 
@@ -64,7 +65,12 @@ MONEY = 0.01
 
 
 def main() -> None:
-    errors = run_checks()
+    try:
+        errors = run_checks()
+    except Exception as exc:
+        record_run("check", ok=False, error=public_error(exc))
+        raise
+    record_run("check", ok=not errors, errors=errors)
     if errors:
         for error in errors:
             print(error)

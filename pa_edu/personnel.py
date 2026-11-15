@@ -34,6 +34,7 @@ from pa_edu.common import DATA_DIR, absolute_url, fetch_hrefs
 from pa_edu.extract import ensure_extract, use_extract
 from pa_edu.personnel_layouts import CANONICAL_FIELDS, LAYOUTS, LEA_TYPE_CODES, YEAR_LAYOUT
 from pa_edu.refine import COLUMNS, PERSONNEL_TABLES, SORT, _duckdb
+from pa_edu.status import public_error, record_run
 from pa_edu.storage import load_index, materialize, store_bytes
 
 PERSONNEL_PAGE = (
@@ -108,6 +109,14 @@ def personnel_sources() -> list[tuple[int, str]]:
     return found
 
 
+def main() -> None:
+    try:
+        load_personnel()
+    except Exception as exc:
+        record_run("personnel", ok=False, error=public_error(exc))
+        raise
+
+
 def load_personnel(data_dir: Path | None = None) -> None:
     data_dir = data_dir or DATA_DIR
     sources = personnel_sources()
@@ -132,6 +141,7 @@ def refresh(data_dir: Path, sources: list[tuple[int, str]]) -> None:
     if _personnel_current(refined, jobs, fingerprint):
         print(f"kept personnel tables ({len(jobs)} years)")
         _refresh_views(data_dir)
+        record_run("personnel", ok=True, years=len(jobs), data_dir=data_dir)
         return
     for job in jobs:
         directory = parts / job["document_id"]
@@ -157,6 +167,7 @@ def refresh(data_dir: Path, sources: list[tuple[int, str]]) -> None:
     _drop_personnel_shards(parts, {job["document_id"] for job in jobs})
     (refined / PERSONNEL_STAMP).write_text(json.dumps(_personnel_stamp(jobs, fingerprint), indent=2) + "\n")
     _refresh_views(data_dir)
+    record_run("personnel", ok=True, years=len(jobs), data_dir=data_dir)
     print(f"wrote professional_assignment and professional_staff for {len(jobs)} years")
 
 
@@ -471,4 +482,4 @@ def _quote(value: str) -> str:
 
 
 if __name__ == "__main__":
-    load_personnel()
+    main()

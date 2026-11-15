@@ -1,4 +1,4 @@
-"""The data service serves refined Parquet and nothing else."""
+"""The data service serves refined Parquet and a status page, not workbooks."""
 
 import json
 import os
@@ -29,7 +29,7 @@ def test_range_requests_and_raw_files_stay_unserved(tmp_path: Path, monkeypatch)
     (refined / ".lea.parquet.tmp").write_bytes(b"partial")
     raw = tmp_path / "raw"
     raw.mkdir()
-    (raw / "index.json").write_text("{}")
+    (raw / "index.json").write_text("WORKBOOK-SENTINEL")
     server, port = _server(refined)
     try:
         listing = json.loads(urlopen(f"http://127.0.0.1:{port}/refined/").read())
@@ -45,7 +45,13 @@ def test_range_requests_and_raw_files_stay_unserved(tmp_path: Path, monkeypatch)
         assert partial.status == 206
         assert partial.headers["Content-Range"] == f"bytes 0-3/{len(payload)}"
         assert partial.read() == payload[:4]
-        for path in ("/raw/index.json", "/extract/sheet.parquet", "/refined/../raw/index.json", "/refined/.lea.parquet.tmp"):
+        for path in (
+            "/raw/index.json",
+            "/extract/sheet.parquet",
+            "/refined/../raw/index.json",
+            "/refined/.lea.parquet.tmp",
+            "/status/runs.json",
+        ):
             try:
                 urlopen(f"http://127.0.0.1:{port}{path}")
             except Exception as error:
@@ -77,4 +83,7 @@ def test_site_image_does_not_copy_the_data_directory() -> None:
     assert "data/raw" not in dockerfile
     assert "COPY pa_edu" in data_image
     assert "data/refined" not in data_image
+    assert "ARG PDE_GIT_SHA" in data_image
+    assert 'PDE_GIT_SHA="$tag"' in Path("Jenkinsfile").read_text()
+    assert 'PDE_GIT_SHA="$sha"' in Path("scripts/docker09-data.sh").read_text()
     assert os.environ.get("PDE_REFINED_URL", "") == ""
