@@ -207,7 +207,7 @@ def normalize_assignments(frame: pd.DataFrame, school_year: int, source_file: st
     for column in STRING_COLUMNS:
         if column in ("source_layout", "source_file", "lea_type_code"):
             continue
-        renamed[column] = renamed[column].map(_text)
+        renamed[column] = _mapped_text(renamed[column])
     renamed["lea_type_code"] = renamed["lea_type"].map(_lea_type_code)
     renamed["time_status"] = renamed["time_status"].str.lower()
     renamed["source_layout"] = layout_name
@@ -253,7 +253,7 @@ def _rename(frame: pd.DataFrame, layout_name: str, school_year: int) -> pd.DataF
 
 
 def _school_year(labels: pd.Series, expected: int) -> pd.Series:
-    text = labels.map(_text)
+    text = _mapped_text(labels)
     parsed = text.str.slice(0, 4)
     bad = parsed.isna() | ~parsed.str.fullmatch(r"20\d{2}") | (parsed.astype("Int64") != expected)
     if bad.any():
@@ -263,7 +263,7 @@ def _school_year(labels: pd.Series, expected: int) -> pd.Series:
 
 
 def _primary_flag(values: pd.Series) -> pd.Series:
-    text = values.map(_text).str.lower()
+    text = _mapped_text(values).str.lower()
     flag = pd.Series(pd.NA, index=values.index, dtype="boolean")
     flag[text.isin(["yes", "y"])] = True
     flag[text.isin(["no", "n"])] = False
@@ -278,6 +278,15 @@ def _lea_type_code(value: object) -> object:
 
 def _header(value: object) -> str:
     return re.sub(r"\s+", " ", str(value).replace("\n", " ")).strip()
+
+
+def _mapped_text(values: pd.Series) -> pd.Series:
+    """Cell text as a string series.
+
+    An all-blank column from the extract maps to a null array, and ``.str``
+    does not work on that dtype.
+    """
+    return values.map(_text).astype("string")
 
 
 def _text(value: object) -> object:

@@ -5,10 +5,33 @@ import pandas as pd
 from openpyxl import Workbook
 
 from pa_edu.extract import read_workbook
-from pa_edu.personnel import refresh, staff_rows, write_personnel_tables
+from pa_edu.personnel import _primary_flag, normalize_assignments, refresh, staff_rows, write_personnel_tables
 from pa_edu.personnel_layouts import LAYOUTS
 from pa_edu.refine import COLUMNS, _ensure_personnel
 from pa_edu.storage import load_index
+
+
+def test_primary_flag_accepts_an_all_blank_string_column() -> None:
+    blank = _primary_flag(pd.Series([pd.NA, pd.NA], dtype="string"))
+    assert blank.isna().all()
+    assert str(blank.dtype) == "boolean"
+    marked = _primary_flag(pd.Series(["Yes", "No", None], dtype="string"))
+    assert marked.iloc[0]
+    assert marked.iloc[1] == False
+    assert pd.isna(marked.iloc[2])
+
+
+def test_normalize_accepts_blank_string_columns() -> None:
+    headers = list(LAYOUTS["spaced_2012"])
+    frame = pd.DataFrame({header: pd.Series([pd.NA], dtype="string") for header in headers})
+    frame["SY"] = "2024-25"
+    frame["Staff Snapshot Date"] = "2024-10-01"
+    frame["Public ID"] = "12345"
+    frame["AUN"] = "101260303"
+    frame["Annual Salary"] = "70000"
+    out = normalize_assignments(frame, 2024, "staff.xlsx")
+    assert out["primary_assignment"].isna().all()
+    assert pd.isna(out["time_status"].iloc[0])
 
 
 def test_staff_rows_keep_one_salary_per_person() -> None:
