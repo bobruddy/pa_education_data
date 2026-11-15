@@ -985,6 +985,42 @@ def test_cohort_grad_keeps_published_rate_and_skips_blanks(tmp_path: Path) -> No
     assert groups.loc[groups["aun"] == "112011103"].empty
 
 
+def test_cohort_grad_reads_a_blank_header_from_the_extract(tmp_path: Path) -> None:
+    path = tmp_path / "cohort-blank.xlsx"
+    header = [None, "LEA Type", "AUN", "LEA", "Grads", "Cohort", "Cohort Grad Rate", *_COHORT_GROUPS]
+    row = [None, "SD", 101260303.0, "Albert Gallatin Area SD", 262, 327, 0.80122324159, *_cohort_rates(0.811764705882)]
+    _save(
+        path,
+        {
+            "Notes": [["note"]],
+            "Grad Rate by LEA": [["title"], [], header, row],
+            "Grad Rate by School": [["School Number"], [1]],
+        },
+    )
+    document = {"school_year": 2017, "span": 4, "document_id": "cohort-2017"}
+    direct = parse_cohort_grad(path, document)["cohort_graduation"]
+    data = tmp_path / "data"
+    index = load_index(data)
+    entry = CatalogEntry(
+        id="cohort-grad-2017-4",
+        source_id="cohort",
+        source_url=path.as_uri(),
+        page_url=path.as_uri(),
+        parser="cohort_grad",
+        status="stable",
+        school_year=2017,
+        span=4,
+    )
+    record = store_bytes(entry, path.read_bytes(), data, index, path.name)
+    from pa_edu.extract import ensure_extract, use_extract
+
+    record = ensure_extract(data, index, record)
+    with use_extract(path, record["extract_path"]):
+        extracted = parse_cohort_grad(path, document)["cohort_graduation"]
+    assert list(extracted["aun"]) == list(direct["aun"])
+    assert int(extracted.iloc[0]["graduates"]) == 262
+
+
 def test_cohort_grad_accepts_the_layout_without_later_groups(tmp_path: Path) -> None:
     path = tmp_path / "cohort-core.xlsx"
     _cohort_book(

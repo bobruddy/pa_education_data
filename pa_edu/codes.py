@@ -11,6 +11,7 @@ from pa_edu.common import id_to_str
 from pa_edu.common import sheet_names as _excel_sheet_names
 
 ACCOUNT_RE = re.compile(r"^(\d{4})-(\d{3})(?:-(\d+))?$")
+_UNNAMED = re.compile(r"^Unnamed: \d+(?:\.\d+)?$")
 
 
 def as_text(value: object) -> str | None:
@@ -121,7 +122,9 @@ def read_headed(path: Path, sheet: str, skiprows: int) -> pd.DataFrame:
 
 
 def _grid_from_published(frame: pd.DataFrame) -> pd.DataFrame:
-    header = pd.DataFrame([list(frame.columns)])
+    """Headerless rows. A blank published header is stored as ``Unnamed: n``."""
+    labels = [None if _UNNAMED.fullmatch(str(column)) else column for column in frame.columns]
+    header = pd.DataFrame([labels])
     body = frame.astype("object")
     body.columns = range(len(frame.columns))
     header.columns = range(len(frame.columns))
