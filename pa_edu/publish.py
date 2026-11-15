@@ -531,11 +531,11 @@ def _years_for(
         budget_income = income_budget.get(aun, {}).get(year)
         if budget_income:
             block["incomeBudget"] = budget_income
-        # Full-time LEAADM headcount. The card divides by this year's October 1
-        # enrollment. A missing count stays absent; it is not stored as zero.
-        admins = lea_administrators.get(aun, {}).get(year)
+        # Full-time LEAADM headcount, plus the jobs and the sum of reported
+        # pay when the staff file has them. A missing count stays absent.
+        admins = _lea_admin_block(lea_administrators.get(aun, {}).get(year))
         if admins:
-            block["leaAdministrators"] = {"n": int(admins)}
+            block["leaAdministrators"] = admins
         blocks[year] = block
     return blocks
 
@@ -715,7 +715,7 @@ def _county_ranks(
                     })
                 if profile.get("category") != "intermediate_unit":
                     per_thousand = _lea_admins_per_thousand(
-                        lea_administrators.get(aun, {}).get(year),
+                        _lea_admin_headcount(lea_administrators.get(aun, {}).get(year)),
                         enrolled,
                     )
                     if per_thousand is not None:
@@ -1422,12 +1422,16 @@ def _salaries() -> tuple[dict, dict, dict]:
 LEA_ADMIN_CATEGORIES = ("LEAADM", "LEA ADMINISTRATORS")
 
 
-def _lea_administrators() -> dict[str, dict[int, int]]:
+def _lea_administrators() -> dict:
     """Full-time person rows whose primary assignment is LEAADM.
 
     Reads ``professional_staff`` (one row per person, LEA, and year), not
     assignment rows. Intermediate units are left out. A year with no LEAADM
-    row is absent, not zero. Salary is not required.
+    row is absent, not zero.
+
+    When the file has assignment columns, each year is the headcount, the
+    jobs, and the sum of reported salaries. A salary is never attached to a
+    job. Without those columns the value stays the headcount alone.
     """
     path = REFINED / "professional_staff.parquet"
     if not path.exists():
@@ -1448,29 +1452,135 @@ def _lea_administrators() -> dict[str, dict[int, int]]:
             iu_filter = """
               AND upper(trim(CAST(lea_type_code AS VARCHAR))) IS DISTINCT FROM 'IU'
             """
-        frame = connection.execute(
-            f"""
-            SELECT CAST(aun AS VARCHAR) AS aun,
-                   CAST(school_year AS INTEGER) AS school_year,
-                   count(*)::BIGINT AS n
-            FROM read_parquet('{_sql_path(path)}')
-            WHERE fte_percent = 100
-              AND {_lea_admin_category_sql("edf_category")}
-              {iu_filter}
-            GROUP BY 1, 2
-            """
-        ).df()
+        has_roles = {"assignment_code", "assignment_description"} <= columns
+        if has_roles:
+            frame = connection.execute(
+                f"""
+                SELECT CAST(aun AS VARCHAR) AS aun,
+                       CAST(school_year AS INTEGER) AS school_year,
+                       trim(CAST(assignment_code AS VARCHAR)) AS assignment_code,
+                       trim(CAST(assignment_description AS VARCHAR)) AS assignment_description,
+                       count(*)::BIGINT AS n,
+                       {_lea_admin_salary_sql("annual_salary") if "annual_salary" in columns else "0::BIGINT AS reported, NULL AS salary"}
+                FROM read_parquet('{_sql_path(path)}')
+                WHERE fte_percent = 100
+                  AND {_lea_admin_category_sql("edf_category")}
+                  {iu_filter}
+                GROUP BY 1, 2, 3, 4
+                """
+            ).df()
+        else:
+            frame = connection.execute(
+                f"""
+                SELECT CAST(aun AS VARCHAR) AS aun,
+                       CAST(school_year AS INTEGER) AS school_year,
+                       count(*)::BIGINT AS n
+                FROM read_parquet('{_sql_path(path)}')
+                WHERE fte_percent = 100
+                  AND {_lea_admin_category_sql("edf_category")}
+                  {iu_filter}
+                GROUP BY 1, 2
+                """
+            ).df()
     finally:
         connection.close()
-    grouped: dict[str, dict[int, int]] = {}
+    if has_roles:
+        grouped = _lea_admin_roles(frame)
+    else:
+        grouped = {}
+        for row in frame.itertuples(index=False):
+            headcount = int(row.n)
+            if headcount <= 0:
+                continue
+            grouped.setdefault(str(row.aun), {})[int(row.school_year)] = headcount
+    if grouped:
+        print(f"LEA administrators for {len(grouped)} LEAs")
+    return grouped
+
+
+def _lea_admin_salary_sql(column: str) -> str:
+    """Reported pay only. A null or NaN salary is omitted from the sum."""
+    reported = f"{column} IS NOT NULL AND isnan({column}) = false"
+    return f"""
+       count(CASE WHEN {reported} THEN 1 END)::BIGINT AS reported,
+       sum(CASE WHEN {reported} THEN {column} END) AS salary
+    """
+
+
+def _lea_admin_roles(frame: pd.DataFrame) -> dict:
+    """One payload per LEA and year: headcount, jobs, and the group's pay."""
+    buckets: dict[tuple[str, int], list[dict]] = {}
     for row in frame.itertuples(index=False):
         headcount = int(row.n)
         if headcount <= 0:
             continue
-        grouped.setdefault(str(row.aun), {})[int(row.school_year)] = headcount
-    if grouped:
-        print(f"LEA administrators for {len(grouped)} LEAs")
+        code = "" if _missing(row.assignment_code) else str(row.assignment_code).strip()
+        if code.endswith(".0") and code[:-2].isdigit():
+            code = code[:-2]
+        label = "" if _missing(row.assignment_description) else str(row.assignment_description).strip()
+        if not label:
+            label = code or "Assignment not published"
+        reported = int(row.reported or 0)
+        salary = None if reported <= 0 or _missing(row.salary) else float(row.salary)
+        buckets.setdefault((str(row.aun), int(row.school_year)), []).append({
+            "code": code,
+            "label": label,
+            "n": headcount,
+            "reported": reported,
+            "salary": salary,
+        })
+    grouped: dict[str, dict[int, dict]] = {}
+    for (aun, year), roles in buckets.items():
+        roles.sort(key=lambda role: (-role["n"], role["label"].casefold(), role["code"]))
+        payload: dict = {
+            "n": sum(role["n"] for role in roles),
+            "roles": [
+                {"code": role["code"], "label": role["label"], "n": role["n"]}
+                for role in roles
+            ],
+        }
+        paid = [role["salary"] for role in roles if role["salary"] is not None]
+        if paid:
+            payload["salary"] = _number(sum(paid))
+        unreported = sum(role["n"] - role["reported"] for role in roles)
+        if unreported > 0:
+            payload["unreported"] = unreported
+        grouped.setdefault(aun, {})[year] = payload
     return grouped
+
+
+def _lea_admin_headcount(value: object) -> int | None:
+    """Headcount from an int or from the role payload. Zero is absence."""
+    if isinstance(value, dict):
+        value = value.get("n")
+    if value is None or _missing(value):
+        return None
+    headcount = int(value)
+    return headcount if headcount > 0 else None
+
+
+def _lea_admin_block(value: object) -> dict | None:
+    """JSON for one year. Jobs carry a count, never a salary."""
+    headcount = _lea_admin_headcount(value)
+    if headcount is None:
+        return None
+    if not isinstance(value, dict):
+        return {"n": headcount}
+    block: dict = {"n": headcount}
+    roles = [
+        {"code": str(role["code"]), "label": str(role["label"]), "n": int(role["n"])}
+        for role in (value.get("roles") or [])
+        if int(role.get("n") or 0) > 0
+    ]
+    if roles:
+        block["roles"] = roles
+    salary = value.get("salary")
+    if salary is not None and not _missing(salary):
+        block["salary"] = _number(salary)
+    unreported = int(value.get("unreported") or 0)
+    if unreported > 0:
+        block["unreported"] = unreported
+    return block
 
 
 def _lea_admin_category_sql(column: str) -> str:
@@ -1482,12 +1592,13 @@ def _lea_admins_per_thousand(count: object, enrollment: object) -> float | None:
     """Full-time LEAADM headcount per 1,000 October 1 students.
 
     A missing count or enrollment is absence. Zero is not a rate.
+    ``count`` may be the headcount or the role payload.
     """
-    if count is None or enrollment is None or _missing(count) or _missing(enrollment):
+    headcount = _lea_admin_headcount(count)
+    if headcount is None or enrollment is None or _missing(enrollment):
         return None
-    headcount = int(count)
     students = float(enrollment)
-    if headcount <= 0 or students <= 0:
+    if students <= 0:
         return None
     return round(headcount / students * 1000, 4)
 

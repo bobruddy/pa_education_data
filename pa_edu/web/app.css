@@ -448,6 +448,9 @@ table.schools td.num, table.schools th.num { text-align: right; }
 .hist-bar:hover { fill: #083f3b; }
 
 .grade-row { display: grid; grid-template-columns: minmax(120px, 180px) 1fr 52px; gap: 8px; align-items: center; margin: 5px 0; font-size: 0.88rem; }
+.role-row { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(48px, 1fr) 2.5rem; gap: 8px; align-items: center; margin: 6px 0; font-size: 0.88rem; }
+.role-row span { overflow-wrap: anywhere; }
+.role-row b { text-align: right; font-weight: 600; }
 .meter { height: 8px; background: var(--teal-soft); border-radius: 99px; overflow: hidden; }
 .meter span { display: block; height: 100%; background: var(--teal); }
 

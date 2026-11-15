@@ -1426,6 +1426,7 @@ function paintStaff(state) {
       ? `<div class="${statsGridClass(cards.length)}">${cards.map((card) => renderStat(card)).join("")}</div>`
       : "";
   }
+  drawLeaAdministrators(year);
   const mode = state.experience === "edu" ? "edu" : "lea";
   const heading = app.querySelector("#staff-heading");
   if (heading) heading.textContent = year ? `Full-time salaries · ${yearLabel(year)}` : "Full-time salaries";
@@ -1437,6 +1438,40 @@ function paintStaff(state) {
   const block = blockFor(year);
   drawExperience(block.experience || {}, mode);
   drawSalaries(block.salaries || {}, block.retention);
+}
+
+function drawLeaAdministrators(staffYear) {
+  const host = app.querySelector("#lea-admins");
+  if (!host) return;
+  const card = staffStripCard("staff.leaAdm", staffYear);
+  const year = card?.published ? String(card.year || "") : "";
+  const cell = year ? blockFor(year).leaAdministrators : null;
+  const roles = Array.isArray(cell?.roles) ? cell.roles.filter((role) => Number(role?.n) > 0) : [];
+  if (!roles.length) {
+    host.innerHTML = "";
+    return;
+  }
+  const max = Math.max(...roles.map((role) => Number(role.n))) || 1;
+  const rows = roles.map((role) => {
+    const label = role.label || role.code || "Assignment not published";
+    const width = Math.max(2, (Number(role.n) / max) * 100);
+    return `<div class="role-row"><span>${escapeHtml(label)}</span><div class="meter" aria-hidden="true"><span style="width:${width}%"></span></div><b>${count(role.n)}</b></div>`;
+  }).join("");
+  let heading = `LEA administrators · ${yearLabel(year)}`;
+  if (cell.salary != null) heading += ` · ${money(cell.salary)}`;
+  const omitted = Number(cell.unreported) || 0;
+  if (omitted && cell.salary != null) {
+    const noun = omitted === 1 ? "salary" : "salaries";
+    heading += `, omitting ${count(omitted)} unpublished ${noun}`;
+  }
+  const missingPay = omitted && cell.salary == null
+    ? " Salaries are not published for these people."
+    : "";
+  host.innerHTML = `<section class="panel">
+    <h2>${escapeHtml(heading)}</h2>
+    ${rows}
+    <p class="note">Full-time people whose primary assignment is LEAADM, the same count as LEA administrators per 1,000. The total is the annual pay PDE reported for the group. Each line is a job and how many people hold it.${missingPay}</p>
+  </section>`;
 }
 
 function paintEnrollment(state) {
@@ -4272,6 +4307,7 @@ function leaHtml() {
 
     <div data-tab-panel="staff" hidden>
       <div id="staff-stats"></div>
+      <div id="lea-admins"></div>
       <section class="panel">
         <h2 id="experience-heading">Full-time experience</h2>
         <div class="chips" aria-label="Experience measure">

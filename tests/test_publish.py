@@ -713,6 +713,80 @@ def test_lea_administrators_per_thousand_counts_full_time_leaadm_only(tmp_path: 
     assert "leaAdmPerThousand" not in ranks.get("9", {}).get(2023, {})
 
 
+def test_lea_administrator_roles_sum_pay_and_hide_each_salary(tmp_path: Path, monkeypatch) -> None:
+    """Jobs are headcounts. The only dollar figure is the group's reported pay.
+
+    A blank description uses the assignment code. The same code with two
+    descriptions stays two jobs. A reported zero stays in the sum. A missing
+    salary is left out of it. Part-time staff, principals, and intermediate
+    units stay out of the count.
+    """
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    rows = [
+        # aun, year, person, fte, category, lea type, salary, code, description
+        ("1", 2023, "asst-a", 100.0, "LEAADM", "SD", 140_000.0, "1155", "Assistant Superintendent"),
+        ("1", 2023, "asst-b", 100.0, " leaadm ", "SD", None, " 1155 ", " Assistant Superintendent "),
+        ("1", 2023, "sup", 100.0, "LEAADM", "SD", 180_000.0, "1150", "Superintendent"),
+        ("1", 2023, "biz", 100.0, "LEAADM", "SD", 0.0, "9910", "Business Manager"),
+        ("1", 2023, "blank", 100.0, "LEA Administrators", "SD", 50_000.0, "1805", None),
+        ("1", 2023, "part", 80.0, "LEAADM", "SD", 90_000.0, "1150", "Superintendent"),
+        ("1", 2023, "principal", 100.0, "SCHADM", "SD", 110_000.0, "1100", "Elementary Principal"),
+        ("1", 2024, "only", 100.0, "LEAADM", "SD", None, "1150", "Superintendent"),
+        ("9", 2023, "iu", 100.0, "LEAADM", "IU", 130_000.0, "1160", "Intermediate Unit Executive Director"),
+    ]
+    pd.DataFrame({
+        "aun": [row[0] for row in rows],
+        "school_year": [row[1] for row in rows],
+        "public_id": [row[2] for row in rows],
+        "fte_percent": [row[3] for row in rows],
+        "edf_category": [row[4] for row in rows],
+        "lea_type_code": [row[5] for row in rows],
+        "annual_salary": [row[6] for row in rows],
+        "assignment_code": [row[7] for row in rows],
+        "assignment_description": [row[8] for row in rows],
+    }).to_parquet(refined / "professional_staff.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+
+    counts = _lea_administrators()
+    assert "9" not in counts
+    assert counts["1"][2024] == {
+        "n": 1,
+        "roles": [{"code": "1150", "label": "Superintendent", "n": 1}],
+        "unreported": 1,
+    }
+    group = counts["1"][2023]
+    assert group["n"] == 5
+    assert group["salary"] == 370_000
+    assert group["unreported"] == 1
+    assert group["roles"] == [
+        {"code": "1155", "label": "Assistant Superintendent", "n": 2},
+        {"code": "1805", "label": "1805", "n": 1},
+        {"code": "9910", "label": "Business Manager", "n": 1},
+        {"code": "1150", "label": "Superintendent", "n": 1},
+    ]
+    assert all("salary" not in role for role in group["roles"])
+    assert _lea_admins_per_thousand(group, 2500) == 2
+
+    years = _years_for(
+        "1",
+        {"1": {2023: {"012": 100}, 2024: {"012": 100}}},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        lea_administrators=counts,
+    )
+    assert years[2023]["leaAdministrators"] == group
+    assert "salary" not in years[2023]["leaAdministrators"]["roles"][0]
+
+
 def test_published_charter_keeps_a_zero_and_skips_a_missing_year() -> None:
     assert _published_charter({2023: 10.0, 2021: 4.0}, 2025) == (10.0, 2023)
     assert _published_charter({2024: 0.0, 2023: 10.0}, 2024) == (0.0, 2024)
