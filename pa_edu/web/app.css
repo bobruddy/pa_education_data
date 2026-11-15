@@ -314,6 +314,7 @@ a.tip-rank:hover { color: #fff; }
 .lea-tabs button:hover { color: var(--ink); }
 .lea-tabs button[aria-pressed="true"]:hover { color: white; }
 .stats-wide { grid-template-columns: repeat(4, 1fr); }
+.stats-5 { grid-template-columns: repeat(5, 1fr); }
 .stats-2 { grid-template-columns: repeat(2, 1fr); }
 .stats-3 { grid-template-columns: repeat(3, 1fr); }
 .overview-kicker {
@@ -618,13 +619,13 @@ table.schools td.num, table.schools th.num { text-align: right; }
   .brand-note { display: none; }
   .site-foot-row { flex-direction: column; }
   .site-stamp { align-items: flex-start; text-align: left; }
-  .stats, .stats-wide, .stats-2, .stats-3, .panels, .lea-row, .salary-grid { grid-template-columns: 1fr 1fr; }
+  .stats, .stats-wide, .stats-5, .stats-2, .stats-3, .panels, .lea-row, .salary-grid { grid-template-columns: 1fr 1fr; }
   .lea-row { grid-template-columns: 1fr auto; }
   .lea-row .hide-sm { display: none; }
   .salary-stats { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 560px) {
-  .stats, .stats-wide, .stats-2, .stats-3, .salary-grid { grid-template-columns: 1fr; }
+  .stats, .stats-wide, .stats-5, .stats-2, .stats-3, .salary-grid { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: reduce) {
   #toast { transition: none; }

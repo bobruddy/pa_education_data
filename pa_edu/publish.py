@@ -203,6 +203,7 @@ def main() -> None:
     income_actual = _income_actual(connection)
     income_budget = _income_budget(connection)
     salaries, experience, retention = _salaries()
+    lea_administrators = _lea_administrators()
     charter = _charter_tuition(connection)
     charter_adm = _charter_adm(connection)
     home_education = _home_education(connection)
@@ -214,7 +215,7 @@ def main() -> None:
     mills = _real_estate_tax(connection)
     ranks = _county_ranks(
         profiles, grades, actual, budget, charter, keystone, pssa, graduation,
-        salaries, retention,
+        salaries, retention, lea_administrators,
     )
     enrollment_year = catalog["enrollmentYear"]
     actual_year = catalog["actualYear"]
@@ -267,6 +268,7 @@ def main() -> None:
                 graduation,
                 income_actual,
                 income_budget,
+                lea_administrators,
             ),
         )
         _write_json(data_dir / f"{aun}.json", document)
@@ -423,6 +425,7 @@ def _years_for(
     graduation: dict | None = None,
     income_actual: dict | None = None,
     income_budget: dict | None = None,
+    lea_administrators: dict | None = None,
 ) -> dict:
     experience = experience or {}
     retention = retention or {}
@@ -439,6 +442,7 @@ def _years_for(
     graduation = graduation or {}
     income_actual = income_actual or {}
     income_budget = income_budget or {}
+    lea_administrators = lea_administrators or {}
     years = (
         set(grades.get(aun, {}))
         | set(schools.get(aun, {}))
@@ -511,6 +515,11 @@ def _years_for(
         budget_income = income_budget.get(aun, {}).get(year)
         if budget_income:
             block["incomeBudget"] = budget_income
+        # Full-time LEAADM headcount. The card divides by this year's October 1
+        # enrollment. A missing count stays absent; it is not stored as zero.
+        admins = lea_administrators.get(aun, {}).get(year)
+        if admins:
+            block["leaAdministrators"] = {"n": int(admins)}
         blocks[year] = block
     return blocks
 
@@ -560,6 +569,7 @@ def _county_ranks(
     graduation: dict | None = None,
     salaries: dict | None = None,
     retention: dict | None = None,
+    lea_administrators: dict | None = None,
 ) -> dict:
     """Rank each LEA against others in its county for the top-card metrics."""
     keystone = keystone or {}
@@ -567,6 +577,7 @@ def _county_ranks(
     graduation = graduation or {}
     salaries = salaries or {}
     retention = retention or {}
+    lea_administrators = lea_administrators or {}
     by_county: dict[str, list[dict]] = {}
     for profile in profiles:
         by_county.setdefault(profile["county"], []).append(profile)
@@ -593,6 +604,7 @@ def _county_ranks(
                 "classroomRetention": [],
                 "elementaryMedian": [],
                 "secondaryMedian": [],
+                "leaAdmPerThousand": [],
             }
             actual_per_student: list[dict] = []
             budget_per_student: list[dict] = []
@@ -666,6 +678,13 @@ def _county_ranks(
                         **row,
                         "value": round(float(classroom["rate"]) * 100, 4),
                     })
+                if profile.get("category") != "intermediate_unit":
+                    per_thousand = _lea_admins_per_thousand(
+                        lea_administrators.get(aun, {}).get(year),
+                        enrolled,
+                    )
+                    if per_thousand is not None:
+                        buckets["leaAdmPerThousand"].append({**row, "value": per_thousand})
             # A year with any AFR stays on actuals. Budget per student ranks only
             # when nobody in the county has actuals yet, so the two are never mixed.
             buckets["perStudent"] = actual_per_student or budget_per_student
@@ -1338,6 +1357,81 @@ def _salaries() -> tuple[dict, dict, dict]:
 
     print(f"salary stats for {len(grouped)} LEAs")
     return grouped, experience, retention
+
+
+# EdFacts LEAADM, plus the label on older personnel files. SCHADM and CORSUP
+# stay in the administrator salary group and are not part of this count.
+LEA_ADMIN_CATEGORIES = ("LEAADM", "LEA ADMINISTRATORS")
+
+
+def _lea_administrators() -> dict[str, dict[int, int]]:
+    """Full-time person rows whose primary assignment is LEAADM.
+
+    Reads ``professional_staff`` (one row per person, LEA, and year), not
+    assignment rows. Intermediate units are left out. A year with no LEAADM
+    row is absent, not zero. Salary is not required.
+    """
+    path = REFINED / "professional_staff.parquet"
+    if not path.exists():
+        return {}
+    connection = duckdb.connect()
+    try:
+        columns = {
+            str(row[0])
+            for row in connection.execute(
+                f"DESCRIBE SELECT * FROM read_parquet('{_sql_path(path)}')"
+            ).fetchall()
+        }
+        needed = {"aun", "school_year", "fte_percent", "edf_category"}
+        if not needed <= columns:
+            return {}
+        iu_filter = ""
+        if "lea_type_code" in columns:
+            iu_filter = """
+              AND upper(trim(CAST(lea_type_code AS VARCHAR))) IS DISTINCT FROM 'IU'
+            """
+        frame = connection.execute(
+            f"""
+            SELECT CAST(aun AS VARCHAR) AS aun,
+                   CAST(school_year AS INTEGER) AS school_year,
+                   count(*)::BIGINT AS n
+            FROM read_parquet('{_sql_path(path)}')
+            WHERE fte_percent = 100
+              AND {_lea_admin_category_sql("edf_category")}
+              {iu_filter}
+            GROUP BY 1, 2
+            """
+        ).df()
+    finally:
+        connection.close()
+    grouped: dict[str, dict[int, int]] = {}
+    for row in frame.itertuples(index=False):
+        headcount = int(row.n)
+        if headcount <= 0:
+            continue
+        grouped.setdefault(str(row.aun), {})[int(row.school_year)] = headcount
+    if grouped:
+        print(f"LEA administrators for {len(grouped)} LEAs")
+    return grouped
+
+
+def _lea_admin_category_sql(column: str) -> str:
+    codes = ", ".join(repr(code) for code in LEA_ADMIN_CATEGORIES)
+    return f"upper(trim(CAST({column} AS VARCHAR))) IN ({codes})"
+
+
+def _lea_admins_per_thousand(count: object, enrollment: object) -> float | None:
+    """Full-time LEAADM headcount per 1,000 October 1 students.
+
+    A missing count or enrollment is absence. Zero is not a rate.
+    """
+    if count is None or enrollment is None or _missing(count) or _missing(enrollment):
+        return None
+    headcount = int(count)
+    students = float(enrollment)
+    if headcount <= 0 or students <= 0:
+        return None
+    return round(headcount / students * 1000, 4)
 
 
 def _sql_path(path: Path) -> str:

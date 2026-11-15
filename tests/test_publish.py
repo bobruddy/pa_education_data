@@ -12,6 +12,8 @@ from pa_edu.publish import (
     JSON_GZIP_LEVEL,
     _county_ranks,
     _experience_stats,
+    _lea_administrators,
+    _lea_admins_per_thousand,
     _percent_points,
     _salaries,
     _salary_group,
@@ -611,3 +613,112 @@ def test_directory_row_keeps_a_missing_actual() -> None:
     assert row["enrollment"] == 3000
     assert row["actual"] is None
     assert row["budget"] == 100.5
+
+
+def test_lea_administrators_per_thousand_counts_full_time_leaadm_only(tmp_path: Path, monkeypatch) -> None:
+    """Hand count: full-time LEAADM person rows ÷ October 1 enrollment, per 1,000.
+
+    Principals (SCHADM), instructional supervisors (CORSUP), and part-time
+    LEAADM stay out. Intermediate units are omitted. A missing count is not
+    stored as zero, and the count does not open a year by itself.
+    """
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    rows = [
+        # aun, year, person, fte, category, lea type, salary
+        ("1", 2023, "a", 100.0, "LEAADM", "SD", 120_000.0),
+        ("1", 2023, "b", 100.0, " leaadm ", "SD", 0.0),
+        ("1", 2023, "c", 100.0, "LEA Administrators", "SD", None),
+        ("1", 2023, "p", 100.0, "SCHADM", "SD", 110_000.0),
+        ("1", 2023, "s", 100.0, "CORSUP", "SD", 95_000.0),
+        ("1", 2023, "t", 80.0, "LEAADM", "SD", 60_000.0),
+        ("1", 2023, "e", 100.0, "ELMTCH", "SD", 70_000.0),
+        ("1", 2024, "a", 100.0, "LEAADM", "SD", 121_000.0),
+        ("2", 2023, "c1", 100.0, "LEAADM", "CS", 90_000.0),
+        ("2", 2023, "c2", 100.0, "LEAADM", "CS", 91_000.0),
+        ("2", 2023, "c3", 100.0, "LEAADM", "CS", 92_000.0),
+        ("2", 2023, "c4", 100.0, "LEAADM", "CS", 93_000.0),
+        ("9", 2023, "i1", 100.0, "LEAADM", "IU", 130_000.0),
+        ("9", 2023, "i2", 100.0, "LEA ADMINISTRATORS", "IU", 131_000.0),
+        ("3", 2023, "n", 100.0, "SCHADM", "SD", 100_000.0),
+    ]
+    pd.DataFrame({
+        "aun": [row[0] for row in rows],
+        "school_year": [row[1] for row in rows],
+        "public_id": [row[2] for row in rows],
+        "fte_percent": [row[3] for row in rows],
+        "edf_category": [row[4] for row in rows],
+        "lea_type_code": [row[5] for row in rows],
+        "annual_salary": [row[6] for row in rows],
+    }).to_parquet(refined / "professional_staff.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+
+    counts = _lea_administrators()
+    assert counts == {"1": {2023: 3, 2024: 1}, "2": {2023: 4}}
+    assert "9" not in counts
+    assert _lea_admins_per_thousand(3, 2500) == 1.2
+    assert _lea_admins_per_thousand(4, 1000) == 4
+    assert _lea_admins_per_thousand(0, 2500) is None
+    assert _lea_admins_per_thousand(3, 0) is None
+    assert _lea_admins_per_thousand(None, 2500) is None
+
+    grades = {
+        "1": {2023: {"012": 2000, "009": 500}, 2024: {"012": 2000}},
+        "2": {2023: {"012": 1000}},
+        "3": {2023: {"012": 800}},
+        "9": {2023: {"012": 100}},
+    }
+    years = _years_for(
+        "1",
+        grades,
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        lea_administrators={"1": {2023: 3, 2024: 0, 2029: 8}},
+    )
+    assert years[2023]["leaAdministrators"] == {"n": 3}
+    assert "leaAdministrators" not in years[2024]
+    assert 2029 not in years
+
+    profiles = [
+        {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "2", "name": "Beta Charter", "county": "Fayette", "category": "charter_school"},
+        {"aun": "3", "name": "Gamma", "county": "Fayette", "category": "school_district"},
+        {"aun": "9", "name": "IU 1", "county": "Fayette", "category": "intermediate_unit"},
+    ]
+    ranks = _county_ranks(
+        profiles,
+        grades,
+        {},
+        {},
+        {},
+        lea_administrators={**counts, "9": {2023: 10}},
+    )
+    peers = {peer["aun"]: peer["value"] for peer in ranks["1"][2023]["leaAdmPerThousand"]["peers"]}
+    assert peers == {"2": 4, "1": 1.2}
+    assert ranks["2"][2023]["leaAdmPerThousand"]["rank"] == 1
+    assert ranks["1"][2023]["leaAdmPerThousand"]["rank"] == 2
+    assert ranks["1"][2023]["leaAdmPerThousand"]["of"] == 2
+    assert "leaAdmPerThousand" not in ranks.get("3", {}).get(2023, {})
+    assert "leaAdmPerThousand" not in ranks.get("9", {}).get(2023, {})
+
+
+def test_lea_administrator_count_runs_without_a_lea_type_column(tmp_path: Path, monkeypatch) -> None:
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    pd.DataFrame({
+        "aun": ["1"],
+        "school_year": [2023],
+        "public_id": ["a"],
+        "fte_percent": [100.0],
+        "edf_category": ["LEAADM"],
+    }).to_parquet(refined / "professional_staff.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+    assert _lea_administrators() == {"1": {2023: 1}}

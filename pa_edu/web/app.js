@@ -122,13 +122,14 @@ const OVERVIEW_CARDS = [
   { label: "PSSA", cards: ["pssa.math", "pssa.ela"] },
   { label: "Keystone", cards: ["keystone.algebra_i", "keystone.literature", "keystone.biology"] },
   { label: "Financials", cards: ["perStudent"] },
-  { label: "Staff", cards: ["staff.students", "staff.retention", "staff.elementary", "staff.secondary"] },
+  { label: "Staff", cards: ["staff.students", "staff.retention", "staff.elementary", "staff.secondary", "staff.leaAdm"] },
 ];
 const STAFF_CARDS = [
   "staff.students",
   "staff.retention",
   "staff.elementary",
   "staff.secondary",
+  "staff.leaAdm",
 ];
 const CLASSROOM_GROUPS = ["elementary", "secondary", "ungraded"];
 const KEYSTONE_METRICS = [
@@ -1011,6 +1012,7 @@ function staffCard(id, options) {
   if (id === "retention") return classroomRetentionCard(options);
   if (id === "elementary") return teacherMedianCard("elementary", "Elementary teacher median", options);
   if (id === "secondary") return teacherMedianCard("secondary", "Secondary teacher median", options);
+  if (id === "leaAdm") return leaAdministratorsCard(options);
   return null;
 }
 
@@ -1091,6 +1093,35 @@ function classroomRetentionCard(options = {}) {
     title: year,
     rank: block.countyRanks?.classroomRetention,
     kind: "pct",
+    tab: "staff",
+    year,
+  };
+}
+
+function leaAdministratorsOf(block) {
+  if (leaPack?.category === "intermediate_unit") return null;
+  const headcount = block?.leaAdministrators?.n;
+  const enrolled = enrollmentOf(block);
+  if (headcount == null || !Number(headcount) || enrolled == null || !enrolled) return null;
+  return { n: Number(headcount), enrolled, value: Number(headcount) / enrolled * 1000 };
+}
+
+function leaAdministratorsCard(options = {}) {
+  const year = pinnedYear(options, (block) => leaAdministratorsOf(block));
+  const block = blockFor(year);
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const current = year ? leaAdministratorsOf(block) : null;
+  const prior = priorYear ? leaAdministratorsOf(blockFor(priorYear)) : null;
+  return {
+    published: current != null,
+    label: "LEA administrators per 1,000",
+    value: current == null ? "Not published" : current.value.toFixed(1),
+    extra: current
+      ? `<div class="note">${count(current.n)} full-time · ${count(current.enrolled)} students</div>${yearDelta(current.value, prior?.value, priorYear)}${yearNote(year)}`
+      : "",
+    title: year,
+    rank: block.countyRanks?.leaAdmPerThousand,
+    kind: "ratio",
     tab: "staff",
     year,
   };
@@ -1222,6 +1253,7 @@ function cardHref(card) {
 function statsGridClass(count) {
   if (count === 2) return "stats stats-2";
   if (count === 3) return "stats stats-3";
+  if (count === 5) return "stats stats-5";
   if (count >= 4) return "stats stats-wide";
   return "stats";
 }
@@ -3923,7 +3955,7 @@ function drawSalaries(salaries, retention) {
     ? `<p class="retention"><strong>${pct(retention.rate)}</strong> of full-time professional staff returned to this LEA in ${yearLabel(retention.nextYear)} (${count(retention.stayed)} of ${count(retention.base)}).</p>`
     : `<p class="note">Retention into the following year is not published yet for this staff year.</p>`;
   host.innerHTML = `${retentionLine}<div class="salary-grid">${cards.join("")}</div>
-    <p class="note">Full-time only (FTE 100%). Part-time and overload assignments are excluded. Elementary includes kindergarten and pre-K teachers. Support is counselors, specialists, and other non-classroom professional roles — not classified support aides. The return rate in this section is every full-time professional, including administrators and support. The cards above count elementary, secondary, and ungraded teachers only. Hover a salary bar for tenure and degree mix in that pay band.</p>`;
+    <p class="note">Full-time only (FTE 100%). Part-time and overload assignments are excluded. Elementary includes kindergarten and pre-K teachers. Support is counselors, specialists, and other non-classroom professional roles — not classified support aides. The return rate in this section is every full-time professional, including administrators and support. Students per classroom teacher counts elementary, secondary, and ungraded teachers only. LEA administrators per 1,000 counts full-time staff whose primary assignment is LEAADM (central-office administrators such as the superintendent). Principals and instructional supervisors are not in that rate. Hover a salary bar for tenure and degree mix in that pay band.</p>`;
 }
 
 function pct(rate) {
