@@ -621,6 +621,24 @@ def _ages517_share(enrolled: object, population: object) -> float | None:
     return round(students / residents * 100, 4)
 
 
+def _latest_population_5_17(years: dict | None, year: int) -> int | None:
+    """Latest published ages 5–17 count at or before ``year``.
+
+    A later Census file stays with its own year. A reported zero is the latest
+    count and is not replaced by an older one.
+    """
+    if not years:
+        return None
+    found = [
+        item
+        for item in years
+        if item <= year and (years[item] or {}).get("population_5_17") is not None
+    ]
+    if not found:
+        return None
+    return (years[max(found)] or {}).get("population_5_17")
+
+
 def _county_ranks(
     profiles: list[dict],
     grades: dict,
@@ -758,12 +776,11 @@ def _county_ranks(
                     )
                     if per_thousand is not None:
                         buckets["leaAdmPerThousand"].append({**row, "value": per_thousand})
-                # School districts only. October 1 enrollment over Census ages 5–17.
-                # A missing count or a zero population is left out, not ranked as zero.
+                # School districts only. October 1 enrollment over the latest Census
+                # ages 5–17 count published through this year. A missing count or a
+                # zero population is left out, not ranked as zero.
                 if profile.get("category") == "school_district":
-                    population = (
-                        district_population.get(aun, {}).get(year) or {}
-                    ).get("population_5_17")
+                    population = _latest_population_5_17(district_population.get(aun), year)
                     share = _ages517_share(enrolled, population)
                     if share is not None:
                         buckets["ages517Share"].append({**row, "value": share})

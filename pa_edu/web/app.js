@@ -1262,23 +1262,35 @@ function enrollmentCard(options = {}) {
   };
 }
 
-const AGES_517_TEXT = "October 1 public-school enrollment divided by the Census count of residents ages 5–17. The numerator is the same headcount as October 1 enrollment. Charter and home-education students are not in that total.";
+const AGES_517_TEXT = "October 1 public-school enrollment divided by the latest Census count of residents ages 5–17 published through that school year. The note gives the Census year. Charter and home-education students are not in the enrollment total.";
 
 function ages517ShareTip() {
   return tipLines("Share of ages 5–17 enrolled", [escapeHtml(AGES_517_TEXT)]);
 }
 
-function ages517Share(block) {
-  if (leaPack?.category !== "school_district") return null;
-  const enrolled = enrollmentOf(block);
-  const population = block?.population517;
-  if (enrolled == null || population == null) return null;
-  const residents = Number(population);
-  if (!Number.isFinite(residents) || residents <= 0) return null;
+function latestAges517(year) {
+  if (leaPack?.category !== "school_district" || !year) return null;
+  const found = Object.keys(leaPack.years || {})
+    .map(Number)
+    .filter((candidate) => candidate <= Number(year) && blockFor(candidate).population517 != null)
+    .sort((a, b) => a - b)
+    .at(-1);
+  if (found == null) return null;
+  const population = Number(blockFor(found).population517);
+  if (!Number.isFinite(population)) return null;
+  return { year: String(found), population };
+}
+
+function ages517Share(year) {
+  if (leaPack?.category !== "school_district" || !year) return null;
+  const enrolled = enrollmentOf(blockFor(year));
+  const census = latestAges517(year);
+  if (enrolled == null || !census || census.population <= 0) return null;
   return {
     enrolled,
-    population: residents,
-    percent: Number(enrolled) / residents * 100,
+    population: census.population,
+    censusYear: census.year,
+    percent: Number(enrolled) / census.population * 100,
   };
 }
 
@@ -1286,8 +1298,8 @@ function ages517ShareCard(options = {}) {
   const year = Object.hasOwn(options, "year") ? String(options.year || "") : enrollmentAnchorYear();
   const block = blockFor(year);
   const priorYear = year ? String(Number(year) - 1) : "";
-  const current = year ? ages517Share(block) : null;
-  const prior = priorYear ? ages517Share(blockFor(priorYear)) : null;
+  const current = year ? ages517Share(year) : null;
+  const prior = priorYear ? ages517Share(priorYear) : null;
   return {
     published: current != null,
     label: "Share of ages 5–17 enrolled",
@@ -1295,7 +1307,7 @@ function ages517ShareCard(options = {}) {
     hintText: AGES_517_TEXT,
     value: current == null ? "Not published" : `${current.percent.toFixed(1)}%`,
     extra: current
-      ? `<div class="note">${count(current.enrolled)} enrolled · ${count(current.population)} ages 5–17</div>${yearDeltaPoints(current.percent, prior?.percent, priorYear)}${yearNote(year)}`
+      ? `<div class="note">${count(current.enrolled)} enrolled · ${count(current.population)} ages 5–17 in ${yearLabel(current.censusYear)}</div>${yearDeltaPoints(current.percent, prior?.percent, priorYear)}${yearNote(year)}`
       : "",
     title: year,
     rank: current ? block.countyRanks?.ages517Share : null,

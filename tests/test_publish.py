@@ -12,6 +12,7 @@ from pa_edu.publish import (
     SALARY_EDGES,
     JSON_GZIP_LEVEL,
     _ages517_share,
+    _latest_population_5_17,
     _catalog,
     _county_ranks,
     _debt_service,
@@ -637,8 +638,8 @@ def test_ages517_share_ranks_school_districts_highest_first() -> None:
         {"aun": "7", "name": "Other county", "county": "Greene", "category": "school_district"},
     ]
     grades = {
-        "1": {2024: {"012": 1000}, 2023: {"012": 800}},
-        "2": {2024: {"012": 900}},
+        "1": {2025: {"012": 1100}, 2024: {"012": 1000}, 2023: {"012": 800}},
+        "2": {2025: {"012": 950}, 2024: {"012": 900}},
         "3": {2024: {"012": 0}},
         "4": {2024: {"012": 400}},
         "5": {2024: {"012": 100}},
@@ -646,10 +647,14 @@ def test_ages517_share_ranks_school_districts_highest_first() -> None:
         "7": {2024: {"012": 500}},
     }
     population = {
-        "1": {2024: {"population_5_17": 2000}, 2023: {"population_5_17": 2000}},
+        "1": {
+            2026: {"population_5_17": 100},
+            2024: {"population_5_17": 2000},
+            2023: {"population_5_17": 2000},
+        },
         "2": {2024: {"population_5_17": 1000}},
         "3": {2024: {"population_5_17": 1000}},
-        "5": {2024: {"population_5_17": 0}},
+        "5": {2024: {"population_5_17": 0}, 2023: {"population_5_17": 500}},
         "6": {2024: {"population_5_17": 100}},
         "7": {2024: {"population_5_17": 500}},
     }
@@ -664,8 +669,14 @@ def test_ages517_share_ranks_school_districts_highest_first() -> None:
     assert "ages517Share" not in ranks["5"][2024]
     assert "ages517Share" not in ranks.get("6", {}).get(2024, {})
     assert "ages517Share" not in ranks.get("7", {}).get(2024, {})
-    # One district with both counts is not a county rank, and a prior year is not filled in.
+    # One district in 2023 is not a county rank.
     assert "ages517Share" not in ranks.get("1", {}).get(2023, {})
+    # 2025 enrollment uses the 2024 Census count. The 2026 count is later, so it stays put.
+    later = {peer["aun"]: peer["value"] for peer in ranks["1"][2025]["ages517Share"]["peers"]}
+    assert later == {"2": 95.0, "1": 55.0}
+    assert _latest_population_5_17(population["1"], 2025) == 2000
+    assert _latest_population_5_17(population["5"], 2024) == 0
+    assert _latest_population_5_17(population.get("4"), 2024) is None
     assert _ages517_share(1500, 1000) == 150.0
     assert _ages517_share(0, 1000) == 0.0
     assert _ages517_share(100, 0) is None
