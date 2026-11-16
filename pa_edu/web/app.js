@@ -1438,6 +1438,8 @@ function paintStaff(state) {
   const block = blockFor(year);
   drawExperience(block.experience || {}, mode);
   drawSalaries(block.salaries || {}, block.retention);
+  const staffSources = app.querySelector("#staff-sources");
+  if (staffSources) staffSources.innerHTML = staffSourceLinks(year);
 }
 
 function drawLeaAdministrators(staffYear) {
@@ -4180,6 +4182,33 @@ function salaryHist(label, stats, edges) {
   return `<svg class="hist" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttr(label)} full-time salary distribution">${bars}</svg>`;
 }
 
+function staffSourceLinks(salaryYear) {
+  const sources = catalog?.sources || {};
+  const files = sources.personnelWorkbooks || {};
+  const years = new Set();
+  if (salaryYear) years.add(String(salaryYear));
+  for (const id of STAFF_CARDS) {
+    const card = staffStripCard(id, salaryYear);
+    if (!card?.published || !card.year) continue;
+    years.add(String(card.year));
+    if (id === "staff.retention" && files[String(Number(card.year) + 1)]) {
+      years.add(String(Number(card.year) + 1));
+    }
+  }
+  const items = [];
+  if (sources.personnel) {
+    items.push(`<a href="${escapeAttr(sources.personnel)}" target="_blank" rel="noopener">Professional and support personnel</a>`);
+  }
+  const ordered = [...years].filter((year) => files[year]).sort((a, b) => Number(b) - Number(a));
+  for (const year of ordered) {
+    items.push(`<a href="${escapeAttr(files[year])}" target="_blank" rel="noopener">${escapeHtml(yearLabel(year))} individual staff workbook</a>`);
+  }
+  const lead = items.length
+    ? `Source: ${items.join(" · ")}`
+    : "Source: PDE professional personnel files listed in the catalog";
+  return `<p class="sources note">${lead}. Full-time salary, experience, and assignments come from PDE’s individual professional-personnel workbooks. A person is counted once: the primary assignment when PDE marked one, otherwise the highest FTE. Part-time staff are left out. Returned next year compares that file with the next year’s workbook.</p>`;
+}
+
 function sourceLinks(year) {
   const items = [];
   const enrollment = catalog.sources.enrollment?.[year];
@@ -4317,6 +4346,7 @@ function leaHtml() {
         <div id="experience"></div>
       </section>
       <section class="panel"><h2 id="staff-heading">Full-time salaries</h2><div id="salaries"></div></section>
+      <div id="staff-sources"></div>
     </div>
 
     <div data-tab-panel="enrollment" hidden>

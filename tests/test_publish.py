@@ -11,6 +11,7 @@ from pa_edu.publish import (
     EXPERIENCE_EDGES,
     SALARY_EDGES,
     JSON_GZIP_LEVEL,
+    _catalog,
     _county_ranks,
     _debt_service,
     _experience_stats,
@@ -29,6 +30,68 @@ from pa_edu.publish import (
     lea_document,
     write_build_stamp,
 )
+
+
+def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> None:
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    pd.DataFrame({"school_year": [2024]}).to_parquet(refined / "enrollment.parquet", index=False)
+    pd.DataFrame({"school_year": [2023]}).to_parquet(refined / "afr_expenditure.parquet", index=False)
+    pd.DataFrame({"school_year": [2025]}).to_parquet(refined / "gfb_expenditure.parquet", index=False)
+    pd.DataFrame({
+        "function_code": pd.Series(dtype="object"),
+        "function_name": pd.Series(dtype="object"),
+        "object_code": pd.Series(dtype="object"),
+        "object_name": pd.Series(dtype="object"),
+    }).to_parquet(refined / "account.parquet", index=False)
+    pd.DataFrame({
+        "account_code": pd.Series(dtype="object"),
+        "name": pd.Series(dtype="object"),
+    }).to_parquet(refined / "revenue_account.parquet", index=False)
+    pd.DataFrame([
+        {
+            "parser": "personnel",
+            "school_year": 2024,
+            "source_url": "https://example.test/staff-2024.xlsx",
+            "catalog_id": "personnel-2024",
+            "retrieved_at": "2026-01-02T00:00:00",
+        },
+        {
+            "parser": "personnel",
+            "school_year": 2024,
+            "source_url": "https://example.test/staff-2024-old.xlsx",
+            "catalog_id": "personnel-2024",
+            "retrieved_at": "2025-01-01T00:00:00",
+        },
+        {
+            "parser": "personnel",
+            "school_year": 2025,
+            "source_url": "https://example.test/staff-2025.xlsx",
+            "catalog_id": "personnel-2025",
+            "retrieved_at": "2026-02-01T00:00:00",
+        },
+        {
+            "parser": "personnel",
+            "school_year": None,
+            "source_url": "https://example.test/staff-blank.xlsx",
+            "catalog_id": "personnel-blank",
+            "retrieved_at": "2026-01-01T00:00:00",
+        },
+        {
+            "parser": "enrollment",
+            "school_year": 2024,
+            "source_url": "https://example.test/enrollment-2024.xlsx",
+            "catalog_id": "enrollment-2024",
+            "retrieved_at": "2026-01-01T00:00:00",
+        },
+    ]).to_parquet(refined / "document.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+    sources = _catalog(duckdb.connect())["sources"]
+    assert sources["personnelWorkbooks"] == {
+        "2024": "https://example.test/staff-2024.xlsx",
+        "2025": "https://example.test/staff-2025.xlsx",
+    }
+    assert sources["enrollment"]["2024"] == "https://example.test/enrollment-2024.xlsx"
 
 
 def test_support_service_titles_keep_the_chart_suffix() -> None:
