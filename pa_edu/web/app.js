@@ -118,7 +118,7 @@ const KEYSTONE_LABEL = Object.fromEntries(KEYSTONE_SUBJECTS);
 // Detail-page cards on the overview. Labels match the detail tabs.
 // A group with no published cards is omitted.
 const OVERVIEW_CARDS = [
-  { label: "Enrollment", family: "enrollment", cards: ["enrollment", "ages517Share"] },
+  { label: "Enrollment", family: "enrollment", cards: ["enrollment", "ages517Share", "graduation"] },
   { label: "PSSA", family: "pssa", cards: ["pssa.math", "pssa.ela"] },
   { label: "Keystone", family: "keystone", cards: ["keystone.algebra_i", "keystone.literature", "keystone.biology"] },
   { label: "Financials", family: "financials", cards: ["perStudent", "charterShare", "debtPerStudent", "instructionPerStudent"] },
@@ -1063,6 +1063,7 @@ function financeStats(block, priorBlock, priorYear, year) {
 function cardById(id, options = {}) {
   if (id === "enrollment") return enrollmentCard(options);
   if (id === "ages517Share") return ages517ShareCard(options);
+  if (id === "graduation") return graduationCard();
   if (id === "perStudent") return perStudentCard(options);
   if (id === "charterShare") return charterShareCard(options);
   if (id === "debtPerStudent") return debtPerStudentCard(options);
@@ -1613,28 +1614,41 @@ function drawLeaAdministrators(staffYear) {
   </section>`;
 }
 
+function graduationCard() {
+  const years = gradYears();
+  const year = years.length ? String(years[years.length - 1]) : "";
+  const priorYear = years.length > 1 ? String(years[years.length - 2]) : "";
+  const grad = year ? gradCell(year) : null;
+  const prior = priorYear ? gradCell(priorYear) : null;
+  const rate = grad ? Number(grad.rate) * 100 : null;
+  const priorRate = prior ? Number(prior.rate) * 100 : null;
+  return {
+    published: grad != null,
+    label: "4-year graduation",
+    value: grad ? `${rate.toFixed(1)}%` : "Not published",
+    extra: grad
+      ? `<div class="note">${count(grad.grads)} of ${count(grad.cohort)}</div>${yearDeltaPoints(rate, priorRate, priorYear)}${yearNote(year)}`
+      : "",
+    title: year,
+    rank: year ? blockFor(year).countyRanks?.graduation : null,
+    kind: "pct",
+    tab: "enrollment",
+    year,
+  };
+}
+
 function paintEnrollment(state) {
   const year = enrollmentAnchorYear();
   const block = blockFor(year);
   const gradYearList = gradYears();
   const gradYear = gradYearList.length ? gradYearList[gradYearList.length - 1] : null;
-  const grad = gradYear == null ? null : gradCell(gradYear);
-  const priorGradYear = gradYearList.length > 1 ? gradYearList[gradYearList.length - 2] : null;
-  const priorGrad = priorGradYear == null ? null : gradCell(priorGradYear);
   const enrollmentStats = [
     renderStat(enrollmentCard()),
   ];
   if (leaPack?.category === "school_district") enrollmentStats.push(renderStat(ages517ShareCard()));
   enrollmentStats.push(
     stat("Schools reporting", count((block.schools || []).length), yearNote(year)),
-    stat(
-      "4-year graduation",
-      grad ? `${(Number(grad.rate) * 100).toFixed(1)}%` : "Not published",
-      grad ? `<div class="note">${count(grad.grads)} of ${count(grad.cohort)}</div>${yearDeltaPoints(Number(grad.rate) * 100, priorGrad ? Number(priorGrad.rate) * 100 : null, priorGradYear)}${yearNote(gradYear)}` : "",
-      gradYear,
-      gradYear == null ? null : blockFor(gradYear).countyRanks?.graduation,
-      "pct",
-    ),
+    renderStat(graduationCard()),
   );
   const enrollmentHost = app.querySelector("#enrollment-stats");
   enrollmentHost.className = statsGridClass(enrollmentStats.length);
