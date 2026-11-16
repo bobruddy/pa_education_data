@@ -1,0 +1,27 @@
+---
+description: Do only the task Robert asked for. Tickets and complaints are not license to edit code.
+alwaysApply: true
+---
+
+# Stay inside the ask
+
+Do only what Robert asked for in this turn. Analysis that the asked task needs is in scope. The next task is not.
+
+## Open a ticket
+
+"Open an issue" or "open a ticket" means research enough to write the issue, then file it. Suggested fixes in that request — a hover, a card, a layout — belong in the issue body. Do not implement them.
+
+## Implement a ticket
+
+"Implement this ticket" means:
+
+1. Read the ticket.
+2. Understand the change it asks for.
+3. Ask Robert any clarifying questions.
+4. Implement after those questions are answered. If nothing is unclear, say so and then implement.
+
+Do not start editing before that, and do not add work the ticket does not ask for.
+
+## When he objects
+
+If he objects that you did something he did not ask for, apologize and stop. Do not revert, delete, or otherwise undo the work unless he explicitly tells you to undo it.

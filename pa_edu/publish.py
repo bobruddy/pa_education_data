@@ -636,6 +636,7 @@ def _county_ranks(
                 "classroomRetention": [],
                 "elementaryMedian": [],
                 "secondaryMedian": [],
+                "ungradedMedian": [],
                 "leaAdmPerThousand": [],
                 "charterShare": [],
                 "debtPerStudent": [],
@@ -703,6 +704,7 @@ def _county_ranks(
                 for metric, group in (
                     ("elementaryMedian", "elementary"),
                     ("secondaryMedian", "secondary"),
+                    ("ungradedMedian", "ungraded"),
                 ):
                     median = _group_median(staff, group)
                     if median is not None:

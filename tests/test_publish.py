@@ -347,11 +347,13 @@ def test_staff_ranks_use_classroom_teachers_and_enrollment() -> None:
         "1": {2024: {
             "elementary": {"n": 10, "median": 70_000},
             "secondary": {"n": 10, "median": 80_000},
+            "ungraded": {"n": 4, "median": 75_000},
             "administrator": {"n": 40, "median": 120_000},
         }},
         "2": {2024: {
             "elementary": {"n": 10, "median": 60_000},
             "secondary": {"n": 10, "median": 90_000},
+            "ungraded": {"n": 2, "median": 65_000},
         }},
         "3": {2024: {"administrator": {"n": 5, "median": 100_000}}},
     }
@@ -366,10 +368,12 @@ def test_staff_ranks_use_classroom_teachers_and_enrollment() -> None:
     ratio = ranks["1"][2024]["studentsPerTeacher"]
     assert ratio["rank"] == 1
     assert ratio["of"] == 2
-    assert [peer["value"] for peer in ratio["peers"]] == [15.0, 10.0]
+    assert [peer["value"] for peer in ratio["peers"]] == [12.5, 9.0909]
     assert "studentsPerTeacher" not in ranks["3"][2024]
     assert ranks["1"][2024]["elementaryMedian"]["rank"] == 1
     assert ranks["2"][2024]["secondaryMedian"]["rank"] == 1
+    assert ranks["1"][2024]["ungradedMedian"]["rank"] == 1
+    assert ranks["2"][2024]["ungradedMedian"]["rank"] == 2
     assert ranks["1"][2024]["classroomRetention"]["rank"] == 1
     assert ranks["1"][2024]["classroomRetention"]["peers"][0]["value"] == 90.0
 

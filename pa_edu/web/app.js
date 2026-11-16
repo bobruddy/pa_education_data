@@ -122,13 +122,14 @@ const OVERVIEW_CARDS = [
   { label: "PSSA", family: "pssa", cards: ["pssa.math", "pssa.ela"] },
   { label: "Keystone", family: "keystone", cards: ["keystone.algebra_i", "keystone.literature", "keystone.biology"] },
   { label: "Financials", family: "financials", cards: ["perStudent", "charterShare", "debtPerStudent", "instructionPerStudent"] },
-  { label: "Staff", family: "staff", cards: ["staff.students", "staff.retention", "staff.elementary", "staff.secondary", "staff.leaAdm"] },
+  { label: "Staff", family: "staff", cards: ["staff.students", "staff.retention", "staff.elementary", "staff.secondary", "staff.ungraded", "staff.leaAdm"] },
 ];
 const STAFF_CARDS = [
   "staff.students",
   "staff.retention",
   "staff.elementary",
   "staff.secondary",
+  "staff.ungraded",
   "staff.leaAdm",
 ];
 const CLASSROOM_GROUPS = ["elementary", "secondary", "ungraded"];
@@ -783,13 +784,13 @@ function bindTips(root) {
         }
       }
     }
-    const node = event.target.closest("[data-tip]");
+    const node = tipTarget(event.target);
     if (!node) return;
     showTip(node.dataset.tip, event.clientX, event.clientY);
   });
   root.addEventListener("pointermove", (event) => {
     if (tip.hidden) return;
-    const node = event.target.closest("[data-tip]");
+    const node = tipTarget(event.target);
     if (!node) {
       hideTip();
       return;
@@ -797,9 +798,24 @@ function bindTips(root) {
     moveTip(event.clientX, event.clientY);
   });
   root.addEventListener("pointerout", (event) => {
-    const next = event.relatedTarget instanceof Element ? event.relatedTarget.closest("[data-tip]") : null;
+    const next = event.relatedTarget instanceof Element ? tipTarget(event.relatedTarget) : null;
     if (!next) hideTip();
   });
+  root.addEventListener("focusin", (event) => {
+    const node = tipTarget(event.target);
+    if (!node) return;
+    const box = node.getBoundingClientRect();
+    showTip(node.dataset.tip, box.left + 16, box.top + 28);
+  });
+  root.addEventListener("focusout", (event) => {
+    const next = event.relatedTarget instanceof Element ? tipTarget(event.relatedTarget) : null;
+    if (!next) hideTip();
+  });
+}
+
+function tipTarget(node) {
+  if (!(node instanceof Element) || node.closest(".rank-wrap")) return null;
+  return node.closest("[data-tip]");
 }
 
 function showTip(text, x, y) {
@@ -1020,6 +1036,7 @@ function staffCard(id, options) {
   if (id === "retention") return classroomRetentionCard(options);
   if (id === "elementary") return teacherMedianCard("elementary", "Elementary teacher median", options);
   if (id === "secondary") return teacherMedianCard("secondary", "Secondary teacher median", options);
+  if (id === "ungraded") return teacherMedianCard("ungraded", "Ungraded teacher median", options);
   if (id === "leaAdm") return leaAdministratorsCard(options);
   return null;
 }
@@ -1135,6 +1152,18 @@ function leaAdministratorsCard(options = {}) {
   };
 }
 
+const TEACHER_MEDIAN_RANK = {
+  elementary: "elementaryMedian",
+  secondary: "secondaryMedian",
+  ungraded: "ungradedMedian",
+};
+
+const UNGRADED_TEACHER_TEXT = "Classroom teachers whose assignment is not an elementary or secondary grade. PDE codes them UGTCH; earlier files say Ungraded Teachers. Most are special-education resource, English-language resource, instructional support, or hearing- and vision-resource, serving PreK–12.";
+
+function ungradedTeacherTip() {
+  return tipLines("Ungraded teachers", [escapeHtml(UNGRADED_TEACHER_TEXT)]);
+}
+
 function teacherMedian(block, groupId) {
   const stats = block?.salaries?.[groupId];
   if (!stats?.n || stats.median == null) return null;
@@ -1150,10 +1179,12 @@ function teacherMedianCard(groupId, label, options = {}) {
   return {
     published: current != null,
     label,
+    hint: groupId === "ungraded" ? ungradedTeacherTip() : "",
+    hintText: groupId === "ungraded" ? UNGRADED_TEACHER_TEXT : "",
     value: current == null ? "Not published" : money(current, 0),
     extra: `<div class="note">Full-time</div>${yearDelta(current, prior, priorYear)}${yearNote(year)}`,
     title: year,
-    rank: block.countyRanks?.[groupId === "elementary" ? "elementaryMedian" : "secondaryMedian"],
+    rank: block.countyRanks?.[TEACHER_MEDIAN_RANK[groupId]],
     kind: "money0",
     tab: "staff",
     year,
@@ -1354,7 +1385,11 @@ function proficiencyCard(family, subject) {
 
 function renderStat(card, options = {}) {
   if (!card) return "";
-  return stat(card.label, card.value, card.extra, card.title, card.rank, card.kind, options);
+  return stat(card.label, card.value, card.extra, card.title, card.rank, card.kind, {
+    ...options,
+    hint: card.hint || "",
+    hintText: card.hintText || "",
+  });
 }
 
 function cardHref(card) {
@@ -1376,6 +1411,7 @@ function statsGridClass(count) {
   if (count === 2) return "stats stats-2";
   if (count === 3) return "stats stats-3";
   if (count === 5) return "stats stats-5";
+  if (count === 6) return "stats stats-6";
   if (count >= 4) return "stats stats-wide";
   return "stats";
 }
@@ -2465,16 +2501,24 @@ function stat(label, value, extra, title, rank, kind, options = {}) {
   const pick = options.pick;
   const selected = Boolean(options.selected);
   const href = options.href || "";
+  const hint = options.hint || "";
+  const hintText = options.hintText || "";
+  const accessible = hintText ? `${label}. ${hintText}` : label;
   const classes = ["stat", pick ? "stat-pick" : "", href ? "stat-link" : ""].filter(Boolean).join(" ");
   const pickAttrs = pick
     ? ` data-subject="${escapeAttr(pick)}" data-value="${escapeAttr(pick)}" aria-pressed="${selected ? "true" : "false"}" tabindex="0"`
     : "";
   const hit = href
-    ? `<a class="stat-hit" href="${escapeAttr(href)}" aria-label="${escapeAttr(label)}"></a>`
+    ? `<a class="stat-hit" href="${escapeAttr(href)}" aria-label="${escapeAttr(accessible)}"></a>`
     : "";
-  return `<article class="${classes}"${pickAttrs}${title ? ` title="${escapeAttr(yearLabel(title))}"` : ""}>
+  const labelClass = hint ? "label tip-label" : "label";
+  const tipAttr = hint
+    ? ` data-tip="${escapeAttr(hint)}"${href ? "" : ` tabindex="0" aria-label="${escapeAttr(accessible)}"`}`
+    : "";
+  const titleAttr = !hint && title ? ` title="${escapeAttr(yearLabel(title))}"` : "";
+  return `<article class="${classes}"${pickAttrs}${titleAttr}${tipAttr}>
     ${hit}
-    <div class="label-row"><div class="label">${escapeHtml(label)}</div>${rankBadge(label, rank, kind)}</div>
+    <div class="label-row"><div class="${labelClass}">${escapeHtml(label)}</div>${rankBadge(label, rank, kind)}</div>
     <div class="value">${escapeHtml(value)}</div>${extra || ""}
   </article>`;
 }
@@ -4018,7 +4062,7 @@ function drawExperience(experience, mode) {
   const cards = groups.map((group) => {
     const stats = experience[group.id]?.[mode];
     if (!stats || !stats.n) {
-      return `<article class="panel salary-card"><h3>${escapeHtml(group.label)}</h3><p class="note">No ${escapeHtml(modeLabel)} published for this year.</p></article>`;
+      return `<article class="panel salary-card">${salaryGroupTitle(group)}<p class="note">No ${escapeHtml(modeLabel)} published for this year.</p></article>`;
     }
     const hist = experienceHist(group.label, stats, edges, mode);
     const other = mode === "lea" ? experience[group.id]?.edu : experience[group.id]?.lea;
@@ -4026,7 +4070,7 @@ function drawExperience(experience, mode) {
       ? `Mean ${Number(other.mean).toFixed(1)} ${otherLabel}`
       : "";
     return `<article class="panel salary-card">
-      <h3>${escapeHtml(group.label)}</h3>
+      ${salaryGroupTitle(group)}
       <div class="people">${count(stats.n)} full-time staff</div>
       <div class="salary-stats">
         <div><div class="label">Lowest</div><div class="value">${escapeHtml(yearsLabel(stats.min))}</div></div>
@@ -4054,7 +4098,7 @@ function drawSalaries(salaries, retention) {
   const cards = groups.map((group) => {
     const stats = salaries[group.id];
     if (!stats || !stats.n) {
-      return `<article class="panel salary-card"><h3>${escapeHtml(group.label)}</h3><p class="note">No full-time salaries in this year.</p></article>`;
+      return `<article class="panel salary-card">${salaryGroupTitle(group)}<p class="note">No full-time salaries in this year.</p></article>`;
     }
     const hist = salaryHist(group.label, stats, edges);
     const tenure = [
@@ -4064,7 +4108,7 @@ function drawSalaries(salaries, retention) {
       stats.retention != null ? `${pct(stats.retention)} returned next year` : null,
     ].filter(Boolean).join(" · ");
     return `<article class="panel salary-card">
-      <h3>${escapeHtml(group.label)}</h3>
+      ${salaryGroupTitle(group)}
       <div class="people">${count(stats.n)} full-time staff</div>
       <div class="salary-stats">
         <div><div class="label">Lowest</div><div class="value">${escapeHtml(money(stats.min, 0))}</div></div>
@@ -4085,6 +4129,11 @@ function drawSalaries(salaries, retention) {
     : `<p class="note">Retention into the following year is not published yet for this staff year.</p>`;
   host.innerHTML = `${retentionLine}<div class="salary-grid">${cards.join("")}</div>
     <p class="note">Full-time only (FTE 100%). Part-time and overload assignments are excluded. Elementary includes kindergarten and pre-K teachers. Support is counselors, specialists, and other non-classroom professional roles — not classified support aides. The return rate in this section is every full-time professional, including administrators and support. Students per classroom teacher counts elementary, secondary, and ungraded teachers only. LEA administrators per 1,000 counts full-time staff whose primary assignment is LEAADM (central-office administrators such as the superintendent). Principals and instructional supervisors are not in that rate. Hover a salary bar for tenure and degree mix in that pay band.</p>`;
+}
+
+function salaryGroupTitle(group) {
+  if (group.id !== "ungraded") return `<h3>${escapeHtml(group.label)}</h3>`;
+  return `<h3 class="tip-label" tabindex="0" data-tip="${escapeAttr(ungradedTeacherTip())}" aria-label="${escapeAttr(`Ungraded teachers. ${UNGRADED_TEACHER_TEXT}`)}">${escapeHtml(group.label)}</h3>`;
 }
 
 function pct(rate) {
