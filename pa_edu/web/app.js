@@ -118,7 +118,7 @@ const KEYSTONE_LABEL = Object.fromEntries(KEYSTONE_SUBJECTS);
 // Detail-page cards on the overview. Labels match the detail tabs.
 // A group with no published cards is omitted.
 const OVERVIEW_CARDS = [
-  { label: "Enrollment", family: "enrollment", cards: ["enrollment"] },
+  { label: "Enrollment", family: "enrollment", cards: ["enrollment", "ages517Share"] },
   { label: "PSSA", family: "pssa", cards: ["pssa.math", "pssa.ela"] },
   { label: "Keystone", family: "keystone", cards: ["keystone.algebra_i", "keystone.literature", "keystone.biology"] },
   { label: "Financials", family: "financials", cards: ["perStudent", "charterShare", "debtPerStudent", "instructionPerStudent"] },
@@ -1062,6 +1062,7 @@ function financeStats(block, priorBlock, priorYear, year) {
 
 function cardById(id, options = {}) {
   if (id === "enrollment") return enrollmentCard(options);
+  if (id === "ages517Share") return ages517ShareCard(options);
   if (id === "perStudent") return perStudentCard(options);
   if (id === "charterShare") return charterShareCard(options);
   if (id === "debtPerStudent") return debtPerStudentCard(options);
@@ -1256,6 +1257,49 @@ function enrollmentCard(options = {}) {
     title: year,
     rank: block.countyRanks?.enrollment,
     kind: "count",
+    tab: "enrollment",
+    year,
+  };
+}
+
+const AGES_517_TEXT = "October 1 public-school enrollment divided by the Census count of residents ages 5–17. The numerator is the same headcount as October 1 enrollment. Charter and home-education students are not in that total.";
+
+function ages517ShareTip() {
+  return tipLines("Share of ages 5–17 enrolled", [escapeHtml(AGES_517_TEXT)]);
+}
+
+function ages517Share(block) {
+  if (leaPack?.category !== "school_district") return null;
+  const enrolled = enrollmentOf(block);
+  const population = block?.population517;
+  if (enrolled == null || population == null) return null;
+  const residents = Number(population);
+  if (!Number.isFinite(residents) || residents <= 0) return null;
+  return {
+    enrolled,
+    population: residents,
+    percent: Number(enrolled) / residents * 100,
+  };
+}
+
+function ages517ShareCard(options = {}) {
+  const year = Object.hasOwn(options, "year") ? String(options.year || "") : enrollmentAnchorYear();
+  const block = blockFor(year);
+  const priorYear = year ? String(Number(year) - 1) : "";
+  const current = year ? ages517Share(block) : null;
+  const prior = priorYear ? ages517Share(blockFor(priorYear)) : null;
+  return {
+    published: current != null,
+    label: "Share of ages 5–17 enrolled",
+    hint: ages517ShareTip(),
+    hintText: AGES_517_TEXT,
+    value: current == null ? "Not published" : `${current.percent.toFixed(1)}%`,
+    extra: current
+      ? `<div class="note">${count(current.enrolled)} enrolled · ${count(current.population)} ages 5–17</div>${yearDeltaPoints(current.percent, prior?.percent, priorYear)}${yearNote(year)}`
+      : "",
+    title: year,
+    rank: current ? block.countyRanks?.ages517Share : null,
+    kind: "pct",
     tab: "enrollment",
     year,
   };
@@ -1565,8 +1609,11 @@ function paintEnrollment(state) {
   const grad = gradYear == null ? null : gradCell(gradYear);
   const priorGradYear = gradYearList.length > 1 ? gradYearList[gradYearList.length - 2] : null;
   const priorGrad = priorGradYear == null ? null : gradCell(priorGradYear);
-  app.querySelector("#enrollment-stats").innerHTML = [
+  const enrollmentStats = [
     renderStat(enrollmentCard()),
+  ];
+  if (leaPack?.category === "school_district") enrollmentStats.push(renderStat(ages517ShareCard()));
+  enrollmentStats.push(
     stat("Schools reporting", count((block.schools || []).length), yearNote(year)),
     stat(
       "4-year graduation",
@@ -1576,7 +1623,10 @@ function paintEnrollment(state) {
       gradYear == null ? null : blockFor(gradYear).countyRanks?.graduation,
       "pct",
     ),
-  ].join("");
+  );
+  const enrollmentHost = app.querySelector("#enrollment-stats");
+  enrollmentHost.className = statsGridClass(enrollmentStats.length);
+  enrollmentHost.innerHTML = enrollmentStats.join("");
   const gradPanel = app.querySelector("#grad-panel");
   if (gradPanel) {
     gradPanel.hidden = gradYearList.length === 0;

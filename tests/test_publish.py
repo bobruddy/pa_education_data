@@ -11,6 +11,7 @@ from pa_edu.publish import (
     EXPERIENCE_EDGES,
     SALARY_EDGES,
     JSON_GZIP_LEVEL,
+    _ages517_share,
     _catalog,
     _county_ranks,
     _debt_service,
@@ -623,6 +624,53 @@ def test_saipe_rides_along_on_school_district_years() -> None:
     assert "population517" not in other[2024]
     assert "children517InPoverty" not in other[2024]
     assert 2027 not in other
+
+
+def test_ages517_share_ranks_school_districts_highest_first() -> None:
+    profiles = [
+        {"aun": "1", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "2", "name": "Beta", "county": "Fayette", "category": "school_district"},
+        {"aun": "3", "name": "Zero enrolled", "county": "Fayette", "category": "school_district"},
+        {"aun": "4", "name": "No census", "county": "Fayette", "category": "school_district"},
+        {"aun": "5", "name": "Zero population", "county": "Fayette", "category": "school_district"},
+        {"aun": "6", "name": "Charter", "county": "Fayette", "category": "charter_school"},
+        {"aun": "7", "name": "Other county", "county": "Greene", "category": "school_district"},
+    ]
+    grades = {
+        "1": {2024: {"012": 1000}, 2023: {"012": 800}},
+        "2": {2024: {"012": 900}},
+        "3": {2024: {"012": 0}},
+        "4": {2024: {"012": 400}},
+        "5": {2024: {"012": 100}},
+        "6": {2024: {"012": 100}},
+        "7": {2024: {"012": 500}},
+    }
+    population = {
+        "1": {2024: {"population_5_17": 2000}, 2023: {"population_5_17": 2000}},
+        "2": {2024: {"population_5_17": 1000}},
+        "3": {2024: {"population_5_17": 1000}},
+        "5": {2024: {"population_5_17": 0}},
+        "6": {2024: {"population_5_17": 100}},
+        "7": {2024: {"population_5_17": 500}},
+    }
+    ranks = _county_ranks(profiles, grades, {}, {}, {}, district_population=population)
+    peers = {peer["aun"]: peer["value"] for peer in ranks["1"][2024]["ages517Share"]["peers"]}
+    assert peers == {"2": 90.0, "1": 50.0, "3": 0.0}
+    assert ranks["2"][2024]["ages517Share"]["rank"] == 1
+    assert ranks["1"][2024]["ages517Share"]["rank"] == 2
+    assert ranks["3"][2024]["ages517Share"]["rank"] == 3
+    assert ranks["1"][2024]["ages517Share"]["of"] == 3
+    assert "ages517Share" not in ranks["4"][2024]
+    assert "ages517Share" not in ranks["5"][2024]
+    assert "ages517Share" not in ranks.get("6", {}).get(2024, {})
+    assert "ages517Share" not in ranks.get("7", {}).get(2024, {})
+    # One district with both counts is not a county rank, and a prior year is not filled in.
+    assert "ages517Share" not in ranks.get("1", {}).get(2023, {})
+    assert _ages517_share(1500, 1000) == 150.0
+    assert _ages517_share(0, 1000) == 0.0
+    assert _ages517_share(100, 0) is None
+    assert _ages517_share(None, 1000) is None
+    assert _ages517_share(100, None) is None
 
 
 def test_graduation_rides_along_on_an_existing_year() -> None:

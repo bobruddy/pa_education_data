@@ -219,7 +219,7 @@ def main() -> None:
     debt_service = _debt_service(connection)
     ranks = _county_ranks(
         profiles, grades, actual, budget, charter, keystone, pssa, graduation,
-        salaries, retention, lea_administrators, debt_service,
+        salaries, retention, lea_administrators, debt_service, district_population,
     )
     enrollment_year = catalog["enrollmentYear"]
     actual_year = catalog["actualYear"]
@@ -605,6 +605,22 @@ def _group_median(groups: dict | None, name: str) -> float | None:
     return float(stats["median"])
 
 
+def _ages517_share(enrolled: object, population: object) -> float | None:
+    """October 1 enrollment as a percent of Census ages 5–17.
+
+    Missing enrollment or population is absence. A zero population is not a rate.
+    A reported zero enrollment over a positive population is 0%. The percent is
+    not capped: district enrollment can exceed resident ages 5–17.
+    """
+    if enrolled is None or population is None or _missing(enrolled) or _missing(population):
+        return None
+    students = float(enrolled)
+    residents = float(population)
+    if students != students or residents != residents or residents <= 0:
+        return None
+    return round(students / residents * 100, 4)
+
+
 def _county_ranks(
     profiles: list[dict],
     grades: dict,
@@ -618,6 +634,7 @@ def _county_ranks(
     retention: dict | None = None,
     lea_administrators: dict | None = None,
     debt_service: dict | None = None,
+    district_population: dict | None = None,
 ) -> dict:
     """Rank each LEA against others in its county for the top-card metrics."""
     keystone = keystone or {}
@@ -627,6 +644,7 @@ def _county_ranks(
     retention = retention or {}
     lea_administrators = lea_administrators or {}
     debt_service = debt_service or {}
+    district_population = district_population or {}
     by_county: dict[str, list[dict]] = {}
     for profile in profiles:
         by_county.setdefault(profile["county"], []).append(profile)
@@ -658,6 +676,7 @@ def _county_ranks(
                 "charterShare": [],
                 "debtPerStudent": [],
                 "instructionPerStudent": [],
+                "ages517Share": [],
             }
             actual_per_student: list[dict] = []
             budget_per_student: list[dict] = []
@@ -739,6 +758,15 @@ def _county_ranks(
                     )
                     if per_thousand is not None:
                         buckets["leaAdmPerThousand"].append({**row, "value": per_thousand})
+                # School districts only. October 1 enrollment over Census ages 5–17.
+                # A missing count or a zero population is left out, not ranked as zero.
+                if profile.get("category") == "school_district":
+                    population = (
+                        district_population.get(aun, {}).get(year) or {}
+                    ).get("population_5_17")
+                    share = _ages517_share(enrolled, population)
+                    if share is not None:
+                        buckets["ages517Share"].append({**row, "value": share})
                 # Charter share is same-year object 562 over that year's general-fund
                 # actual. School districts only. A budget year is not ranked,
                 # and a missing 562 is left out rather than filled from an earlier year.
