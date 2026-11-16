@@ -4606,12 +4606,6 @@ function leaHtml() {
 
     <div data-tab-panel="enrollment" hidden>
       <div class="stats stats-3" id="enrollment-stats"></div>
-      <section class="panel" id="grad-panel" hidden>
-        <h2 id="grad-heading">4-year cohort graduation</h2>
-        <div class="chips" id="grad-filters" aria-label="Graduation series"></div>
-        <div id="grad-trend"></div>
-        <p class="note">Share of students who entered 9th grade four years earlier and earned a regular diploma by the end of that school year. A GED is not counted as a graduate. All students is on by default. Other lines are the rate PDE published for that group. A gap is a year with no published rate. A printed zero stays on the chart.</p>
-      </section>
       <section class="panel">
         <h2 id="trend-heading">Enrollment over time</h2>
         <div class="chips" id="trend-filters" aria-label="Enrollment series"></div>
@@ -4635,6 +4629,12 @@ function leaHtml() {
         <div class="chips" id="demo-filters" aria-label="Student group series"></div>
         <div id="enrollment-race"></div>
         <p class="note" id="demo-note">Race lines stay on by default. Toggle Male, Female, Economically disadvantaged, or IEP onto the same chart. IEP is December 1 school-age child count from PennData; low-income is PDE’s October 1 percent-low-income LEA count. Hover a point for headcount and share. A gap is unpublished or suppressed, not zero.</p>
+      </section>
+      <section class="panel" id="grad-panel" hidden>
+        <h2 id="grad-heading">4-year cohort graduation</h2>
+        <div class="chips" id="grad-filters" aria-label="Graduation series"></div>
+        <div id="grad-trend"></div>
+        <p class="note">Share of students who entered 9th grade four years earlier and earned a regular diploma by the end of that school year. A GED is not counted as a graduate. All students is on by default. Other lines are the rate PDE published for that group. A gap is a year with no published rate. A printed zero stays on the chart.</p>
       </section>
       <div class="panels">
         <section class="panel"><h2 id="grades-heading">Grades</h2><div id="grades"></div></section>
