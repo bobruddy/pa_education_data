@@ -172,6 +172,15 @@ const TREND_SERIES = [
 ];
 const TREND_SERIES_CODES = TREND_SERIES.map((row) => row.code);
 const TREND_DEFAULT = [TREND_TOTAL];
+const SAIPE_AGES = "ages";
+const SAIPE_POVERTY = "poverty";
+const SAIPE_NONE = "none";
+const SAIPE_SERIES = [
+  { code: SAIPE_AGES, label: "Ages 5–17", color: "#1F4E79", field: "population517" },
+  { code: SAIPE_POVERTY, label: "Ages 5–17 in poverty", color: "#8C3A4B", field: "children517InPoverty" },
+];
+const SAIPE_CODES = SAIPE_SERIES.map((row) => row.code);
+const SAIPE_DEFAULT = [SAIPE_AGES];
 const K_GRADE_CODES = ["k4", "k4a", "k4p", "k4f", "k5", "k5a", "k5p", "k5f"];
 const ALT_SERIES = [
   { code: "district", label: "District", color: "#0c5c56", dash: null, field: null },
@@ -210,6 +219,20 @@ function normalizeTrendSelection(codes) {
   const grades = selected.filter((code) => code !== TREND_TOTAL);
   if (grades.length) return grades;
   return [TREND_TOTAL];
+}
+
+/** Absent param is Ages 5–17 on. `none` and an empty list stay empty. */
+function saipeSelectionFromParam(param) {
+  if (param == null) return [...SAIPE_DEFAULT];
+  if (param === "" || param === SAIPE_NONE) return [];
+  return SAIPE_CODES.filter((code) => param.split("|").includes(code));
+}
+
+function saipeParamFromSelection(codes) {
+  const selected = SAIPE_CODES.filter((code) => (codes || []).includes(code));
+  if (selected.join("|") === SAIPE_DEFAULT.join("|")) return "";
+  if (!selected.length) return SAIPE_NONE;
+  return selected.join("|");
 }
 
 function normalizeAltSelection(codes) {
@@ -279,6 +302,7 @@ function readState() {
   const etrend = normalizeTrendSelection(
     etrendParam ? etrendParam.split("|") : TREND_DEFAULT,
   );
+  const esaipe = saipeSelectionFromParam(query.has("esaipe") ? query.get("esaipe") : null);
   const ealtParam = query.get("ealt");
   const ealt = normalizeAltSelection(
     ealtParam ? ealtParam.split("|") : ALT_DEFAULT,
@@ -307,6 +331,7 @@ function readState() {
     cohort: PSSA_TOGGLE_GROUPS.includes(cohort) ? cohort : "All Students",
     egrades: egrades.length ? egrades : [...ENROLL_GRADE_CODES],
     etrend,
+    esaipe,
     ealt,
     edemo,
     ggroups: ggroups.length ? ggroups : [...GRAD_DEFAULT],
@@ -371,6 +396,8 @@ function putAssessmentParams(query, state) {
     if (trend.join("|") !== TREND_DEFAULT.join("|")) {
       query.set("etrend", trend.join("|"));
     }
+    const saipe = saipeParamFromSelection(state.esaipe);
+    if (saipe) query.set("esaipe", saipe);
     const alt = normalizeAltSelection(state.ealt);
     if (alt.join("|") !== ALT_DEFAULT.join("|")) {
       query.set("ealt", alt.join("|"));
@@ -712,6 +739,18 @@ function bindLea() {
         selected = TREND_SERIES_CODES.filter((code) => selected.includes(code));
       }
       state.etrend = normalizeTrendSelection(selected);
+      writeUrl(state, "replace");
+      paintLea(state);
+      return;
+    }
+    const saipeSeriesToggle = event.target.closest("[data-saipe-series]");
+    if (saipeSeriesToggle) {
+      const state = readState();
+      const value = saipeSeriesToggle.dataset.saipeSeries;
+      const selected = new Set(state.esaipe || []);
+      if (selected.has(value)) selected.delete(value);
+      else if (SAIPE_CODES.includes(value)) selected.add(value);
+      state.esaipe = SAIPE_CODES.filter((code) => selected.has(code));
       writeUrl(state, "replace");
       paintLea(state);
       return;
@@ -1563,17 +1602,33 @@ function paintEnrollment(state) {
   const egrades = (state.egrades || ENROLL_GRADE_CODES).filter((code) => ENROLL_GRADE_CODES.includes(code));
   const selectedGrades = egrades.length ? egrades : [...ENROLL_GRADE_CODES];
   const selectedTrend = normalizeTrendSelection(state.etrend);
+  const selectedSaipe = SAIPE_CODES.filter((code) => (state.esaipe || []).includes(code));
   const selectedAlt = normalizeAltSelection(state.ealt);
+  const chartYears = trendYears();
+  const showSaipe = districtHasSaipe(chartYears);
   const trendFilterHost = app.querySelector("#trend-filters");
   if (trendFilterHost) {
-    trendFilterHost.innerHTML = TREND_SERIES.map((row, index) => {
+    const gradeChips = TREND_SERIES.map((row, index) => {
       const color = row.code === TREND_TOTAL
         ? "#0c5c56"
         : COHORT_COLORS[index % COHORT_COLORS.length];
       return `<button type="button" class="chip chip-series" data-trend-series="${escapeAttr(row.code)}" data-value="${escapeAttr(row.code)}" style="--series:${color}"><i class="swatch" style="background:${color}"></i>${escapeHtml(row.label)}</button>`;
     }).join("");
+    const saipeChips = showSaipe
+      ? SAIPE_SERIES.map((row) => (
+        `<button type="button" class="chip chip-series" data-saipe-series="${escapeAttr(row.code)}" data-value="${escapeAttr(row.code)}" style="--series:${row.color}"><i class="swatch" style="background:${row.color}"></i>${escapeHtml(row.label)}</button>`
+      )).join("")
+      : "";
+    trendFilterHost.innerHTML = gradeChips + saipeChips;
   }
   setPressed("[data-trend-series]", (value) => selectedTrend.includes(value));
+  setPressed("[data-saipe-series]", (value) => selectedSaipe.includes(value));
+  const trendNote = app.querySelector("#trend-note");
+  if (trendNote) {
+    const grade = "One line per selected series across October 1 files. K–12 are grade counts; Total is all published grade membership for the year. Kindergarten combines half-day and full-day.";
+    const census = " Ages 5–17 is the Census estimate of residents ages 5–17. Ages 5–17 in poverty is the Census estimate of related children ages 5–17 in families in poverty.";
+    trendNote.textContent = showSaipe ? grade + census : grade;
+  }
   const altPanel = app.querySelector("#alt-enrollment");
   if (altPanel) {
     const showAlt = leaPack.category === "school_district";
@@ -1603,7 +1658,7 @@ function paintEnrollment(state) {
     }).join("");
   }
   setPressed("[data-enroll-grade]", (value) => selectedGrades.includes(value));
-  drawTrend(selectedTrend);
+  drawTrend(selectedTrend, showSaipe ? selectedSaipe : []);
   drawEnrollmentCohorts(year, selectedGrades);
   drawGrades(block.grades || {});
   const availableDemo = demoSeriesKeys();
@@ -2613,21 +2668,41 @@ function drawGradRate(years, selectedCodes = GRAD_DEFAULT) {
   });
 }
 
-function drawTrend(selectedCodes = TREND_DEFAULT) {
-  const host = app.querySelector("#trend");
-  const years = Object.keys(leaPack.years)
+function trendYears() {
+  if (!leaPack?.years) return [];
+  return Object.keys(leaPack.years)
     .map(Number)
     .sort((a, b) => a - b)
     .filter((year) => {
       const block = leaPack.years[String(year)];
       return block?.grades && Object.keys(block.grades).length;
     });
+}
+
+function saipeCount(block, field) {
+  const value = block?.[field];
+  if (value == null || value === "") return null;
+  const number = Number(value);
+  return Number.isFinite(number) ? number : null;
+}
+
+function districtHasSaipe(years) {
+  if (leaPack?.category !== "school_district") return false;
+  return years.some((year) => {
+    const block = leaPack.years[String(year)];
+    return SAIPE_SERIES.some((row) => saipeCount(block, row.field) != null);
+  });
+}
+
+function drawTrend(selectedCodes = TREND_DEFAULT, saipeCodes = []) {
+  const host = app.querySelector("#trend");
+  const years = trendYears();
   if (years.length < 2) {
     host.innerHTML = `<p class="note">Not enough years of enrollment to chart.</p>`;
     return;
   }
   const selected = normalizeTrendSelection(selectedCodes);
-  const series = selected.map((code) => {
+  const enrollmentSeries = selected.map((code) => {
     const index = TREND_SERIES.findIndex((row) => row.code === code);
     const meta = TREND_SERIES[index];
     const slots = years.map((year) => {
@@ -2646,6 +2721,23 @@ function drawTrend(selectedCodes = TREND_DEFAULT) {
       emphasis: code === TREND_TOTAL,
     };
   }).filter(Boolean);
+  const saipeSeries = (saipeCodes || []).map((code) => {
+    const meta = SAIPE_SERIES.find((row) => row.code === code);
+    if (!meta) return null;
+    const slots = years.map((year) => saipeCount(leaPack.years[String(year)], meta.field));
+    if (!slots.some((value) => value != null)) return null;
+    return {
+      name: meta.label,
+      color: meta.color,
+      dash: null,
+      slots,
+      pointYears: years,
+      code,
+      saipe: true,
+      emphasis: false,
+    };
+  }).filter(Boolean);
+  const series = [...enrollmentSeries, ...saipeSeries];
   if (!series.length) {
     host.innerHTML = `<p class="note">No selected series have published enrollment to chart.</p>`;
     return;
@@ -2662,10 +2754,15 @@ function drawTrend(selectedCodes = TREND_DEFAULT) {
     yMax: maxY,
     yTicks: ticks,
     formatY: (value) => count(value),
-    formatPoint: (row, _category, value, index) => tipLines(yearLabel(row.pointYears[index]), [
-      `${count(value)} students`,
-      `<span class="tip-muted">${escapeHtml(trendSeriesLabel(row.code))}</span>`,
-    ]),
+    formatPoint: (row, _category, value, index) => tipLines(yearLabel(row.pointYears[index]), row.saipe
+      ? [
+        count(value),
+        `<span class="tip-muted">${escapeHtml(row.name)}</span>`,
+      ]
+      : [
+        `${count(value)} students`,
+        `<span class="tip-muted">${escapeHtml(trendSeriesLabel(row.code))}</span>`,
+      ]),
     categoryLabel: (label) => "’" + label,
     left: 58,
     labelEvery: years.length > 16 ? 3 : years.length > 8 ? 2 : 1,
@@ -4410,7 +4507,7 @@ function leaHtml() {
         <h2 id="trend-heading">Enrollment over time</h2>
         <div class="chips" id="trend-filters" aria-label="Enrollment series"></div>
         <div id="trend"></div>
-        <p class="note">One line per selected series across October 1 files. K–12 are grade counts; Total is all published grade membership for the year. Kindergarten combines half-day and full-day.</p>
+        <p class="note" id="trend-note">One line per selected series across October 1 files. K–12 are grade counts; Total is all published grade membership for the year. Kindergarten combines half-day and full-day.</p>
       </section>
       <section class="panel" id="alt-enrollment" hidden>
         <h2 id="alt-heading">Charter and home education</h2>

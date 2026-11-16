@@ -553,6 +553,70 @@ def test_charter_and_homeschool_ride_along_on_enrollment_years() -> None:
     assert document["years"]["2024"]["charterAdm"] == 116.7
 
 
+def test_saipe_rides_along_on_school_district_years() -> None:
+    population = {
+        "124150503": {
+            2024: {"population_5_17": 1824, "children_5_17_in_poverty": 115},
+            2022: {"population_5_17": 0},
+            2027: {"population_5_17": 9, "children_5_17_in_poverty": 1},
+        }
+    }
+    grades = {"124150503": {
+        2024: {"012": 5000},
+        2023: {"012": 5100},
+        2022: {"012": 1},
+    }}
+    years = _years_for(
+        "124150503",
+        grades,
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        district_population=population,
+        category="school_district",
+    )
+    assert years[2024]["population517"] == 1824
+    assert years[2024]["children517InPoverty"] == 115
+    assert "population517" not in years[2023]
+    assert "children517InPoverty" not in years[2023]
+    assert years[2022]["population517"] == 0
+    assert "children517InPoverty" not in years[2022]
+    assert 2027 not in years
+    document = lea_document(
+        {"aun": "124150503", "category": "school_district"},
+        {2024: {"grades": {"012": 1}, "population517": 1824, "children517InPoverty": 115}},
+    )
+    assert document["years"]["2024"]["population517"] == 1824
+    assert document["years"]["2024"]["children517InPoverty"] == 115
+
+    other = _years_for(
+        "124150503",
+        grades,
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        district_population=population,
+        category="charter_school",
+    )
+    assert "population517" not in other[2024]
+    assert "children517InPoverty" not in other[2024]
+    assert 2027 not in other
+
+
 def test_graduation_rides_along_on_an_existing_year() -> None:
     years = _years_for(
         "124150002",

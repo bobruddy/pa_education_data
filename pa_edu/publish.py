@@ -209,6 +209,7 @@ def main() -> None:
     charter = _charter_tuition(connection)
     charter_adm = _charter_adm(connection)
     home_education = _home_education(connection)
+    district_population = _district_population(connection)
     low_income = _low_income(connection)
     iep = _iep(connection)
     graduation = _cohort_graduation(connection)
@@ -273,6 +274,8 @@ def main() -> None:
                 income_budget,
                 lea_administrators,
                 debt_service,
+                district_population,
+                category=profile["category"],
             ),
         )
         _write_json(data_dir / f"{aun}.json", document)
@@ -431,6 +434,8 @@ def _years_for(
     income_budget: dict | None = None,
     lea_administrators: dict | None = None,
     debt_service: dict | None = None,
+    district_population: dict | None = None,
+    category: str | None = None,
 ) -> dict:
     experience = experience or {}
     retention = retention or {}
@@ -449,6 +454,7 @@ def _years_for(
     income_budget = income_budget or {}
     lea_administrators = lea_administrators or {}
     debt_service = debt_service or {}
+    district_population = district_population or {}
     years = (
         set(grades.get(aun, {}))
         | set(schools.get(aun, {}))
@@ -515,6 +521,17 @@ def _years_for(
         home_count = home_education.get(aun, {}).get(year)
         if home_count is not None:
             block["homeEducation"] = home_count
+        # Census SAIPE rides on a year that already exists, and only for a
+        # school district. A missing count stays off the block; a reported
+        # zero stays zero. It does not open a year by itself.
+        if category == "school_district":
+            saipe = district_population.get(aun, {}).get(year) or {}
+            ages = _whole_count(saipe.get("population_5_17"))
+            if ages is not None:
+                block["population517"] = ages
+            poverty = _whole_count(saipe.get("children_5_17_in_poverty"))
+            if poverty is not None:
+                block["children517InPoverty"] = poverty
         low = low_income.get(aun, {}).get(year)
         if low is not None:
             block["lowIncome"] = low
@@ -1863,6 +1880,29 @@ def _charter_adm(connection: duckdb.DuckDBPyConnection) -> dict:
     return grouped
 
 
+def _district_population(connection: duckdb.DuckDBPyConnection) -> dict:
+    """Census SAIPE ages 5–17 and related children in poverty, by district and year."""
+    path = REFINED / "district_population.parquet"
+    if not path.exists():
+        return {}
+    frame = connection.sql(f"""
+        SELECT aun, school_year, population_5_17, children_5_17_in_poverty
+        FROM '{path}'
+    """).df()
+    grouped: dict[str, dict[int, dict]] = {}
+    for row in frame.itertuples(index=False):
+        cell = {}
+        ages = _whole_count(row.population_5_17)
+        poverty = _whole_count(row.children_5_17_in_poverty)
+        if ages is not None:
+            cell["population_5_17"] = ages
+        if poverty is not None:
+            cell["children_5_17_in_poverty"] = poverty
+        if cell:
+            grouped.setdefault(str(row.aun), {})[int(row.school_year)] = cell
+    return grouped
+
+
 def _home_education(connection: duckdb.DuckDBPyConnection) -> dict:
     """Home-education student total by resident school district."""
     path = REFINED / "home_education.parquet"
@@ -2151,6 +2191,16 @@ def _optional_number(value: object) -> float | None:
     if number != number or number == 0:
         return None
     return _number(number)
+
+
+def _whole_count(value: object) -> int | None:
+    """A published count, including zero. Null stays absent."""
+    if value is None or _missing(value):
+        return None
+    number = float(value)
+    if number != number:
+        return None
+    return int(number)
 
 
 def _missing(value: object) -> bool:
