@@ -36,6 +36,7 @@ FACT_TABLES = [
     "home_education",
     "cohort_graduation",
     "cohort_graduation_group",
+    "district_population",
 ]
 GRAIN = {
     "gfb_expenditure": ["aun", "school_year", "function_code", "object_code", "program_code"],
@@ -60,6 +61,7 @@ GRAIN = {
     "home_education": ["aun", "school_year"],
     "cohort_graduation": ["aun", "school_year", "span"],
     "cohort_graduation_group": ["aun", "school_year", "span", "student_group"],
+    "district_population": ["aun", "school_year"],
 }
 MONEY = 0.01
 
@@ -92,6 +94,8 @@ def run_checks(data_dir: Path | None = None) -> list[str]:
     errors.extend(_identity(tables))
     errors.extend(_grain(tables))
     errors.extend(_cells(tables, index, checks))
+    errors.extend(_population_districts(tables))
+    errors.extend(_saipe_counts(tables, index))
     errors.extend(_revenue_title(tables))
     errors.extend(_chart_descriptions(tables))
     errors.extend(_revenue_not_doubled(tables))
@@ -184,6 +188,8 @@ def _cells(tables: dict[str, pd.DataFrame], index: dict, checks: dict) -> list[s
         errors.extend(_iep_cell(tables, index, cell))
     for cell in checks.get("cohort_grad_cell", []):
         errors.extend(_cohort_grad_cell(tables, index, cell))
+    for cell in checks.get("saipe_cell", []):
+        errors.extend(_saipe_cell(tables, index, cell))
     return errors
 
 
@@ -1114,6 +1120,110 @@ def _match(frame: pd.DataFrame, keys: dict) -> pd.DataFrame:
 
 def _money(found, source) -> bool:
     return abs(round(float(found), 2) - round(float(source), 2)) <= MONEY
+
+
+def _population_districts(tables: dict[str, pd.DataFrame]) -> list[str]:
+    frame = tables["district_population"]
+    if frame.empty:
+        return []
+    directory = tables["lea"].drop_duplicates("aun")
+    categories = dict(zip(directory["aun"].astype(str), directory["category"].astype(str), strict=True))
+    bad = sorted({
+        aun for aun in frame["aun"].dropna().astype(str)
+        if aun in categories and categories[aun] != "school_district"
+    })
+    if not bad:
+        return []
+    return [f"district_population AUN is not a school district: {bad[:8]}"]
+
+
+def _saipe_counts(tables: dict[str, pd.DataFrame], index: dict) -> list[str]:
+    """501 districts in each file for 2004–2008, and 500 for 2009–2024."""
+    errors = []
+    frame = tables["district_population"]
+    for record in _records(index, "saipe"):
+        year = int(record["school_year"])
+        if 2004 <= year <= 2008:
+            expected = 501
+        elif 2009 <= year <= 2024:
+            expected = 500
+        else:
+            errors.append(f"no SAIPE district count for {year}")
+            continue
+        lines = Path(record["path"]).read_bytes().decode("ascii").splitlines()
+        if len(lines) != expected:
+            errors.append(f"SAIPE {year} file has {len(lines)} records, expected {expected}")
+        got = 0 if frame.empty else int((frame["school_year"].astype(int) == year).sum())
+        if got != expected:
+            errors.append(f"SAIPE {year} district_population has {got} rows, expected {expected}")
+    return errors
+
+
+def _saipe_cell(tables, index, cell) -> list[str]:
+    """Re-read the retained text. Positions come from that year's Census layout."""
+    year = int(cell["school_year"])
+    record = _record(index, "saipe", year)
+    if record is None:
+        return [f"no SAIPE file for {year}"]
+    layout = _saipe_layout(year)
+    if layout is None:
+        return [f"no SAIPE layout for {year}"]
+    length, total, children, poverty = layout
+    line, problem = _saipe_line(Path(record["path"]), str(cell["nces_leaid"]), length)
+    if problem:
+        return [f"SAIPE {cell['nces_leaid']} {year} {problem} on {record['catalog_id']}"]
+    if line is None:
+        return [f"SAIPE {cell['nces_leaid']} is not on {record['catalog_id']}"]
+    source = {
+        "total_population": _saipe_count(line, total),
+        "population_5_17": _saipe_count(line, children),
+        "children_5_17_in_poverty": _saipe_count(line, poverty),
+    }
+    if any(value is None for value in source.values()):
+        return [f"SAIPE {cell['nces_leaid']} {year} count is not an integer in the file"]
+    found = _match(
+        tables["district_population"],
+        {"aun": cell["aun"], "school_year": year, "nces_leaid": cell["nces_leaid"]},
+    )
+    if len(found) != 1:
+        return [f"SAIPE {cell['aun']} {year} has {len(found)} district_population rows"]
+    row = found.iloc[0]
+    errors = []
+    for column, source_value in source.items():
+        if pd.isna(row[column]) or int(row[column]) != source_value:
+            errors.append(
+                f"SAIPE {column} for {cell['aun']} {year} is {row[column]} in parquet and {source_value} in the file"
+            )
+    return errors
+
+
+def _saipe_layout(year: int):
+    if 2004 <= year <= 2009:
+        return 124, (76, 83), (85, 92), (94, 101)
+    if 2010 <= year <= 2024:
+        return 131, (83, 90), (92, 99), (101, 108)
+    return None
+
+
+def _saipe_line(path: Path, leaid: str, length: int) -> tuple[str | None, str | None]:
+    text = path.read_bytes().decode("ascii")
+    found = None
+    for line in text.splitlines():
+        if len(line) < 8 or line[0:2] + line[3:8] != leaid:
+            continue
+        if len(line) != length:
+            return None, f"record length is {len(line)}, not {length}"
+        if found is not None:
+            return None, "is on more than one record"
+        found = line
+    return found, None
+
+
+def _saipe_count(line: str, span: tuple[int, int]) -> int | None:
+    token = line[span[0] - 1:span[1]].strip()
+    if not token.isdigit():
+        return None
+    return int(token)
 
 
 if __name__ == "__main__":

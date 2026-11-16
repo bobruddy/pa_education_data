@@ -1110,3 +1110,201 @@ parser = "cohort_grad"
 status = "stable"
 school_year = 2024
 span = 6
+
+[[document]]
+id = "nces-2009"
+source_id = "nces"
+source_url = "https://nces.ed.gov/ccd/data/zip/ag091a_txt.zip"
+page_url = "https://nces.ed.gov/ccd/pubagency.asp"
+parser = "nces"
+status = "stable"
+school_year = 2009
+
+[[document]]
+id = "saipe-2004"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2004/2004-school-districts/sd04-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2004/demo/saipe/2004-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2004
+
+[[document]]
+id = "saipe-2005"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2005/2005-school-districts/sd05-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2005/demo/saipe/2005-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2005
+
+[[document]]
+id = "saipe-2006"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2006/2006-school-districts/sd06-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2006/demo/saipe/2006-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2006
+
+[[document]]
+id = "saipe-2007"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2007/2007-school-districts/sd07-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2007/demo/saipe/2007-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2007
+
+[[document]]
+id = "saipe-2008"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2008/2008-school-districts/sd08-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2008/demo/saipe/2008-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2008
+
+[[document]]
+id = "saipe-2009"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2009/2009-school-districts/sd09-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2009/demo/saipe/2009-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2009
+
+[[document]]
+id = "saipe-2010"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2010/2010-school-districts/sd10-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2010/demo/saipe/2010-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2010
+
+[[document]]
+id = "saipe-2011"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2011/2011-school-districts/sd11-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2011/demo/saipe/2011-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2011
+
+[[document]]
+id = "saipe-2012"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2012/2012-school-districts/sd12-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2012/demo/saipe/2012-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2012
+
+[[document]]
+id = "saipe-2013"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2013/2013-school-districts/sd13-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2013/demo/saipe/2013-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2013
+
+[[document]]
+id = "saipe-2014"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2014/2014-school-districts/sd14-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2014/demo/saipe/2014-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2014
+
+[[document]]
+id = "saipe-2015"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2015/2015-school-districts/sd15-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2015/demo/saipe/2015-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2015
+
+[[document]]
+id = "saipe-2016"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2016/2016-school-districts/sd16-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2016/demo/saipe/2016-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2016
+
+[[document]]
+id = "saipe-2017"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2017/2017-school-districts/sd17-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2017/demo/saipe/2017-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2017
+
+[[document]]
+id = "saipe-2018"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2018/2018-school-districts/sd18-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2018/demo/saipe/2018-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2018
+
+[[document]]
+id = "saipe-2019"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2019/2019-school-districts/sd19-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2019/demo/saipe/2019-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2019
+
+[[document]]
+id = "saipe-2020"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2020/2020-school-districts/sd20-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2020/demo/saipe/2020-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2020
+
+[[document]]
+id = "saipe-2021"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2021/2021-school-districts/sd21-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2021/demo/saipe/2021-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2021
+
+[[document]]
+id = "saipe-2022"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2022/2022-school-districts/sd22-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2022/demo/saipe/2022-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2022
+
+[[document]]
+id = "saipe-2023"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2023/2023-school-districts/sd23-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2023/demo/saipe/2023-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2023
+
+[[document]]
+id = "saipe-2024"
+source_id = "saipe"
+source_url = "https://www2.census.gov/programs-surveys/saipe/datasets/2024/2024-school-districts/sd24-pa.txt"
+page_url = "https://www.census.gov/data/datasets/2024/demo/saipe/2024-school-districts.html"
+parser = "saipe"
+status = "stable"
+school_year = 2024

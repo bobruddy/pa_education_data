@@ -36,7 +36,9 @@ from pa_edu.parse_gfb import parse_gfb
 from pa_edu.parse_homeschool import parse_homeschool
 from pa_edu.parse_iep import parse_iep
 from pa_edu.parse_low_income import parse_low_income
+from pa_edu.parse_nces import parse_nces
 from pa_edu.parse_retax import parse_retax
+from pa_edu.parse_saipe import parse_saipe
 from pa_edu.status import public_error, record_run
 from pa_edu.storage import load_index, materialize
 
@@ -56,6 +58,8 @@ PARSERS = {
     "low_income": parse_low_income,
     "iep": parse_iep,
     "cohort_grad": parse_cohort_grad,
+    "saipe": parse_saipe,
+    "nces": parse_nces,
 }
 
 COLUMNS = {
@@ -128,6 +132,12 @@ COLUMNS = {
         "aun", "school_year", "lea_name", "county", "students",
         "private_tutor", "age_5_11", "age_12_plus", "document_id",
     ],
+    "district_population": [
+        "aun", "school_year", "nces_leaid", "census_name",
+        "total_population", "population_5_17", "children_5_17_in_poverty",
+        "document_id",
+    ],
+    "nces_district": ["nces_leaid", "aun", "ccd_name", "document_id"],
     "cohort_graduation": [
         "aun", "school_year", "span", "lea_name", "lea_type",
         "graduates", "cohort", "rate", "document_id",
@@ -190,6 +200,8 @@ SORT = {
     "real_estate_tax": ["school_year", "aun", "county", "locality"],
     "charter_adm": ["school_year", "aun"],
     "home_education": ["school_year", "aun"],
+    "district_population": ["school_year", "aun"],
+    "nces_district": ["nces_leaid"],
     "cohort_graduation": ["school_year", "span", "aun"],
     "cohort_graduation_group": ["school_year", "span", "aun", "student_group"],
     "professional_assignment": ["school_year", "aun", "public_id", "assignment_code", "school_number"],
@@ -329,8 +341,8 @@ def _refresh(refined: Path, jobs: list[dict], stamp: dict, index: dict) -> None:
         job["dest"] = str(parts / job["document_id"])
         missing.append(job)
     _parse_missing(missing)
-    collected, functions, objects, revenues, described = _load_parts(parts, jobs)
-    _publish_frames(refined, collected, functions, objects, revenues, described, index)
+    collected, functions, objects, revenues, described, saipe = _load_parts(parts, jobs)
+    _publish_frames(refined, collected, functions, objects, revenues, described, saipe, index)
     _drop_stale_parts(parts, {job["document_id"] for job in jobs})
     (refined / STAMP_NAME).write_text(json.dumps(stamp, indent=2, sort_keys=True) + "\n")
 
@@ -411,6 +423,7 @@ def _load_parts(parts: Path, jobs: list[dict]):
     objects: dict[str, str] = {}
     revenues: dict[str, str] = {}
     described: dict[str, dict[str, str]] = {"function": {}, "object": {}, "revenue": {}}
+    saipe: list[pd.DataFrame] = []
     for job in jobs:
         directory = parts / job["document_id"]
         meta = json.loads((directory / "meta.json").read_text())
@@ -421,13 +434,21 @@ def _load_parts(parts: Path, jobs: list[dict]):
         if job["parser"] == "chart":
             functions, objects, revenues, described = _chart_fields(frames)
             continue
+        if job["parser"] == "saipe":
+            if set(frames) != {"saipe_district"}:
+                raise RuntimeError(f"{job['catalog_id']} returned {sorted(frames)}")
+            frame = frames["saipe_district"]
+            if frame.empty:
+                raise RuntimeError(f"{job['catalog_id']} returned no SAIPE districts")
+            saipe.append(frame)
+            continue
         for table, frame in frames.items():
             if table not in collected:
                 raise RuntimeError(f"{job['catalog_id']} returned unknown table {table}")
             if frame.empty:
                 continue
             collected[table].append(frame)
-    return collected, functions, objects, revenues, described
+    return collected, functions, objects, revenues, described, saipe
 
 
 def _chart_frame(parsed: dict, name: str, column: str) -> pd.DataFrame:
@@ -465,9 +486,11 @@ def _publish_frames(
     objects: dict[str, str],
     revenues: dict[str, str],
     described: dict[str, dict[str, str]],
+    saipe: list[pd.DataFrame],
     index: dict,
 ) -> None:
     frames = {name: _concat(parts, COLUMNS[name]) for name, parts in collected.items()}
+    frames["district_population"] = _district_population(saipe, frames["nces_district"])
     frames["lea"] = _lea(
         frames["lea"],
         frames["lea_year"],
@@ -618,6 +641,31 @@ def _school(enrollment: pd.DataFrame) -> pd.DataFrame:
     frame = enrollment.dropna(subset=["aun", "school_number"]).sort_values(["school_year", "school_name"])
     latest = frame.groupby(["aun", "school_number"], as_index=False).tail(1)
     return latest.loc[:, ["aun", "school_number", "school_name"]]
+
+
+def _district_population(parts: list[pd.DataFrame], crosswalk: pd.DataFrame) -> pd.DataFrame:
+    """Attach the CCD AUN to each SAIPE row. The row keeps the SAIPE document."""
+    columns = COLUMNS["district_population"]
+    if not parts:
+        return empty_frame(columns)
+    saipe = pd.concat(parts, ignore_index=True)
+    if crosswalk.empty or "nces_leaid" not in crosswalk.columns:
+        raise RuntimeError("SAIPE has no CCD crosswalk")
+    counts = crosswalk.groupby("nces_leaid", dropna=False).size()
+    duplicated = counts[counts > 1]
+    if not duplicated.empty:
+        ids = [str(value) for value in duplicated.index[:8]]
+        raise RuntimeError(f"SAIPE id has more than one CCD row: {ids}")
+    merged = saipe.merge(crosswalk.loc[:, ["nces_leaid", "aun"]], on="nces_leaid", how="left")
+    missing = merged.loc[merged["aun"].isna(), "nces_leaid"]
+    if not missing.empty:
+        ids = sorted(set(missing.astype(str)))[:8]
+        raise RuntimeError(f"SAIPE id has no CCD row: {ids}")
+    keys = merged.groupby(["aun", "school_year"], dropna=False).size()
+    if int((keys > 1).sum()):
+        raise RuntimeError("district_population grain aun × school_year is duplicated")
+    merged["aun"] = merged["aun"].astype("string")
+    return merged.loc[:, columns]
 
 
 def _chart_names(frame: pd.DataFrame, column: str) -> dict[str, str]:

@@ -115,3 +115,13 @@ school_year = 2024
 fund_code = "10"
 function_code = "2260"
 object_code = "350"
+
+[[saipe_cell]]
+school_year = 2024
+aun = "101260303"
+nces_leaid = "4202100"
+
+[[saipe_cell]]
+school_year = 2008
+aun = "127041903"
+nces_leaid = "4205210"

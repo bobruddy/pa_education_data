@@ -70,6 +70,12 @@ SELECT * FROM read_parquet('data/refined/charter_adm.parquet');
 CREATE OR REPLACE VIEW home_education AS
 SELECT * FROM read_parquet('data/refined/home_education.parquet');
 
+CREATE OR REPLACE VIEW district_population AS
+SELECT * FROM read_parquet('data/refined/district_population.parquet');
+
+CREATE OR REPLACE VIEW nces_district AS
+SELECT * FROM read_parquet('data/refined/nces_district.parquet');
+
 CREATE OR REPLACE VIEW cohort_graduation AS
 SELECT * FROM read_parquet('data/refined/cohort_graduation.parquet');
 
