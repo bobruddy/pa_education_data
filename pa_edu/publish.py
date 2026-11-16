@@ -794,6 +794,7 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         "enrollmentPage": ENROLLMENT_PAGE,
         "admPage": ADM_PAGE,
         "charterAdm": {}, "homeEducation": {}, "lowIncome": {}, "iep": None,
+        "saipe": {},
         "cohortGrad": {}, "graduationPage": GRADUATION_PAGE,
         "personnelWorkbooks": {},
         "chart": None,
@@ -807,7 +808,8 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         )
         WHERE n = 1 AND parser IN (
             'enrollment', 'afr', 'gfb', 'edna', 'act1', 'act1_base', 'retax', 'pssa', 'keystone',
-            'charter_adm', 'homeschool', 'low_income', 'iep', 'cohort_grad', 'chart', 'personnel'
+            'charter_adm', 'homeschool', 'low_income', 'iep', 'cohort_grad', 'chart', 'personnel',
+            'saipe'
         )
     """).df()
     chart_year = -1
@@ -833,6 +835,8 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
             sources["homeEducation"][str(int(row.school_year))] = row.source_url
         elif row.parser == "low_income" and row.school_year is not None and not _missing(row.school_year):
             sources["lowIncome"][str(int(row.school_year))] = row.source_url
+        elif row.parser == "saipe" and row.school_year is not None and not _missing(row.school_year):
+            sources["saipe"][str(int(row.school_year))] = row.source_url
         elif row.parser == "cohort_grad" and row.school_year is not None and not _missing(row.school_year):
             span = str(row.catalog_id).rsplit("-", 1)[-1]
             if span in {"4", "5", "6"}:

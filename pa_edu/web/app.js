@@ -173,11 +173,9 @@ const TREND_SERIES = [
 const TREND_SERIES_CODES = TREND_SERIES.map((row) => row.code);
 const TREND_DEFAULT = [TREND_TOTAL];
 const SAIPE_AGES = "ages";
-const SAIPE_POVERTY = "poverty";
 const SAIPE_NONE = "none";
 const SAIPE_SERIES = [
-  { code: SAIPE_AGES, label: "Ages 5–17", color: "#1F4E79", field: "population517" },
-  { code: SAIPE_POVERTY, label: "Ages 5–17 in poverty", color: "#8C3A4B", field: "children517InPoverty" },
+  { code: SAIPE_AGES, label: "Ages 5–17", color: "#C73E66", field: "population517" },
 ];
 const SAIPE_CODES = SAIPE_SERIES.map((row) => row.code);
 const SAIPE_DEFAULT = [SAIPE_AGES];
@@ -267,8 +265,9 @@ const RACE_COLOR = {
 };
 const DEMO_LOW_INCOME = "Economically Disadvantaged";
 const DEMO_IEP = "IEP";
+const DEMO_POVERTY = "saipePoverty";
 const DEMO_GENDER_KEYS = ["Female", "Male"];
-const DEMO_EXTRA_KEYS = [DEMO_LOW_INCOME, DEMO_IEP, ...DEMO_GENDER_KEYS];
+const DEMO_EXTRA_KEYS = [DEMO_LOW_INCOME, DEMO_IEP, DEMO_POVERTY, ...DEMO_GENDER_KEYS];
 const DEMO_GENDER_COLOR = {
   Female: "#E8C030",
   Male: "#5A6CC0",
@@ -276,11 +275,13 @@ const DEMO_GENDER_COLOR = {
 const DEMO_EXTRA_COLOR = {
   [DEMO_LOW_INCOME]: "#F0A040",
   [DEMO_IEP]: "#C85898",
+  [DEMO_POVERTY]: "#8C3A4B",
   ...DEMO_GENDER_COLOR,
 };
 const DEMO_EXTRA_LABEL = {
   [DEMO_LOW_INCOME]: "Econ. disadvantaged",
   [DEMO_IEP]: "IEP",
+  [DEMO_POVERTY]: "Ages 5–17 in poverty",
   Female: "Female",
   Male: "Male",
 };
@@ -737,6 +738,7 @@ function bindLea() {
       } else {
         selected = [...selected.filter((code) => code !== TREND_TOTAL), value];
         selected = TREND_SERIES_CODES.filter((code) => selected.includes(code));
+        state.esaipe = [];
       }
       state.etrend = normalizeTrendSelection(selected);
       writeUrl(state, "replace");
@@ -749,7 +751,11 @@ function bindLea() {
       const value = saipeSeriesToggle.dataset.saipeSeries;
       const selected = new Set(state.esaipe || []);
       if (selected.has(value)) selected.delete(value);
-      else if (SAIPE_CODES.includes(value)) selected.add(value);
+      else if (SAIPE_CODES.includes(value)) {
+        selected.add(value);
+        const trend = normalizeTrendSelection(state.etrend);
+        if (trend.some((code) => code !== TREND_TOTAL)) state.etrend = [TREND_TOTAL];
+      }
       state.esaipe = SAIPE_CODES.filter((code) => selected.has(code));
       writeUrl(state, "replace");
       paintLea(state);
@@ -1626,7 +1632,7 @@ function paintEnrollment(state) {
   const trendNote = app.querySelector("#trend-note");
   if (trendNote) {
     const grade = "One line per selected series across October 1 files. K–12 are grade counts; Total is all published grade membership for the year. Kindergarten combines half-day and full-day.";
-    const census = " Ages 5–17 is the Census estimate of residents ages 5–17. Ages 5–17 in poverty is the Census estimate of related children ages 5–17 in families in poverty.";
+    const census = " Ages 5–17 is the Census estimate of residents ages 5–17.";
     trendNote.textContent = showSaipe ? grade + census : grade;
   }
   const altPanel = app.querySelector("#alt-enrollment");
@@ -1672,6 +1678,16 @@ function paintEnrollment(state) {
     }).join("");
   }
   setPressed("[data-demo-series]", (value) => selectedDemo.includes(value));
+  const demoNote = app.querySelector("#demo-note");
+  if (demoNote) {
+    const toggle = availableDemo.includes(DEMO_POVERTY)
+      ? "Toggle Male, Female, Economically disadvantaged, IEP, or Ages 5–17 in poverty onto the same chart."
+      : "Toggle Male, Female, Economically disadvantaged, or IEP onto the same chart.";
+    const poverty = availableDemo.includes(DEMO_POVERTY)
+      ? " Ages 5–17 in poverty is the Census estimate of related children ages 5–17 in families in poverty."
+      : "";
+    demoNote.textContent = `Race lines stay on by default. ${toggle} IEP is December 1 school-age child count from PennData; low-income is PDE’s October 1 percent-low-income LEA count.${poverty} Hover a point for headcount and share. A gap is unpublished or suppressed, not zero.`;
+  }
   const raceHeading = app.querySelector("#race-heading");
   if (raceHeading) {
     const yearList = demoYears(selectedDemo);
@@ -2164,6 +2180,7 @@ function demoValue(year, key) {
     const number = Number(value);
     return Number.isFinite(number) ? number : null;
   }
+  if (key === DEMO_POVERTY) return saipeCount(block, "children517InPoverty");
   if (DEMO_GENDER_KEYS.includes(key)) {
     const value = block.gender?.[key];
     if (value == null || value === "") return null;
@@ -2235,6 +2252,14 @@ function iepYears() {
     });
 }
 
+function povertyYears() {
+  if (leaPack?.category !== "school_district") return [];
+  return Object.keys(leaPack?.years || {})
+    .map(Number)
+    .sort((a, b) => a - b)
+    .filter((year) => saipeCount(leaPack.years[String(year)], "children517InPoverty") != null);
+}
+
 function raceKeysForYears(years) {
   const seen = new Set();
   for (const year of years) {
@@ -2257,6 +2282,7 @@ function demoSeriesKeys() {
   if (iepYears().some((year) => demoValue(year, DEMO_IEP) != null)) {
     extras.push(DEMO_IEP);
   }
+  if (povertyYears().length) extras.push(DEMO_POVERTY);
   for (const key of DEMO_GENDER_KEYS) {
     if (genderYears().some((year) => {
       const value = demoValue(year, key);
@@ -2287,16 +2313,19 @@ function demoYears(selected) {
   const wantsGender = keys.some((key) => DEMO_GENDER_KEYS.includes(key));
   const wantsLowIncome = keys.includes(DEMO_LOW_INCOME);
   const wantsIep = keys.includes(DEMO_IEP);
+  const wantsPoverty = keys.includes(DEMO_POVERTY);
   const years = new Set();
   if (wantsRace) for (const year of raceYears()) years.add(year);
   if (wantsGender) for (const year of genderYears()) years.add(year);
   if (wantsLowIncome) for (const year of lowIncomeYears()) years.add(year);
   if (wantsIep) for (const year of iepYears()) years.add(year);
+  if (wantsPoverty) for (const year of povertyYears()) years.add(year);
   if (!years.size) {
     for (const year of raceYears()) years.add(year);
     for (const year of genderYears()) years.add(year);
     for (const year of lowIncomeYears()) years.add(year);
     for (const year of iepYears()) years.add(year);
+    for (const year of povertyYears()) years.add(year);
   }
   return [...years].sort((a, b) => a - b);
 }
@@ -2347,13 +2376,19 @@ function drawRaceTrend(host, selectedKeys) {
     formatY: (value) => count(value),
     formatPoint: (row, _category, value, index) => {
       const year = row.pointYears[index];
-      const enrolled = enrollmentOf(blockFor(year));
-      const published = demoPct(year, row.key);
-      const lines = [`${count(value)} students`];
-      if (published != null) {
-        lines.push(`${Number(published.pct).toFixed(1)}% of enrollment (${published.source})`);
-      } else if (enrolled != null && enrolled > 0) {
-        lines.push(`${((value / enrolled) * 100).toFixed(1)}% of enrollment`);
+      const lines = [];
+      if (row.key === DEMO_POVERTY) {
+        lines.push(count(value));
+        lines.push(`<span class="tip-muted">Census SAIPE</span>`);
+      } else {
+        const enrolled = enrollmentOf(blockFor(year));
+        const published = demoPct(year, row.key);
+        lines.push(`${count(value)} students`);
+        if (published != null) {
+          lines.push(`${Number(published.pct).toFixed(1)}% of enrollment (${published.source})`);
+        } else if (enrolled != null && enrolled > 0) {
+          lines.push(`${((value / enrolled) * 100).toFixed(1)}% of enrollment`);
+        }
       }
       lines.push(`<span class="tip-muted">${escapeHtml(row.name)}</span>`);
       return tipLines(yearLabel(year), lines);
@@ -2370,7 +2405,7 @@ function demoMetersForYear(year, selected, enrolled) {
   const block = leaPack.years[String(year)] || {};
   const rows = selected
     .map((key) => [key, demoValue(year, key)])
-    .filter(([, value]) => value != null && value > 0);
+    .filter(([key, value]) => value != null && (key === DEMO_POVERTY || value > 0));
   if (!rows.length) return `<p class="note">No group counts published.</p>`;
   const max = Math.max(...rows.map(([, value]) => value)) || 1;
   const shareBase = enrolled != null && enrolled > 0
@@ -2378,10 +2413,12 @@ function demoMetersForYear(year, selected, enrolled) {
     : rows.reduce((sum, [, value]) => sum + value, 0) || 1;
   return rows.map(([key, value]) => {
     const width = Math.max(2, (value / max) * 100);
-    const tip = tipLines(demoSeriesLabel(key), [
-      `${count(value)} students`,
-      `${((value / shareBase) * 100).toFixed(1)}% of ${enrolled != null && enrolled > 0 ? "enrollment" : "reported groups"}`,
-    ]);
+    const tip = key === DEMO_POVERTY
+      ? tipLines(demoSeriesLabel(key), [count(value), "Census SAIPE"])
+      : tipLines(demoSeriesLabel(key), [
+        `${count(value)} students`,
+        `${((value / shareBase) * 100).toFixed(1)}% of ${enrolled != null && enrolled > 0 ? "enrollment" : "reported groups"}`,
+      ]);
     return `<div class="grade-row" data-tip="${escapeAttr(tip)}"><span>${escapeHtml(demoSeriesLabel(key))}</span><div class="meter"><span style="width:${width}%"></span></div><b>${count(value)}</b></div>`;
   }).join("");
 }
@@ -2758,6 +2795,7 @@ function drawTrend(selectedCodes = TREND_DEFAULT, saipeCodes = []) {
       ? [
         count(value),
         `<span class="tip-muted">${escapeHtml(row.name)}</span>`,
+        `<span class="tip-muted">Census SAIPE</span>`,
       ]
       : [
         `${count(value)} students`,
@@ -4402,6 +4440,12 @@ function enrollmentSourceLinks(year) {
       if (!url) continue;
       items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(homeYear))} home education</a>`);
     }
+    const saipeYears = Object.keys(sources.saipe || {}).sort((a, b) => Number(b) - Number(a));
+    for (const saipeYear of saipeYears) {
+      const url = sources.saipe[saipeYear];
+      if (!url) continue;
+      items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(saipeYear))} Census SAIPE</a>`);
+    }
   }
   const lowYear = year && sources.lowIncome?.[String(year)] ? String(year) : null;
   if (lowYear) {
@@ -4427,7 +4471,10 @@ function enrollmentSourceLinks(year) {
   const lead = items.length
     ? `Source: ${items.join(" · ")}`
     : "Source: PDE enrollment files listed in the catalog";
-  return `<p class="sources note">${lead}. October 1 public-school counts come from the yearly enrollment workbooks. Economically disadvantaged is PDE’s percent-low-income LEA count. IEP is December 1 school-age child count from PennData. Charter is average daily membership of resident students in charter schools from the ADM release. Homeschool is PDE’s home-education student total. The 4-year graduation rate is the published cohort rate for a regular diploma.</p>`;
+  const saipeNote = leaPack.category === "school_district"
+    ? " Ages 5–17 and ages 5–17 in poverty are Census SAIPE estimates."
+    : "";
+  return `<p class="sources note">${lead}. October 1 public-school counts come from the yearly enrollment workbooks. Economically disadvantaged is PDE’s percent-low-income LEA count. IEP is December 1 school-age child count from PennData. Charter is average daily membership of resident students in charter schools from the ADM release. Homeschool is PDE’s home-education student total. The 4-year graduation rate is the published cohort rate for a regular diploma.${saipeNote}</p>`;
 }
 
 function homeHtml() {
@@ -4525,7 +4572,7 @@ function leaHtml() {
         <h2 id="race-heading">Student groups</h2>
         <div class="chips" id="demo-filters" aria-label="Student group series"></div>
         <div id="enrollment-race"></div>
-        <p class="note">Race lines stay on by default. Toggle Male, Female, Economically disadvantaged, or IEP onto the same chart. IEP is December 1 school-age child count from PennData; low-income is PDE’s October 1 percent-low-income LEA count. Hover a point for headcount and share. A gap is unpublished or suppressed, not zero.</p>
+        <p class="note" id="demo-note">Race lines stay on by default. Toggle Male, Female, Economically disadvantaged, or IEP onto the same chart. IEP is December 1 school-age child count from PennData; low-income is PDE’s October 1 percent-low-income LEA count. Hover a point for headcount and share. A gap is unpublished or suppressed, not zero.</p>
       </section>
       <div class="panels">
         <section class="panel"><h2 id="grades-heading">Grades</h2><div id="grades"></div></section>

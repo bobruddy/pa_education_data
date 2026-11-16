@@ -84,6 +84,13 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
             "catalog_id": "enrollment-2024",
             "retrieved_at": "2026-01-01T00:00:00",
         },
+        {
+            "parser": "saipe",
+            "school_year": 2023,
+            "source_url": "https://example.test/sd23-pa.txt",
+            "catalog_id": "saipe-2023",
+            "retrieved_at": "2026-01-01T00:00:00",
+        },
     ]).to_parquet(refined / "document.parquet", index=False)
     monkeypatch.setattr("pa_edu.publish.REFINED", refined)
     sources = _catalog(duckdb.connect())["sources"]
@@ -92,6 +99,7 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
         "2025": "https://example.test/staff-2025.xlsx",
     }
     assert sources["enrollment"]["2024"] == "https://example.test/enrollment-2024.xlsx"
+    assert sources["saipe"]["2023"] == "https://example.test/sd23-pa.txt"
 
 
 def test_support_service_titles_keep_the_chart_suffix() -> None:
