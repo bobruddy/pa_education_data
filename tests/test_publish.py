@@ -13,6 +13,8 @@ from pa_edu.publish import (
     JSON_GZIP_LEVEL,
     _ages517_share,
     _assessment,
+    _keystone,
+    _keystone_schools_only,
     _latest_population_5_17,
     _catalog,
     _county_ranks,
@@ -116,6 +118,22 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
             "catalog_id": "pssa-school-2024",
             "retrieved_at": "2026-01-01T00:00:00",
         },
+        {
+            "parser": "keystone",
+            "school_year": 2024,
+            "source_url": "https://example.test/keystone-district-2024.xlsx",
+            "page_url": None,
+            "catalog_id": "keystone-district-2024",
+            "retrieved_at": "2026-01-01T00:00:00",
+        },
+        {
+            "parser": "keystone_school",
+            "school_year": 2024,
+            "source_url": "https://example.test/keystone-school-2024.xlsx",
+            "page_url": None,
+            "catalog_id": "keystone-school-2024",
+            "retrieved_at": "2026-01-01T00:00:00",
+        },
     ]).to_parquet(refined / "document.parquet", index=False)
     monkeypatch.setattr("pa_edu.publish.REFINED", refined)
     sources = _catalog(duckdb.connect())["sources"]
@@ -126,6 +144,8 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
     assert sources["enrollment"]["2024"] == "https://example.test/enrollment-2024.xlsx"
     assert sources["pssa"]["2024"] == "https://example.test/pssa-district-2024.xlsx"
     assert sources["pssaSchool"]["2024"] == "https://example.test/pssa-school-2024.xlsx"
+    assert sources["keystone"]["2024"] == "https://example.test/keystone-district-2024.xlsx"
+    assert sources["keystoneSchool"]["2024"] == "https://example.test/keystone-school-2024.xlsx"
     assert sources["saipe"]["2023"] == "https://example.test/sd23-pa.txt"
     assert sources["saipePage"]["2023"] == (
         "https://www.census.gov/data/datasets/2023/demo/saipe/2023-school-districts.html"
@@ -873,6 +893,242 @@ def test_pssa_publishes_one_school_lea_and_keeps_the_district_workbook(tmp_path:
     assert "pssa_math" not in ranks.get("124150002", {}).get(2021, {})
     assert "126000002" not in ranks or 2021 not in ranks.get("126000002", {})
     assert "pssa_ela" in ranks["124150002"][2024]
+
+
+def _keystone_result(
+    aun: str,
+    year: int,
+    subject: str,
+    scored: int,
+    proficient,
+    *,
+    advanced: float = 1.0,
+    proficient_level: float = 2.0,
+    group: str = "All Students",
+    document_id: str = "district-key",
+) -> dict:
+    return {
+        "aun": aun,
+        "school_year": year,
+        "assessment": "keystone",
+        "subject": subject,
+        "grade": "011",
+        "student_group": group,
+        "number_scored": scored,
+        "pct_advanced": advanced,
+        "pct_proficient": proficient_level,
+        "pct_basic": 3.0,
+        "pct_below_basic": 4.0,
+        "pct_proficient_and_above": proficient,
+        "lea_name": "Name",
+        "county": "Chester",
+        "document_id": document_id,
+    }
+
+
+def _keystone_school(row: dict, number: str, name: str) -> dict:
+    return {**row, "school_number": number, "school_name": name}
+
+
+def test_keystone_publishes_one_school_lea_and_skips_a_sum(tmp_path: Path, monkeypatch) -> None:
+    """A charter or one-school technical school is its school row.
+
+    A district building is not the district total. Two schools are not added,
+    and a missing combined percent is not filled from advanced plus proficient.
+    """
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    district_rows = [
+        _keystone_result("112011103", 2024, "algebra_i", 80, 20.0),
+        _keystone_result("112011103", 2024, "literature", 80, 60.0),
+        _keystone_result("112011103", 2024, "biology", 80, 45.0),
+        _keystone_result(
+            "112011103", 2022, "algebra_i", 100, None, advanced=10.0, proficient_level=30.0,
+        ),
+        _keystone_result("102020001", 2024, "algebra_i", 9, 1.0, document_id="stray"),
+        _keystone_result("126515001", 2024, "algebra_i", 90, 30.0),
+        _keystone_result("126515001", 2024, "literature", 90, 70.0),
+        _keystone_result("126515001", 2024, "biology", 90, 55.0),
+    ]
+    pd.DataFrame(district_rows).to_parquet(
+        refined / "assessment_result.parquet", index=False,
+    )
+    school_rows = [
+        _keystone_school(
+            _keystone_result("112011103", 2024, "algebra_i", 15, 99.0, document_id="school-key"),
+            "1367", "Avon Grove HS",
+        ),
+        _keystone_school(
+            _keystone_result("102020001", 2024, "algebra_i", 40, 22.8, document_id="school-key"),
+            "7727", "City CHS",
+        ),
+        _keystone_school(
+            _keystone_result("102020001", 2024, "literature", 41, 80.0, document_id="school-key"),
+            "7727", "City CHS",
+        ),
+        _keystone_school(
+            _keystone_result("102020001", 2024, "biology", 39, 40.0, document_id="school-key"),
+            "7727", "City CHS",
+        ),
+        _keystone_school(
+            _keystone_result(
+                "102020001", 2024, "algebra_i", 12, 18.0,
+                group="Multi-Racial (not Hispanic)", document_id="school-key",
+            ),
+            "7727", "City CHS",
+        ),
+        _keystone_school(
+            _keystone_result(
+                "102020001", 2022, "algebra_i", 30, None,
+                advanced=10.0, proficient_level=30.0, document_id="school-2022",
+            ),
+            "7727", "City CHS",
+        ),
+        _keystone_school(
+            _keystone_result("115210001", 2024, "algebra_i", 25, 15.0, document_id="school-key"),
+            "8001", "One Campus CTC",
+        ),
+        _keystone_school(
+            _keystone_result("115210001", 2024, "literature", 25, 70.0, document_id="school-key"),
+            "8001", "One Campus CTC",
+        ),
+        _keystone_school(
+            _keystone_result("115210001", 2024, "biology", 25, 50.0, document_id="school-key"),
+            "8001", "One Campus CTC",
+        ),
+        _keystone_school(
+            _keystone_result("115210001", 2022, "algebra_i", 20, 10.0, document_id="school-2022"),
+            "8001", "One Campus CTC",
+        ),
+        _keystone_school(
+            _keystone_result("114060557", 2024, "algebra_i", 10, 1.0, document_id="school-key"),
+            "6304", "Berks CTC East",
+        ),
+        _keystone_school(
+            _keystone_result("114060557", 2024, "algebra_i", 10, 2.0, document_id="school-key"),
+            "7068", "Berks CTC West",
+        ),
+        _keystone_school(
+            _keystone_result("123456789", 2023, "algebra_i", 11, 11.0, document_id="school-2023"),
+            "1", "Only Campus",
+        ),
+        _keystone_school(
+            _keystone_result("123456789", 2024, "algebra_i", 11, 3.0, document_id="school-key"),
+            "1", "East",
+        ),
+        _keystone_school(
+            _keystone_result("123456789", 2024, "algebra_i", 11, 4.0, document_id="school-key"),
+            "2", "West",
+        ),
+        _keystone_school(
+            _keystone_result("126000001", 2024, "algebra_i", 50, 5.0, document_id="school-key"),
+            "9", "District Building",
+        ),
+    ]
+    pd.DataFrame(school_rows).to_parquet(refined / "assessment_result_school.parquet", index=False)
+    pd.DataFrame([
+        {"aun": "112011103", "category": "school_district"},
+        {"aun": "126515001", "category": "school_district"},
+        {"aun": "102020001", "category": "charter_school"},
+        {"aun": "115210001", "category": "career_and_technical_center"},
+        {"aun": "114060557", "category": "career_and_technical_center"},
+        {"aun": "123456789", "category": "charter_school"},
+        {"aun": "126000001", "category": "school_district"},
+        {"aun": "110000001", "category": "school_district"},
+        {"aun": "999000001", "category": "charter_school"},
+    ]).to_parquet(refined / "lea.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+    connection = duckdb.connect()
+
+    keystone = _keystone(connection)
+    district_cell = keystone["112011103"][2024]["algebra_i"]["011"]["All Students"]
+    assert district_cell["pct"] == 20.0
+    assert district_cell["n"] == 80
+    early = keystone["112011103"][2022]["algebra_i"]["011"]["All Students"]
+    assert early == {"n": 100, "advanced": 10.0, "proficient": 30.0, "basic": 3.0, "below": 4.0}
+    assert "pct" not in early
+
+    charter = keystone["102020001"][2024]["algebra_i"]["011"]["All Students"]
+    assert charter["pct"] == 22.8
+    assert charter["n"] == 40
+    assert keystone["102020001"][2024]["literature"]["011"]["All Students"]["pct"] == 80.0
+    assert keystone["102020001"][2024]["biology"]["011"]["All Students"]["pct"] == 40.0
+    assert keystone["102020001"][2024]["algebra_i"]["011"]["Multi-ethnic (not Hispanic)"]["pct"] == 18.0
+    charter_early = keystone["102020001"][2022]["algebra_i"]["011"]["All Students"]
+    assert "pct" not in charter_early
+    assert charter_early["n"] == 30
+    assert charter_early["advanced"] == 10.0
+    assert charter_early["proficient"] == 30.0
+
+    assert keystone["115210001"][2024]["algebra_i"]["011"]["All Students"]["pct"] == 15.0
+    assert "114060557" not in keystone
+    assert 2024 not in keystone["123456789"]
+    assert keystone["123456789"][2023]["algebra_i"]["011"]["All Students"]["pct"] == 11.0
+    assert "126000001" not in keystone
+    assert "999000001" not in keystone
+
+    schools_only = _keystone_schools_only(connection)
+    assert schools_only == {"114060557"}
+    flagged = lea_document(
+        {"aun": "114060557", "name": "Berks CTC", "county": "Berks", "category": "career_and_technical_center"},
+        _years_for("114060557", {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, keystone=keystone),
+        keystone_schools_only=True,
+    )
+    assert flagged["keystoneSchoolsOnly"] is True
+    assert flagged["years"] == {}
+    plain = lea_document(
+        {"aun": "102020001", "name": "City CHS", "county": "Chester", "category": "charter_school"},
+        _years_for("102020001", {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, {}, keystone=keystone),
+    )
+    assert "keystoneSchoolsOnly" not in plain
+    assert plain["years"]["2024"]["keystone"]["algebra_i"]["011"]["All Students"]["pct"] == 22.8
+    assert "pct" not in plain["years"]["2022"]["keystone"]["algebra_i"]["011"]["All Students"]
+
+    profiles = [
+        {"aun": "112011103", "name": "Avon Grove", "county": "Chester", "category": "school_district"},
+        {"aun": "126515001", "name": "Philadelphia", "county": "Philadelphia", "category": "school_district"},
+        {"aun": "102020001", "name": "City CHS", "county": "Philadelphia", "category": "charter_school"},
+        {"aun": "115210001", "name": "One Campus", "county": "Chester", "category": "career_and_technical_center"},
+        {"aun": "114060557", "name": "Berks CTC", "county": "Chester", "category": "career_and_technical_center"},
+        {"aun": "110000001", "name": "Greene", "county": "Greene", "category": "school_district"},
+    ]
+    ranks = _county_ranks(profiles, {}, {}, {}, {}, keystone=keystone)
+    # The charter's directory county is Philadelphia, the administrative office.
+    philly = ranks["102020001"][2024]["keystone_algebra_i"]
+    assert [peer["aun"] for peer in philly["peers"]] == ["126515001", "102020001"]
+    assert philly["rank"] == 2
+    assert [peer["aun"] for peer in ranks["102020001"][2024]["keystone_literature"]["peers"]] == [
+        "102020001", "126515001",
+    ]
+    assert [peer["aun"] for peer in ranks["102020001"][2024]["keystone_biology"]["peers"]] == [
+        "126515001", "102020001",
+    ]
+    chester = ranks["112011103"][2024]["keystone_algebra_i"]
+    assert [peer["aun"] for peer in chester["peers"]] == ["112011103", "115210001"]
+    assert [peer["aun"] for peer in ranks["115210001"][2024]["keystone_literature"]["peers"]] == [
+        "115210001", "112011103",
+    ]
+    assert [peer["aun"] for peer in ranks["115210001"][2024]["keystone_biology"]["peers"]] == [
+        "115210001", "112011103",
+    ]
+    assert "102020001" not in {peer["aun"] for peer in chester["peers"]}
+    assert "114060557" not in ranks or "keystone_algebra_i" not in ranks.get("114060557", {}).get(2024, {})
+    assert "110000001" not in {peer["aun"] for peer in chester["peers"]}
+    for aun in ("112011103", "102020001", "115210001", "126515001"):
+        assert "keystone_algebra_i" not in ranks.get(aun, {}).get(2022, {})
+
+
+def test_keystone_without_a_school_file_stays_on_the_district_workbook(tmp_path: Path, monkeypatch) -> None:
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    pd.DataFrame([
+        _keystone_result("112011103", 2024, "algebra_i", 80, 20.0),
+    ]).to_parquet(refined / "assessment_result.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+    connection = duckdb.connect()
+    keystone = _keystone(connection)
+    assert keystone["112011103"][2024]["algebra_i"]["011"]["All Students"]["pct"] == 20.0
+    assert _keystone_schools_only(connection) == set()
 
 
 def test_keystone_year_is_kept_on_its_own() -> None:

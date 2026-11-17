@@ -115,8 +115,10 @@ const KEYSTONE_SUBJECTS = [
 ];
 const KEYSTONE_SUBJECT_IDS = KEYSTONE_SUBJECTS.map(([id]) => id);
 const KEYSTONE_LABEL = Object.fromEntries(KEYSTONE_SUBJECTS);
+const KEYSTONE_SCHOOLS_NOTE = "PDE publishes a Keystone result for each of this LEA's schools and does not publish an LEA total. Those schools are not added together. A school with fewer than 11 students is left blank, and the school file counts a different set of students than an LEA total would.";
 // Detail-page cards on the overview. Labels match the detail tabs.
-// A group with no published cards is omitted.
+// A group with no published cards is omitted, except Keystone when PDE
+// published a school result and no LEA total.
 const OVERVIEW_CARDS = [
   { label: "Enrollment", family: "enrollment", cards: ["enrollment", "ages517Share", "graduation"] },
   { label: "PSSA", family: "pssa", cards: ["pssa.math", "pssa.ela"] },
@@ -1518,11 +1520,23 @@ function statsGridClass(count) {
   return "stats";
 }
 
+function keystoneSchoolsOnly() {
+  return leaPack?.keystoneSchoolsOnly === true;
+}
+
 function paintOverview() {
   const host = app.querySelector("#overview-stats");
   host.innerHTML = OVERVIEW_CARDS.map((group) => {
     const cards = group.cards.map((id) => cardById(id)).filter((card) => card?.published);
-    if (!cards.length) return "";
+    if (!cards.length) {
+      if (group.family === "keystone" && keystoneSchoolsOnly()) {
+        return `<section class="overview-group" data-family="keystone">
+          <h2 class="overview-kicker">Keystone</h2>
+          <p class="note">${escapeHtml(KEYSTONE_SCHOOLS_NOTE)}</p>
+        </section>`;
+      }
+      return "";
+    }
     const html = cards.map((card) => renderStat(card, { href: cardHref(card) })).join("");
     return `<section class="overview-group" data-family="${escapeAttr(group.family)}" style="--cards:${cards.length}">
       <h2 class="overview-kicker">${escapeHtml(group.label)}</h2>
@@ -1875,7 +1889,10 @@ function paintKeystone(state) {
   }
   if (!keystoneYears().length) {
     if (stats) stats.innerHTML = "";
-    if (body) body.innerHTML = `<p class="note">No Keystone results are published for this LEA.</p>${assessmentSourceNote("keystone")}`;
+    const empty = keystoneSchoolsOnly()
+      ? KEYSTONE_SCHOOLS_NOTE
+      : "No Keystone results are published for this LEA.";
+    if (body) body.innerHTML = `<p class="note">${escapeHtml(empty)}</p>${assessmentSourceNote("keystone")}`;
     return;
   }
 
@@ -2039,8 +2056,9 @@ function assessmentWorkbook(assessment, year) {
   const sources = catalog?.sources || {};
   // A school district cites the district workbook. Every other LEA on this
   // tab is the single school row, so the footnote cites that school file.
-  const key = assessment === "pssa" && leaPack?.category !== "school_district"
-    ? "pssaSchool"
+  const schoolKey = assessment === "keystone" ? "keystoneSchool" : "pssaSchool";
+  const key = leaPack?.category !== "school_district" && (assessment === "pssa" || assessment === "keystone")
+    ? schoolKey
     : assessment;
   return sources[key]?.[String(year)] || null;
 }

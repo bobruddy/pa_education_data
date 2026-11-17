@@ -145,7 +145,7 @@ GRADE_ORDER = [
 ]
 
 
-def lea_document(profile: dict, years: dict) -> dict:
+def lea_document(profile: dict, years: dict, *, keystone_schools_only: bool = False) -> dict:
     kept = {}
     for year in sorted(years):
         block = years[year]
@@ -178,7 +178,12 @@ def lea_document(profile: dict, years: dict) -> dict:
             )
         ):
             kept[str(year)] = block
-    return {**profile, "years": kept}
+    document = {**profile, "years": kept}
+    # School results exist and the LEA view published no total. That is not
+    # the same as an LEA with no Keystone rows.
+    if keystone_schools_only:
+        document["keystoneSchoolsOnly"] = True
+    return document
 
 
 def directory_row(lea: dict, enrollment: int | None, actual: float | None, budget: float | None) -> dict:
@@ -212,6 +217,7 @@ def main() -> None:
     gender = _enrollment_dim(connection, "enrollment_gender.parquet", "gender")
     pssa = _assessment(connection, "pssa")
     keystone = _keystone(connection)
+    keystone_schools_only = _keystone_schools_only(connection)
     actual = _nested(connection, "actual")
     budget = _nested(connection, "budget")
     budget_detail = _detail(connection, "budget")
@@ -292,6 +298,7 @@ def main() -> None:
                 district_population,
                 category=profile["category"],
             ),
+            keystone_schools_only=aun in keystone_schools_only,
         )
         _write_json(data_dir / f"{aun}.json", document)
         snapshot = document["years"]
@@ -850,7 +857,7 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
     sources = {
         "enrollment": {}, "afr": {}, "gfb": {}, "edna": None,
         "act1": None, "act1Base": None, "retax": {},
-        "pssa": {}, "pssaSchool": {}, "keystone": {}, "assessment": ASSESSMENT_PAGE,
+        "pssa": {}, "pssaSchool": {}, "keystone": {}, "keystoneSchool": {}, "assessment": ASSESSMENT_PAGE,
         "enrollmentPage": ENROLLMENT_PAGE,
         "admPage": ADM_PAGE,
         "charterAdm": {}, "homeEducation": {}, "lowIncome": {}, "iep": None,
@@ -869,7 +876,7 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
             FROM '{REFINED / "document.parquet"}'
         )
         WHERE n = 1 AND parser IN (
-            'enrollment', 'afr', 'gfb', 'edna', 'act1', 'act1_base', 'retax', 'pssa', 'pssa_school', 'keystone',
+            'enrollment', 'afr', 'gfb', 'edna', 'act1', 'act1_base', 'retax', 'pssa', 'pssa_school', 'keystone', 'keystone_school',
             'charter_adm', 'homeschool', 'low_income', 'iep', 'cohort_grad', 'chart', 'personnel',
             'saipe'
         )
@@ -914,6 +921,8 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
             sources["personnelWorkbooks"][str(int(row.school_year))] = row.source_url
         elif row.parser == "pssa_school" and row.school_year is not None and not _missing(row.school_year):
             sources["pssaSchool"][str(int(row.school_year))] = row.source_url
+        elif row.parser == "keystone_school" and row.school_year is not None and not _missing(row.school_year):
+            sources["keystoneSchool"][str(int(row.school_year))] = row.source_url
         elif row.school_year is not None and not _missing(row.school_year):
             sources[row.parser][str(int(row.school_year))] = row.source_url
     functions = {
@@ -2204,11 +2213,17 @@ def _assessment(connection: duckdb.DuckDBPyConnection, assessment: str) -> dict:
 def _keystone(connection: duckdb.DuckDBPyConnection) -> dict:
     """Grade 11 Keystone proficiency: Algebra I, Literature, and Biology.
 
+    Reads `assessment_lea`. A school district stays on the district workbook.
+    Any other LEA is the single school row for that year. Two or more schools
+    are omitted there and are not added together. `pct` is only the published
+    combined percent. Advanced and proficient are kept as their own levels
+    and are not summed into the headline.
+
     2022 and 2023 workbooks label multi-ethnic students "Multi-Racial".
     Later files, and the PSSA files, say "Multi-ethnic". Store one name.
     """
-    path = REFINED / "assessment_result.parquet"
-    if not path.exists():
+    source = _bind_assessment_lea(connection)
+    if source is None:
         return {}
     groups = ", ".join("'" + name.replace("'", "''") + "'" for name in sorted(PSSA_GROUPS | {"Multi-Racial (not Hispanic)"}))
     frame = connection.sql(f"""
@@ -2219,7 +2234,7 @@ def _keystone(connection: duckdb.DuckDBPyConnection) -> dict:
                END AS student_group,
                number_scored, pct_proficient_and_above,
                pct_advanced, pct_proficient, pct_basic, pct_below_basic
-        FROM '{path}'
+        FROM {source}
         WHERE assessment = 'keystone'
           AND subject IN ('algebra_i', 'biology', 'literature')
           AND grade = '011'
@@ -2251,6 +2266,33 @@ def _keystone(connection: duckdb.DuckDBPyConnection) -> dict:
             .setdefault(str(row.grade), {})[str(row.student_group)]
         ) = cell
     return grouped
+
+
+def _keystone_schools_only(connection: duckdb.DuckDBPyConnection) -> set[str]:
+    """Non-district LEAs with Keystone school rows and no LEA total.
+
+    The LEA view already omits a year with two or more schools. Those LEAs
+    stay off the cards and the county rank. The page can then say PDE
+    published each school and no LEA total. District buildings are not read
+    into this set.
+    """
+    if _bind_assessment_lea(connection) != "assessment_lea":
+        return set()
+    frame = connection.sql("""
+        SELECT DISTINCT s.aun
+        FROM assessment_result_school AS s
+        INNER JOIN lea AS l
+            ON s.aun = l.aun
+           AND l.category <> 'school_district'
+        WHERE s.assessment = 'keystone'
+          AND NOT EXISTS (
+            SELECT 1
+            FROM assessment_lea AS a
+            WHERE a.aun = s.aun
+              AND a.assessment = 'keystone'
+          )
+    """).df()
+    return {str(aun) for aun in frame["aun"]}
 
 
 def _schools(connection: duckdb.DuckDBPyConnection) -> dict:
