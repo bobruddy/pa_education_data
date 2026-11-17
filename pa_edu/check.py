@@ -647,7 +647,7 @@ def _assessment_school_lea(tables: dict[str, pd.DataFrame]) -> list[str]:
 
 
 def _lea_matches_school(view, school, categories: dict[str, str]) -> list[str]:
-    """The LEA copy matches the school view, including a filled Keystone proficient+."""
+    """The LEA copy matches the school view, including a filled proficient+."""
     if school.empty:
         extra = view.loc[view["category"].astype(str) != "school_district"] if not view.empty else view
         if extra is not None and not extra.empty:
@@ -709,7 +709,7 @@ def _lea_matches_district(view, district, categories: dict[str, str]) -> list[st
 def _assessment_lea_frame(tables: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFrame]:
     """LEA view, and the school view it copies.
 
-    The school view fills a null Keystone proficient+ from the level percents.
+    The school view fills a null proficient+ from the level percents.
     The LEA copy matches that view value. The stored parquet cell is unchanged.
     """
     import duckdb

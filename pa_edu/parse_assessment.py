@@ -6,7 +6,8 @@ than 11 students are suppressed in the source; those percents stay null.
 
 School PSSA and school Keystone are different workbooks and a different grain
 from the district files. Both land in `assessment_result_school`.
-`pct_proficient_and_above` stays null when that column is absent. `growth` is
+`pct_proficient_and_above` stays null in this table when that column is absent.
+The school view fills that cell from advanced plus proficient. `growth` is
 the 2015 PSSA PVAAS column, not a proficiency, and it is not added into the
 LEA view. The 2015 Keystone school file has no AUN and is not this layout.
 """

@@ -1091,6 +1091,8 @@ def test_keystone_school_lea_matches_the_view_sum_when_the_cell_is_null() -> Non
     partial = _school_row("124150002", "7691", "Cyber", None, "key-school", "keystone")
     partial["pct_proficient"] = None
     pssa = _school_row("126000002", "3", "Early", None, "pssa-school", "pssa")
+    pssa["pct_advanced"] = 10.4
+    pssa["pct_proficient"] = 25.9
     school = pd.concat(
         [building, charter, published, partial, pssa],
         ignore_index=True,
@@ -1119,8 +1121,9 @@ def test_keystone_school_lea_matches_the_view_sum_when_the_cell_is_null() -> Non
     assert proficient(view, "112011103") == 20.0
     assert proficient(view, "102020001") == 40.0
     assert proficient(view, "115210001") == 16.0
+    assert proficient(school_view, "126000002") == 36.3
     assert proficient(view, "124150002") is None
-    assert proficient(view, "126000002") is None
+    assert proficient(view, "126000002") == 36.3
     assert _assessment_school_lea(tables) == []
 
 

@@ -7,6 +7,16 @@ alwaysApply: true
 
 Do only what Robert asked for in this turn. Analysis that the asked task needs is in scope. The next task is not.
 
+## A question is not a change
+
+"Can we…", "could we…", "would that work…", and "same as we did for…" are questions. Answer them. Do not edit code, tests, or config in that turn.
+
+Say whether the method fits, what it would change, and what it would leave. Then stop.
+
+Editing starts when he asks for the change: "fix it", "do it", "implement it", "go ahead", "make the change".
+
+Example: "can we fix this the same way as Keystone in 56?" asks if that method applies. It does not ask you to apply it.
+
 ## Open a ticket
 
 "Open an issue" or "open a ticket" means research enough to write the issue, then file it. Suggested fixes in that request — a hover, a card, a layout — belong in the issue body. Do not implement them.

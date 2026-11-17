@@ -803,20 +803,32 @@ def _pssa_result(aun: str, year: int, subject: str, grade: str, scored: int, pro
 
 
 def test_pssa_publishes_one_school_lea_and_keeps_the_district_workbook(tmp_path: Path, monkeypatch) -> None:
-    """A charter is its school row. A district building is not the district total."""
+    """A charter is its school row. A district building is not the district total.
+
+    A charter year with no combined percent uses advanced plus proficient.
+    A district year with no combined percent stays empty. A school cell with
+    one level percent missing stays empty.
+    """
     refined = tmp_path / "refined"
     refined.mkdir()
     district = _pssa_result("112011103", 2024, "math", "total", 80, 40.0)
     district_grade = _pssa_result("112011103", 2024, "math", "003", 20, 35.0)
+    district_blank = _pssa_result("112011103", 2021, "math", "008", 90, None)
     stray_charter = _pssa_result("124150002", 2024, "math", "total", 9, 1.0)
     phila = _pssa_result("126000001", 2024, "math", "total", 100, 30.0)
     phila_ela = _pssa_result("126000001", 2024, "ela", "total", 100, 50.0)
     chester = _pssa_result("110000001", 2024, "math", "total", 40, 10.0)
-    pd.DataFrame([district, district_grade, stray_charter, phila, phila_ela, chester]).to_parquet(
+    pd.DataFrame([district, district_grade, district_blank, stray_charter, phila, phila_ela, chester]).to_parquet(
         refined / "assessment_result.parquet", index=False,
     )
     early = _pssa_result("124150002", 2021, "math", "total", 44, None)
+    early["pct_advanced"] = 10.4
+    early["pct_proficient"] = 25.9
     early_grade = _pssa_result("124150002", 2021, "math", "005", 8, None)
+    early_grade["pct_advanced"] = None
+    early_grade["pct_proficient"] = None
+    partial = _pssa_result("126000002", 2021, "math", "total", 20, None)
+    partial["pct_proficient"] = None
     school_rows = [
         {**_pssa_result("112011103", 2024, "math", "total", 15, 99.0), "school_number": "1", "school_name": "Building"},
         {**_pssa_result("124150002", 2024, "math", "total", 50, 70.0), "school_number": "7691", "school_name": "Cyber"},
@@ -829,7 +841,7 @@ def test_pssa_publishes_one_school_lea_and_keeps_the_district_workbook(tmp_path:
         {**_pssa_result("123456789", 2024, "math", "total", 10, 10.0), "school_number": "1", "school_name": "One"},
         {**_pssa_result("123456789", 2024, "math", "total", 10, 90.0), "school_number": "2", "school_name": "Two"},
         {**_pssa_result("102020001", 2024, "math", "011", 20, 50.0), "school_number": "9", "school_name": "High"},
-        {**_pssa_result("126000002", 2021, "math", "total", 20, None), "school_number": "3", "school_name": "Early"},
+        {**partial, "school_number": "3", "school_name": "Early"},
         {
             **_pssa_result("124150002", 2024, "algebra_i", "011", 40, 22.0),
             "assessment": "keystone",
@@ -853,12 +865,13 @@ def test_pssa_publishes_one_school_lea_and_keeps_the_district_workbook(tmp_path:
     district_total = pssa["112011103"][2024]["math"]["total"]["All Students"]
     assert district_total == {"n": 80, "pct": 40.0}
     assert pssa["112011103"][2024]["math"]["003"]["All Students"]["pct"] == 35.0
+    assert pssa["112011103"][2021]["math"]["008"]["All Students"] == {"n": 90}
     charter = pssa["124150002"][2024]["math"]["total"]["All Students"]
     assert charter == {"n": 50, "pct": 70.0}
     assert pssa["124150002"][2024]["math"]["003"]["All Students"]["pct"] == 55.0
     assert pssa["124150002"][2024]["ela"]["total"]["All Students"]["pct"] == 60.0
     early_cell = pssa["124150002"][2021]["math"]["total"]["All Students"]
-    assert early_cell == {"n": 44}
+    assert early_cell == {"n": 44, "pct": 36.3}
     assert pssa["124150002"][2021]["math"]["005"]["All Students"] == {"n": 8}
     assert "science" not in pssa["124150002"][2024]
     assert "011" not in pssa["124150002"][2024]["math"]
@@ -873,7 +886,7 @@ def test_pssa_publishes_one_school_lea_and_keeps_the_district_workbook(tmp_path:
         {"aun": "124150002", "name": "Cyber", "county": "Philadelphia", "category": "charter_school"},
         years,
     )
-    assert document["years"]["2021"]["pssa"]["math"]["total"]["All Students"] == {"n": 44}
+    assert document["years"]["2021"]["pssa"]["math"]["total"]["All Students"] == {"n": 44, "pct": 36.3}
     assert document["years"]["2024"]["pssa"]["math"]["003"]["All Students"]["pct"] == 55.0
 
     profiles = [

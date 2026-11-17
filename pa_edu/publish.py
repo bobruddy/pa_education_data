@@ -2173,9 +2173,9 @@ def _bind_assessment_lea(connection: duckdb.DuckDBPyConnection) -> str | None:
 def _assessment(connection: duckdb.DuckDBPyConnection, assessment: str) -> dict:
     """PSSA rows for an LEA page. Keystone stays on `_keystone`.
 
-    `pct_proficient_and_above` is the only headline percent. A year the
-    workbook leaves null stays null here, including when advanced and
-    proficient are filled in. The scored count is still kept.
+    `pct_proficient_and_above` is the only headline percent. On a school row,
+    a null combined percent is advanced plus proficient. A district cell the
+    workbook leaves null stays null. The scored count is still kept.
     """
     if assessment != "pssa":
         raise ValueError(f"{assessment} is not a PSSA publish")

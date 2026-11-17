@@ -152,18 +152,18 @@ def views_for(tables: list[str], views: list[PortalView] | None = None) -> list[
 
 
 def assessment_school_select(source: str) -> str:
-    """School rows, with a null Keystone proficient+ filled from the level percents.
+    """School rows, with a null proficient+ filled from the level percents.
 
-    The stored percent is kept when the workbook published one. PSSA rows stay
-    null. A row with only one of the two level percents stays null. The sum is
-    not rounded. Every other column is the stored cell.
+    PSSA and Keystone use the same rule. The stored percent is kept when the
+    workbook published one. A row with only one of the two level percents stays
+    null. The sum is not rounded. Every other column is the stored cell.
+    District rows are not this view.
     """
     return (
         "SELECT * REPLACE (\n"
         "        CASE\n"
         "            WHEN pct_proficient_and_above IS NOT NULL THEN pct_proficient_and_above\n"
-        "            WHEN assessment = 'keystone'\n"
-        "             AND pct_advanced IS NOT NULL\n"
+        "            WHEN pct_advanced IS NOT NULL\n"
         "             AND pct_proficient IS NOT NULL\n"
         "            THEN pct_advanced + pct_proficient\n"
         "            ELSE NULL\n"

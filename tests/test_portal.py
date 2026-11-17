@@ -291,6 +291,8 @@ def test_school_view_fills_a_null_keystone_proficient_plus(tmp_path: Path) -> No
     partial = _school("124150002", "7691", "Cyber", None, "school-doc", "keystone")
     partial["pct_proficient"] = None
     pssa = _school("126000002", "3", "Early", None, "pssa-school", "pssa")
+    pssa["pct_advanced"] = 10.4
+    pssa["pct_proficient"] = 25.9
     east = _school("114060557", "6304", "East", None, "school-doc", "keystone")
     west = _school("114060557", "7068", "West", None, "school-doc", "keystone")
     tables = tmp_path / "tables"
@@ -350,7 +352,7 @@ def test_school_view_fills_a_null_keystone_proficient_plus(tmp_path: Path) -> No
     assert building_pct == 60.5
     assert kept == 16.0
     assert partial_pct is None or pd.isna(partial_pct)
-    assert pssa_pct is None or pd.isna(pssa_pct)
+    assert pssa_pct == 36.3
     assert centers == [("6304", 3.0), ("7068", 3.0)]
 
     def proficient(aun: str):
@@ -362,7 +364,7 @@ def test_school_view_fills_a_null_keystone_proficient_plus(tmp_path: Path) -> No
     assert proficient("102020001") == 40.0
     assert proficient("115210001") == 16.0
     assert proficient("124150002") is None
-    assert proficient("126000002") is None
+    assert proficient("126000002") == 36.3
 
 
 def test_public_school_view_binds_the_sum_without_fetching(tmp_path: Path) -> None:

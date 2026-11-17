@@ -55,14 +55,13 @@ SELECT * FROM read_parquet('data/refined/enrollment_iep.parquet');
 CREATE OR REPLACE VIEW assessment_result AS
 SELECT * FROM read_parquet('data/refined/assessment_result.parquet');
 
--- Keystone school rows with no combined column use advanced + proficient.
--- The stored cell stays when the workbook published one. PSSA is unchanged.
+-- School rows with no combined column use advanced + proficient.
+-- The stored cell stays when the workbook published one.
 CREATE OR REPLACE VIEW assessment_result_school AS
 SELECT * REPLACE (
         CASE
             WHEN pct_proficient_and_above IS NOT NULL THEN pct_proficient_and_above
-            WHEN assessment = 'keystone'
-             AND pct_advanced IS NOT NULL
+            WHEN pct_advanced IS NOT NULL
              AND pct_proficient IS NOT NULL
             THEN pct_advanced + pct_proficient
             ELSE NULL

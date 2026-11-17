@@ -70,7 +70,7 @@ Commands (always use `.venv/bin/python`):
 
 ## Agent working agreements
 
-- Do only what Robert asked for. "Open an issue" means research enough to write it, then file it. A hover, a card, or any other fix mentioned in that request goes in the issue body and is not implemented. "Implement a ticket" means read the ticket, understand it, ask any clarifying questions, and implement only after those are answered. If he objects that you did something he did not ask for, apologize and stop. Do not revert or otherwise undo the work unless he explicitly says to undo it.
+- Do only what Robert asked for. "Can we…", "could we…", "would that work…", and "same as we did for…" are questions: answer whether the method fits, what it would change, and what it would leave, then stop. Do not edit code, tests, or config until he asks for the change ("fix it", "do it", "implement it", "go ahead", "make the change"). "Open an issue" means research enough to write it, then file it. A hover, a card, or any other fix mentioned in that request goes in the issue body and is not implemented. "Implement a ticket" means read the ticket, understand it, ask any clarifying questions, and implement only after those are answered. If he objects that you did something he did not ask for, apologize and stop. Do not revert or otherwise undo the work unless he explicitly says to undo it.
 - Do not commit or push unless Robert asks.
 - Do not edit `docs/` unless he asks (this `AGENTS.md` and `.cursor/rules/` are the standing exception for agent guidance).
 - Do not kill an interactive `duckdb` session locking `data/pde.duckdb`. Parquet can still be written; `check` and `publish` read parquet.
