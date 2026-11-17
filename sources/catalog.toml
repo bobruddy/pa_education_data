@@ -545,6 +545,99 @@ status = "stable"
 school_year = 2024
 
 [[document]]
+id = "pssa-school-2014"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2015%20pssa%20school%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "stable"
+school_year = 2014
+
+[[document]]
+id = "pssa-school-2015"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2016%20pssa%20school%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "stable"
+school_year = 2015
+
+[[document]]
+id = "pssa-school-2016"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2017%20pssa%20school%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "stable"
+school_year = 2016
+
+[[document]]
+id = "pssa-school-2017"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2018%20pssa%20school%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "stable"
+school_year = 2017
+
+[[document]]
+id = "pssa-school-2018"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2019%20pssa%20school%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "stable"
+school_year = 2018
+
+# Spring 2021 also publishes "Difference in Number Scored From 2019" and
+# "Percent Reduction From 2019". Those are not proficiency cells. Leave the
+# file review until a column rule and a check exist.
+[[document]]
+id = "pssa-school-2020"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2021%20pssa%20school%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "review"
+school_year = 2020
+
+[[document]]
+id = "pssa-school-2021"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2022%20pssa%20school%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "stable"
+school_year = 2021
+
+[[document]]
+id = "pssa-school-2022"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2023%20pssa%20school%20level%20data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "stable"
+school_year = 2022
+
+[[document]]
+id = "pssa-school-2023"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2024-pssa-school-data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "stable"
+school_year = 2023
+
+[[document]]
+id = "pssa-school-2024"
+source_id = "pssa"
+source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/data-and-reporting/pssa-and-ayp-results/2025-pssa-school-level-data.xlsx"
+page_url = "https://www.pa.gov/agencies/education/data-and-reporting/assessment-reporting"
+parser = "pssa_school"
+status = "stable"
+school_year = 2024
+
+[[document]]
 id = "act1-adjusted-history"
 source_id = "act1"
 source_url = "https://www.pa.gov/content/dam/copapwp-pagov/en/education/documents/schools/property-tax-relief/act1index/ssact1%20adjindexhistory%202027-28.xlsx"

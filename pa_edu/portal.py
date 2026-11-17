@@ -65,6 +65,7 @@ TABLES: dict[str, str] = {
     "enrollment_low_income": "Low-income enrollment and the percentage PDE published.",
     "enrollment_iep": "IEP enrollment and the percentage PDE published.",
     "assessment_result": "PSSA and Keystone results. Each student group is its own row.",
+    "assessment_result_school": "School-level PSSA. One published school cell, including district buildings and charter schools.",
     "cohort_graduation": "Cohort graduation counts and rate for an AUN, year, and span.",
     "cohort_graduation_group": "Cohort graduation rate by student group.",
     "act1_index": "Act 1 adjusted index for a school district and year.",

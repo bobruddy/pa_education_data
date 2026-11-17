@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from openpyxl import Workbook
 
-from pa_edu.check import _grain, GRAIN
+from pa_edu.check import GRAIN, _assessment_school_cell, _assessment_school_lea, _grain
 from pa_edu.parse_act1 import base_from_text, parse_act1
 from pa_edu.parse_charter_adm import parse_charter_adm
 from pa_edu.parse_cohort_grad import parse_cohort_grad
@@ -16,7 +16,7 @@ from pa_edu.parse_homeschool import parse_homeschool
 from pa_edu.parse_iep import parse_iep
 from pa_edu.parse_low_income import parse_low_income
 from pa_edu.parse_retax import parse_retax
-from pa_edu.parse_assessment import parse_keystone, parse_pssa
+from pa_edu.parse_assessment import parse_keystone, parse_pssa, parse_pssa_school
 from pa_edu.parse_chart import descriptions_from_text, titles_from_text
 from pa_edu.parse_gfb import parse_gfb
 from pa_edu.refine import run
@@ -810,6 +810,234 @@ def test_act1_base_reads_the_history_line() -> None:
     assert list(frame["base_index"]) == [0.036, 0.035]
     assert list(frame["saww_increase"]) == [0.034, 0.034]
     assert list(frame["eci_increase"]) == [0.037, 0.035]
+
+
+def test_pssa_school_keeps_growth_and_does_not_invent_a_combined_percent(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "PSSA data (2)": [
+                ["The 2015 PSSA School Level results"],
+                ["notes"],
+                [
+                    "Year", "AUN", "School Number", "District", "School", "Subject", "Group", "Grade",
+                    "Number Scored", "% Advanced", "% Proficient", "% Basic", "% Below Basic", "Growth**",
+                ],
+                [2015, 124150002.0, "000007691", "21ST CENTURY CYBER CS", "21ST CENTURY CYBER CS", "English Language Arts", "All Students", "School Total", 188, 7.4, 46.8, 38.8, 6.9, 57.75],
+                [2015, 124150002, "000007691", "21ST CENTURY CYBER CS", "21ST CENTURY CYBER CS", "English Language Arts", "All Students", 6, 45, 13.3, 35.6, 42.2, 8.9, None],
+                [2015, 124150002, "000007691", "21ST CENTURY CYBER CS", "21ST CENTURY CYBER CS", "Science", "All Students", 8, 3, None, None, None, None, None],
+            ],
+        },
+    )
+    frame = parse_pssa_school(path, {"school_year": 2014, "document_id": "pssa-school-test"})["assessment_result_school"]
+    assert list(frame["grade"]) == ["total", "006", "008"]
+    assert set(frame["subject"]) == {"ela", "science"}
+    total = frame.loc[frame["grade"] == "total"].iloc[0]
+    assert total["aun"] == "124150002"
+    assert total["school_number"] == "7691"
+    assert total["school_name"] == "21ST CENTURY CYBER CS"
+    assert total["pct_advanced"] == 7.4
+    assert total["growth"] == 57.75
+    assert pd.isna(total["pct_proficient_and_above"])
+    assert pd.isna(total["county"])
+    assert total["assessment"] == "pssa"
+    assert total["document_id"] == "pssa-school-test"
+    grade = frame.loc[frame["grade"] == "006"].iloc[0]
+    assert pd.isna(grade["growth"])
+    suppressed = frame.loc[frame["subject"] == "science"].iloc[0]
+    assert suppressed["number_scored"] == 3
+    assert pd.isna(suppressed["pct_advanced"])
+
+
+def test_pssa_school_reads_total_without_a_year_column(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "PSSA website": [
+                ["2019 PSSA"],
+                [
+                    "AUN", "School Number", "County", "District Name", "School Name", "Subject", "Group", "Grade",
+                    "Number Scored", "Percent Advanced", "Percent Proficient", "Percent Basic", "Percent Below Basic",
+                ],
+                [112011103, "000007302", "ADAMS", "BERMUDIAN SPRINGS SD", "BERMUDIAN SPRINGS EL SCH", "Math", "All Students", "Total", 263, 15.6, 45.6, 27.4, 11.4],
+            ],
+        },
+    )
+    frame = parse_pssa_school(path, {"school_year": 2018, "document_id": "pssa-school-2018"})["assessment_result_school"]
+    row = frame.iloc[0]
+    assert int(row["school_year"]) == 2018
+    assert row["school_number"] == "7302"
+    assert row["grade"] == "total"
+    assert row["county"] == "Adams"
+    assert row["subject"] == "math"
+    assert pd.isna(row["pct_proficient_and_above"])
+    assert pd.isna(row["growth"])
+
+
+def test_pssa_school_keeps_the_published_combined_percent(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "Sheet1": [
+                ["2025 PSSA"],
+                [
+                    "Year", "AUN", "School Number", "County", "District Name", "School Name", "Subject", "Group", "Grade",
+                    "Number Scored", "Percent Advanced", "Percent Proficient", "Percent Basic", "Percent Below Basic",
+                    "Percent Proficient and above",
+                ],
+                [2025, 112011103, "000007302", "ADAMS", "BERMUDIAN SPRINGS SD", "BERMUDIAN SPRINGS EL SCH", "English Language Arts", "All Students", 3, 106, 10.0, 20.0, 27.4, 30.2, 45.9, None, "x"],
+            ],
+        },
+    )
+    row = parse_pssa_school(path, {"school_year": 2024, "document_id": "pssa-school-2024"})["assessment_result_school"].iloc[0]
+    assert row["grade"] == "003"
+    assert row["pct_proficient_and_above"] == 45.9
+    assert pd.isna(row["growth"])
+
+
+def test_pssa_school_rejects_an_unknown_header(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "web": [
+                [
+                    "AUN", "School Number", "County", "District Name", "School Name", "Subject", "Group", "Grade",
+                    "Number Scored", "Difference in Number Scored From 2019", "Percent Advanced", "Percent Proficient",
+                    "Percent Basic", "Percent Below Basic",
+                ],
+                [112011103, "000007302", "Adams", "BERMUDIAN SPRINGS SD", "BERMUDIAN SPRINGS EL SCH", "Math", "All Students", "Total", 10, -4, 1, 2, 3, 4],
+            ],
+        },
+    )
+    with pytest.raises(ValueError, match="unknown columns"):
+        parse_pssa_school(path, {"school_year": 2020, "document_id": "pssa-school-2020"})
+
+
+def test_pssa_school_rejects_two_data_sheets(tmp_path: Path) -> None:
+    header = ["AUN", "School Number", "District", "School", "Subject", "Group", "Grade", "Number Scored", "% Advanced", "% Proficient", "% Basic", "% Below Basic"]
+    row = [124150002, "000007691", "Charter", "Charter", "Math", "All Students", "Total", 10, 1, 2, 3, 4]
+    path = tmp_path / "school.xlsx"
+    _save(path, {"PSSA": [header, row], "Sheet1": [header, row]})
+    with pytest.raises(ValueError, match="school sheets"):
+        parse_pssa_school(path, {"school_year": 2014, "document_id": "pssa-school"})
+
+
+def test_pssa_school_cell_round_trips_from_the_workbook(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "PSSA data (2)": [
+                ["title"],
+                [
+                    "Year", "AUN", "School Number", "District", "School", "Subject", "Group", "Grade",
+                    "Number Scored", "% Advanced", "% Proficient", "% Basic", "% Below Basic", "Growth**",
+                ],
+                [2015, 124150002, "000007691", "21ST CENTURY CYBER CS", "21ST CENTURY CYBER CS", "English Language Arts", "All Students", "School Total", 188, 7.4, 46.8, 38.8, 6.9, 57.75],
+            ],
+        },
+    )
+    index = {
+        "current": {"pssa-school-2014": "doc-1"},
+        "documents": {
+            "doc-1": {
+                "parser": "pssa_school",
+                "status": "stable",
+                "school_year": 2014,
+                "path": str(path),
+                "catalog_id": "pssa-school-2014",
+            }
+        },
+    }
+    cell = {
+        "school_year": 2014,
+        "aun": "124150002",
+        "school_number": "7691",
+        "subject": "ela",
+        "grade": "total",
+        "student_group": "All Students",
+    }
+    tables = {
+        "assessment_result_school": pd.DataFrame([{
+            "aun": "124150002",
+            "school_number": "7691",
+            "school_year": 2014,
+            "assessment": "pssa",
+            "subject": "ela",
+            "grade": "total",
+            "student_group": "All Students",
+            "number_scored": 188,
+            "pct_advanced": 7.4,
+            "pct_proficient": 46.8,
+            "pct_basic": 38.8,
+            "pct_below_basic": 6.9,
+            "pct_proficient_and_above": None,
+            "growth": 57.75,
+        }])
+    }
+    assert _assessment_school_cell(tables, index, cell) == []
+    tables["assessment_result_school"].loc[0, "growth"] = 1
+    assert _assessment_school_cell(tables, index, cell)
+
+
+def test_two_school_non_district_fails_and_is_not_an_lea_row() -> None:
+    district = _assessment_row("112011103", 10.0, "district-doc")
+    school = pd.concat(
+        [
+            _school_row("112011103", "0001", "Elem", 99.0, "school-doc"),
+            _school_row("124150002", "000007691", "21st Century Cyber CS", 40.0, "school-doc"),
+            _school_row("123456789", "0001", "One", 1.0, "school-doc"),
+            _school_row("123456789", "0002", "Two", 2.0, "school-doc"),
+        ],
+        ignore_index=True,
+    )
+    lea = pd.DataFrame([
+        {"aun": "112011103", "category": "school_district"},
+        {"aun": "124150002", "category": "charter_school"},
+        {"aun": "123456789", "category": "charter_school"},
+    ])
+    tables = {
+        "assessment_result": pd.DataFrame([district]),
+        "assessment_result_school": school,
+        "lea": lea,
+    }
+    errors = _assessment_school_lea(tables)
+    assert any("123456789" in error and "2 schools" in error for error in errors)
+    assert not any("has an LEA row" in error for error in errors)
+    assert not any("assessment_lea school" in error or "assessment_lea district" in error for error in errors)
+
+
+def _assessment_row(aun: str, proficient: float, document_id: str) -> dict:
+    return {
+        "aun": aun,
+        "school_year": 2024,
+        "assessment": "pssa",
+        "subject": "ela",
+        "grade": "total",
+        "student_group": "All Students",
+        "number_scored": 10,
+        "pct_advanced": 1.0,
+        "pct_proficient": 2.0,
+        "pct_basic": 3.0,
+        "pct_below_basic": 4.0,
+        "pct_proficient_and_above": proficient,
+        "lea_name": "District",
+        "county": "Adams",
+        "document_id": document_id,
+    }
+
+
+def _school_row(aun: str, school_number: str, school_name: str, proficient: float, document_id: str) -> pd.DataFrame:
+    return pd.DataFrame([{
+        **_assessment_row(aun, proficient, document_id),
+        "school_number": school_number,
+        "school_name": school_name,
+        "growth": 5.0,
+    }])
 
 
 def test_keystone_district_parser(tmp_path: Path) -> None:

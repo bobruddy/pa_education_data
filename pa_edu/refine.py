@@ -26,7 +26,7 @@ from pa_edu.common import DATA_DIR, ROOT, write_parquet
 from pa_edu.extract import ensure_extract, ingest_discovered, is_workbook, use_extract
 from pa_edu.parse_act1 import parse_act1, parse_act1_base
 from pa_edu.parse_afr import parse_afr
-from pa_edu.parse_assessment import parse_keystone, parse_pssa
+from pa_edu.parse_assessment import parse_keystone, parse_pssa, parse_pssa_school
 from pa_edu.parse_chart import parse_chart
 from pa_edu.parse_charter_adm import parse_charter_adm
 from pa_edu.parse_cohort_grad import parse_cohort_grad
@@ -49,6 +49,7 @@ PARSERS = {
     "edna": parse_edna,
     "chart": parse_chart,
     "pssa": parse_pssa,
+    "pssa_school": parse_pssa_school,
     "keystone": parse_keystone,
     "act1": parse_act1,
     "act1_base": parse_act1_base,
@@ -114,6 +115,13 @@ COLUMNS = {
         "aun", "school_year", "assessment", "subject", "grade", "student_group",
         "number_scored", "pct_advanced", "pct_proficient", "pct_basic",
         "pct_below_basic", "pct_proficient_and_above",
+        "lea_name", "county", "document_id",
+    ],
+    "assessment_result_school": [
+        "aun", "school_number", "school_name", "school_year", "assessment",
+        "subject", "grade", "student_group",
+        "number_scored", "pct_advanced", "pct_proficient", "pct_basic",
+        "pct_below_basic", "pct_proficient_and_above", "growth",
         "lea_name", "county", "document_id",
     ],
     "act1_index": [
@@ -194,6 +202,9 @@ SORT = {
     "enrollment_iep": ["school_year", "aun"],
     "assessment_result": [
         "school_year", "assessment", "aun", "subject", "grade", "student_group",
+    ],
+    "assessment_result_school": [
+        "school_year", "assessment", "aun", "school_number", "subject", "grade", "student_group",
     ],
     "act1_index": ["school_year", "aun"],
     "act1_base": ["school_year"],

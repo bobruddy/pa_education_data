@@ -6,9 +6,10 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 import duckdb
+import pandas as pd
 import pytest
 
-from pa_edu.portal import TABLES, build_portal, county_slug, write_duckdb
+from pa_edu.portal import TABLES, build_portal, county_slug, load_views, write_duckdb
 from pa_edu.refine import COLUMNS
 
 
@@ -182,6 +183,75 @@ def test_portal_packages_one_county_and_keeps_lookup_tables(tmp_path: Path) -> N
             connection.close()
     finally:
         os.chdir(previous)
+
+
+def test_assessment_lea_copies_one_school_and_skips_two() -> None:
+    statement = next(view.sql for view in load_views() if view.name == "assessment_lea")
+    district = _result("112011103", 10.0, "district-doc")
+    charter_only = _result("124150002", 1.0, "district-doc")
+    school = pd.DataFrame([
+        _school("112011103", "0001", "Elem", 99.0, "school-doc"),
+        _school("124150002", "000007691", "21st Century Cyber CS", 40.0, "school-doc"),
+        _school("123456789", "0001", "One", 1.0, "school-doc"),
+        _school("123456789", "0002", "Two", 2.0, "school-doc"),
+        _school("999999999", "0001", "Missing", 8.0, "school-doc"),
+    ])
+    lea = pd.DataFrame([
+        {"aun": "112011103", "category": "school_district"},
+        {"aun": "124150002", "category": "charter_school"},
+        {"aun": "123456789", "category": "charter_school"},
+    ])
+    connection = duckdb.connect()
+    try:
+        connection.register("assessment_result", pd.DataFrame([district, charter_only]))
+        connection.register("assessment_result_school", school)
+        connection.register("lea", lea)
+        connection.execute(statement)
+        frame = connection.execute("SELECT * FROM assessment_lea ORDER BY aun").fetchdf()
+    finally:
+        connection.close()
+    assert "growth" not in frame.columns
+    assert list(frame["aun"]) == ["112011103", "124150002"]
+    district_row = frame.loc[frame["aun"] == "112011103"].iloc[0]
+    assert district_row["pct_proficient_and_above"] == 10.0
+    assert pd.isna(district_row["school_number"])
+    assert pd.isna(district_row["school_name"])
+    assert district_row["document_id"] == "district-doc"
+    charter = frame.loc[frame["aun"] == "124150002"].iloc[0]
+    assert charter["pct_proficient_and_above"] == 40.0
+    assert charter["school_number"] == "000007691"
+    assert charter["school_name"] == "21st Century Cyber CS"
+    assert charter["category"] == "charter_school"
+    assert charter["document_id"] == "school-doc"
+
+
+def _result(aun: str, proficient: float, document_id: str) -> dict:
+    return {
+        "aun": aun,
+        "school_year": 2024,
+        "assessment": "pssa",
+        "subject": "ela",
+        "grade": "total",
+        "student_group": "All Students",
+        "number_scored": 10,
+        "pct_advanced": 1.0,
+        "pct_proficient": 2.0,
+        "pct_basic": 3.0,
+        "pct_below_basic": 4.0,
+        "pct_proficient_and_above": proficient,
+        "lea_name": "Name",
+        "county": "Adams",
+        "document_id": document_id,
+    }
+
+
+def _school(aun: str, school_number: str, school_name: str, proficient: float, document_id: str) -> dict:
+    return {
+        **_result(aun, proficient, document_id),
+        "school_number": school_number,
+        "school_name": school_name,
+        "growth": 5.0,
+    }
 
 
 def test_unknown_refined_table_is_rejected(tmp_path: Path) -> None:

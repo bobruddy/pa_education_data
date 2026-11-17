@@ -97,3 +97,63 @@ CREATE OR REPLACE VIEW assessment_all_students AS
 SELECT *
 FROM assessment_result
 WHERE student_group = 'All Students';
+
+-- view: assessment_lea
+-- needs: assessment_result, assessment_result_school, lea
+-- about: One assessment row per LEA. A school district keeps the district workbook. Any other LEA is copied from its single PSSA school row.
+
+CREATE OR REPLACE VIEW assessment_lea AS
+WITH school_count AS (
+    SELECT aun, school_year, count(DISTINCT school_number) AS schools
+    FROM assessment_result_school
+    GROUP BY aun, school_year
+)
+SELECT
+    r.aun,
+    r.school_year,
+    r.assessment,
+    CAST(NULL AS VARCHAR) AS school_number,
+    CAST(NULL AS VARCHAR) AS school_name,
+    r.subject,
+    r.grade,
+    r.student_group,
+    r.number_scored,
+    r.pct_advanced,
+    r.pct_proficient,
+    r.pct_basic,
+    r.pct_below_basic,
+    r.pct_proficient_and_above,
+    r.lea_name,
+    r.county,
+    l.category,
+    r.document_id
+FROM assessment_result AS r
+INNER JOIN lea AS l ON r.aun = l.aun
+WHERE l.category = 'school_district'
+UNION ALL
+SELECT
+    s.aun,
+    s.school_year,
+    s.assessment,
+    s.school_number,
+    s.school_name,
+    s.subject,
+    s.grade,
+    s.student_group,
+    s.number_scored,
+    s.pct_advanced,
+    s.pct_proficient,
+    s.pct_basic,
+    s.pct_below_basic,
+    s.pct_proficient_and_above,
+    s.lea_name,
+    s.county,
+    l.category,
+    s.document_id
+FROM assessment_result_school AS s
+INNER JOIN lea AS l ON s.aun = l.aun
+INNER JOIN school_count AS n
+    ON s.aun = n.aun
+   AND s.school_year = n.school_year
+WHERE l.category <> 'school_district'
+  AND n.schools = 1;

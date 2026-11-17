@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from pa_edu.catalog import load_checks
-from pa_edu.codes import as_code, find_sheet, read_headed, read_sheet, sheet_names
+from pa_edu.codes import as_code, as_text, find_sheet, read_headed, read_sheet, sheet_names
 from pa_edu.parse_act1 import YEAR_COLUMN
 from pa_edu.common import DATA_DIR, ROOT
 from pa_edu.status import public_error, record_run
@@ -28,6 +28,7 @@ FACT_TABLES = [
     "enrollment_low_income",
     "enrollment_iep",
     "assessment_result",
+    "assessment_result_school",
     "school",
     "act1_index",
     "act1_base",
@@ -53,6 +54,9 @@ GRAIN = {
     "enrollment_iep": ["aun", "school_year"],
     "assessment_result": [
         "aun", "school_year", "assessment", "subject", "grade", "student_group",
+    ],
+    "assessment_result_school": [
+        "aun", "school_number", "school_year", "assessment", "subject", "grade", "student_group",
     ],
     "act1_index": ["aun", "school_year"],
     "act1_base": ["school_year"],
@@ -102,6 +106,7 @@ def run_checks(data_dir: Path | None = None) -> list[str]:
     errors.extend(_published_totals(tables, index, checks))
     errors.extend(_school_rollup(tables, checks))
     errors.extend(_enrollment(tables, index))
+    errors.extend(_assessment_school_lea(tables))
     return errors
 
 
@@ -173,6 +178,8 @@ def _cells(tables: dict[str, pd.DataFrame], index: dict, checks: dict) -> list[s
         errors.extend(_enrollment_cell(tables, index, cell))
     for cell in checks.get("assessment_cell", []):
         errors.extend(_assessment_cell(tables, index, cell))
+    for cell in checks.get("assessment_school_cell", []):
+        errors.extend(_assessment_school_cell(tables, index, cell))
     for cell in checks.get("act1_cell", []):
         errors.extend(_act1_cell(tables, index, cell))
     errors.extend(_act1_base_matches_floor(tables))
@@ -485,6 +492,330 @@ def _assessment_cell(tables, index, cell) -> list[str]:
             f"is {found} in parquet and {source_value} in the workbook"
         ]
     return []
+
+
+_SCHOOL_SUBJECT = {
+    "english language arts": "ela",
+    "math": "math",
+    "mathematics": "math",
+    "science": "science",
+}
+_SCHOOL_MEASURE = {
+    "number_scored": ["number scored"],
+    "pct_advanced": ["% advanced", "percent advanced"],
+    "pct_proficient": ["% proficient", "percent proficient"],
+    "pct_basic": ["% basic", "percent basic"],
+    "pct_below_basic": ["% below basic", "percent below basic"],
+    "pct_proficient_and_above": ["percent proficient and above"],
+    "growth": ["growth**"],
+}
+_SCHOOL_COUNT = {"number_scored"}
+_SCHOOL_COPIED = [
+    "number_scored",
+    "pct_advanced",
+    "pct_proficient",
+    "pct_basic",
+    "pct_below_basic",
+    "pct_proficient_and_above",
+    "school_name",
+    "lea_name",
+    "county",
+    "document_id",
+]
+
+
+def _assessment_school_cell(tables, index, cell) -> list[str]:
+    record = _record(index, "pssa_school", int(cell["school_year"]))
+    if record is None:
+        return [f"no PSSA school file for {cell['school_year']}"]
+    path = Path(record["path"])
+    sheet = _school_sheet(path)
+    if sheet is None:
+        return [f"{record['catalog_id']} has no school sheet"]
+    frame = read_headed(path, sheet, 0)
+    columns = {_header_key(column): column for column in frame.columns}
+    needed = ["aun", "school number", "subject", "group", "grade"]
+    missing = [name for name in needed if name not in columns]
+    if missing:
+        return [f"{record['catalog_id']} is missing {missing}"]
+    frame = frame.copy()
+    frame["aun"] = as_code(frame[columns["aun"]], 9)
+    frame["school_number"] = _published_school_number(frame[columns["school number"]])
+    frame["subject"] = frame[columns["subject"]].map(_school_subject)
+    frame["grade"] = frame[columns["grade"]].map(_school_grade)
+    frame["student_group"] = frame[columns["group"]].map(lambda value: as_text(value) or "")
+    source = frame.loc[
+        (frame["aun"] == cell["aun"])
+        & (frame["school_number"] == cell["school_number"])
+        & (frame["subject"] == cell["subject"])
+        & (frame["grade"] == cell["grade"])
+        & (frame["student_group"] == cell["student_group"])
+    ]
+    label = (
+        f"PSSA school {cell['aun']} {cell['school_number']} {cell['subject']} "
+        f"grade {cell['grade']} {cell['student_group']}"
+    )
+    if len(source) != 1:
+        return [f"{label} has {len(source)} workbook rows on {record['catalog_id']}"]
+    fact = _match(
+        tables["assessment_result_school"],
+        {
+            "aun": cell["aun"],
+            "school_number": cell["school_number"],
+            "school_year": int(cell["school_year"]),
+            "assessment": "pssa",
+            "subject": cell["subject"],
+            "grade": cell["grade"],
+            "student_group": cell["student_group"],
+        },
+    )
+    if len(fact) != 1:
+        return [f"{label} has {len(fact)} parquet rows"]
+    errors = []
+    for field, headers in _SCHOOL_MEASURE.items():
+        header = next((columns[name] for name in headers if name in columns), None)
+        if header is None:
+            found = fact.iloc[0][field]
+            if not _missing_number(found):
+                errors.append(f"{label} {field} is {found} in parquet and the workbook has no column")
+            continue
+        source_value = source.iloc[0][header]
+        found = fact.iloc[0][field]
+        tolerance = 0.0 if field in _SCHOOL_COUNT else 0.05
+        if not _same_number(found, source_value, tolerance):
+            errors.append(f"{label} {field} is {found} in parquet and {source_value} in the workbook")
+    return errors
+
+
+def _assessment_school_lea(tables: dict[str, pd.DataFrame]) -> list[str]:
+    """A non-district LEA is its single school row. Two schools fail and are not summed."""
+    school = tables["assessment_result_school"]
+    district = tables["assessment_result"]
+    directory = tables["lea"].drop_duplicates("aun")
+    categories = dict(zip(directory["aun"].astype(str), directory["category"].astype(str), strict=True))
+    view = _assessment_lea_frame(tables)
+    errors = []
+    if "growth" in view.columns:
+        errors.append("assessment_lea carries growth")
+    counts = (
+        school.groupby(["aun", "school_year"], dropna=False)["school_number"].nunique()
+        if not school.empty
+        else pd.Series(dtype="int64")
+    )
+    for (aun, year), schools in counts.items():
+        category = categories.get(str(aun))
+        if category is None or category == "school_district" or int(schools) <= 1:
+            continue
+        errors.append(
+            f"PSSA {int(year)} AUN {aun} has {int(schools)} schools; "
+            "a non-district LEA row is not published"
+        )
+        promoted = view.loc[(view["aun"].astype(str) == str(aun)) & (view["school_year"].astype(int) == int(year))]
+        if not promoted.empty:
+            errors.append(f"PSSA {int(year)} AUN {aun} has an LEA row from {int(schools)} schools")
+    errors.extend(_lea_matches_school(view, school, categories))
+    errors.extend(_lea_matches_district(view, district, categories))
+    return errors
+
+
+def _lea_matches_school(view, school, categories: dict[str, str]) -> list[str]:
+    if school.empty:
+        extra = view.loc[view["category"].astype(str) != "school_district"] if not view.empty else view
+        if extra is not None and not extra.empty:
+            return [f"assessment_lea has {len(extra)} non-district rows and no school rows"]
+        return []
+    single = []
+    for (aun, year), rows in school.groupby(["aun", "school_year"], dropna=False):
+        if categories.get(str(aun)) in {None, "school_district"}:
+            continue
+        if rows["school_number"].nunique(dropna=False) == 1:
+            single.append(rows)
+    promoted = view.loc[view["category"].astype(str) != "school_district"] if not view.empty else view.iloc[0:0]
+    if not single:
+        if not promoted.empty:
+            return [f"assessment_lea has {len(promoted)} non-district rows without a single school"]
+        return []
+    expected = pd.concat(single, ignore_index=True)
+    return _same_rows(
+        promoted,
+        expected,
+        ["aun", "school_year", "assessment", "school_number", "subject", "grade", "student_group"],
+        _SCHOOL_COPIED,
+        "assessment_lea school",
+    )
+
+
+def _lea_matches_district(view, district, categories: dict[str, str]) -> list[str]:
+    if not view.empty and (view["category"].astype(str) == "school_district").any():
+        districts = view.loc[view["category"].astype(str) == "school_district"]
+        if districts["school_number"].notna().any() or districts["school_name"].notna().any():
+            return ["assessment_lea has a school id on a district row"]
+    else:
+        districts = view.iloc[0:0]
+    if district.empty:
+        if not districts.empty:
+            return [f"assessment_lea has {len(districts)} district rows and no district workbook rows"]
+        return []
+    expected = district.loc[district["aun"].astype(str).map(categories).eq("school_district")].copy()
+    fields = [
+        "number_scored",
+        "pct_advanced",
+        "pct_proficient",
+        "pct_basic",
+        "pct_below_basic",
+        "pct_proficient_and_above",
+        "lea_name",
+        "county",
+        "document_id",
+    ]
+    return _same_rows(
+        districts,
+        expected,
+        ["aun", "school_year", "assessment", "subject", "grade", "student_group"],
+        fields,
+        "assessment_lea district",
+    )
+
+
+def _assessment_lea_frame(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+    import duckdb
+
+    from pa_edu.portal import load_views
+
+    statement = next(view.sql for view in load_views() if view.name == "assessment_lea")
+    connection = duckdb.connect()
+    try:
+        connection.register("assessment_result", tables["assessment_result"])
+        connection.register("assessment_result_school", tables["assessment_result_school"])
+        connection.register("lea", tables["lea"])
+        connection.execute(statement)
+        return connection.execute("SELECT * FROM assessment_lea").fetchdf()
+    finally:
+        connection.close()
+
+
+def _same_rows(left, right, keys: list[str], fields: list[str], label: str) -> list[str]:
+    left = left.copy()
+    right = right.copy()
+    for frame in (left, right):
+        frame["aun"] = frame["aun"].astype(str)
+        frame["school_year"] = frame["school_year"].astype(int)
+        for key in keys:
+            if key in {"aun", "school_year"}:
+                continue
+            frame[key] = frame[key].map(lambda value: "" if _missing_text(value) else str(value))
+    if len(left) != len(right):
+        return [f"{label} has {len(left)} rows and the source has {len(right)}"]
+    if left.empty:
+        return []
+    paired = left.merge(right, on=keys, how="outer", suffixes=("_lea", "_src"), indicator=True)
+    missing = paired.loc[paired["_merge"] != "both"]
+    if not missing.empty:
+        sample = missing.iloc[0]
+        return [f"{label} key {tuple(sample[key] for key in keys)} is {sample['_merge']}"]
+    errors = []
+    for field in fields:
+        numeric = field in _SCHOOL_COUNT or field.startswith("pct_") or field == "number_scored"
+        for row in paired.itertuples(index=False):
+            found = getattr(row, f"{field}_lea")
+            source = getattr(row, f"{field}_src")
+            same = _same_number(found, source, 0.0 if field == "number_scored" else 0.05) if numeric else _same_text(found, source)
+            if same:
+                continue
+            key = tuple(getattr(row, key) for key in keys)
+            errors.append(f"{label} {field} for {key} is {found} and the source is {source}")
+            break
+    return errors
+
+
+def _school_sheet(path: Path) -> str | None:
+    found = []
+    for name in sheet_names(path):
+        frame = read_headed(path, name, 0)
+        labels = {_header_key(column) for column in frame.columns}
+        if "aun" in labels and "school number" in labels:
+            found.append(name)
+    if len(found) == 1:
+        return found[0]
+    return None
+
+
+def _published_school_number(values: pd.Series) -> pd.Series:
+    """The workbook pads with zeros. ``000007691`` is school 7691."""
+    codes = as_code(values)
+
+    def one(value: object) -> object:
+        if value is None or pd.isna(value):
+            return pd.NA
+        token = str(value)
+        if token.isdigit():
+            return token.lstrip("0") or "0"
+        return token
+
+    return codes.map(one).astype("string")
+
+
+def _school_subject(value: object) -> object:
+    text = as_text(value)
+    if text is None:
+        return pd.NA
+    return _SCHOOL_SUBJECT.get(text.casefold(), pd.NA)
+
+
+def _school_grade(value: object) -> object:
+    text = as_text(value)
+    if text is None:
+        return pd.NA
+    folded = text.casefold()
+    if folded in {"total", "school total", "district total"}:
+        return "total"
+    if text.isdigit():
+        return f"{int(text):03d}"
+    return folded
+
+
+def _header_key(column: object) -> str:
+    return re.sub(r"\s+", " ", str(column).replace("\n", " ")).strip().casefold()
+
+
+def _same_number(found, source, tolerance: float) -> bool:
+    if _missing_number(found) and _missing_number(source):
+        return True
+    if _missing_number(found) or _missing_number(source):
+        return False
+    found_value = float(found)
+    source_value = float(pd.to_numeric(pd.Series([source]), errors="coerce").iloc[0])
+    if pd.isna(source_value):
+        return False
+    return abs(found_value - source_value) <= tolerance
+
+
+def _same_text(found, source) -> bool:
+    if _missing_text(found) and _missing_text(source):
+        return True
+    if _missing_text(found) or _missing_text(source):
+        return False
+    return str(found) == str(source)
+
+
+def _missing_number(value) -> bool:
+    if value is None:
+        return True
+    try:
+        return bool(pd.isna(value))
+    except TypeError:
+        return False
+
+
+def _missing_text(value) -> bool:
+    if value is None:
+        return True
+    try:
+        if pd.isna(value):
+            return True
+    except TypeError:
+        return False
+    return str(value) in {"", "nan", "None", "<NA>"}
 
 
 def _enrollment_cell(tables, index, cell) -> list[str]:

@@ -55,6 +55,9 @@ SELECT * FROM read_parquet('data/refined/enrollment_iep.parquet');
 CREATE OR REPLACE VIEW assessment_result AS
 SELECT * FROM read_parquet('data/refined/assessment_result.parquet');
 
+CREATE OR REPLACE VIEW assessment_result_school AS
+SELECT * FROM read_parquet('data/refined/assessment_result_school.parquet');
+
 CREATE OR REPLACE VIEW act1_index AS
 SELECT * FROM read_parquet('data/refined/act1_index.parquet');
 

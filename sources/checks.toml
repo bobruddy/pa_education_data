@@ -101,6 +101,22 @@ subject = "algebra_i"
 grade = "011"
 student_group = "All Students"
 
+[[assessment_school_cell]]
+school_year = 2014
+aun = "124150002"
+school_number = "7691"
+subject = "ela"
+grade = "total"
+student_group = "All Students"
+
+[[assessment_school_cell]]
+school_year = 2024
+aun = "112011103"
+school_number = "7302"
+subject = "ela"
+grade = "003"
+student_group = "All Students"
+
 # Building rows PDE published for these lines do not add up to the EXP amount.
 [[school_rollup_gap]]
 aun = "102027451"
