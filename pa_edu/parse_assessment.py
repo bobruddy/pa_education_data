@@ -1,12 +1,14 @@
-"""District PSSA and Keystone proficiency results, and school-level PSSA.
+"""District PSSA and Keystone proficiency results, and the school-level workbooks.
 
 PDE publishes one workbook per spring assessment year. Catalog `school_year` is
 the start year of that school year (2024 → spring 2025 file). Rows with fewer
 than 11 students are suppressed in the source; those percents stay null.
 
-School PSSA is a different workbook and a different grain. `pct_proficient_and_above`
-stays null when that column is absent. `growth` is the 2015 PVAAS column, not a
-proficiency, and it is not added into the LEA view.
+School PSSA and school Keystone are different workbooks and a different grain
+from the district files. Both land in `assessment_result_school`.
+`pct_proficient_and_above` stays null when that column is absent. `growth` is
+the 2015 PSSA PVAAS column, not a proficiency, and it is not added into the
+LEA view. The 2015 Keystone school file has no AUN and is not this layout.
 """
 
 from __future__ import annotations
@@ -71,6 +73,9 @@ SCHOOL_COLUMN = {
     "% below basic": "pct_below_basic",
     "percent below basic": "pct_below_basic",
     "percent proficient and above": "pct_proficient_and_above",
+    "% advanced/proficient": "pct_proficient_and_above",
+    "% proficient and above": "pct_proficient_and_above",
+    "percent advanced/proficient": "pct_proficient_and_above",
     "growth**": "growth",
 }
 SCHOOL_REQUIRED = {
@@ -119,7 +124,11 @@ def parse_keystone(path: Path, document: dict) -> dict[str, pd.DataFrame]:
 
 
 def parse_pssa_school(path: Path, document: dict) -> dict[str, pd.DataFrame]:
-    return {"assessment_result_school": _parse_school(path, document)}
+    return {"assessment_result_school": _parse_school(path, document, "pssa")}
+
+
+def parse_keystone_school(path: Path, document: dict) -> dict[str, pd.DataFrame]:
+    return {"assessment_result_school": _parse_school(path, document, "keystone")}
 
 
 def _parse(path: Path, document: dict, assessment: str) -> pd.DataFrame:
@@ -226,7 +235,7 @@ def _grade(value: object) -> object:
     return folded
 
 
-def _parse_school(path: Path, document: dict) -> pd.DataFrame:
+def _parse_school(path: Path, document: dict, assessment: str) -> pd.DataFrame:
     school_year = int(document["school_year"])
     document_id = document["document_id"]
     frame = read_headed(path, _school_sheet(path), 0)
@@ -239,7 +248,7 @@ def _parse_school(path: Path, document: dict) -> pd.DataFrame:
     frame["aun"] = as_code(frame["aun"], 9)
     frame["school_number"] = _school_number(frame["school_number"])
     frame["school_year"] = school_year
-    frame["assessment"] = "pssa"
+    frame["assessment"] = assessment
     frame["document_id"] = document_id
     frame["subject"] = frame["subject"].map(_subject)
     frame["grade"] = frame["grade"].map(_grade)

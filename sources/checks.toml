@@ -117,6 +117,26 @@ subject = "ela"
 grade = "003"
 student_group = "All Students"
 
+# City CHS. The 2016 school file has the four level percents and no combined column.
+[[assessment_school_cell]]
+school_year = 2015
+aun = "102020001"
+school_number = "7727"
+assessment = "keystone"
+subject = "algebra_i"
+grade = "011"
+student_group = "All Students"
+
+# Avon Grove HS, a district building. The 2025 school file publishes the combined percent.
+[[assessment_school_cell]]
+school_year = 2024
+aun = "124150503"
+school_number = "1367"
+assessment = "keystone"
+subject = "algebra_i"
+grade = "011"
+student_group = "All Students"
+
 # Building rows PDE published for these lines do not add up to the EXP amount.
 [[school_rollup_gap]]
 aun = "102027451"

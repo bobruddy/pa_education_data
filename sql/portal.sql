@@ -100,7 +100,7 @@ WHERE student_group = 'All Students';
 
 -- view: assessment_lea
 -- needs: assessment_result, assessment_result_school, lea
--- about: One assessment row per LEA. A school district keeps the district workbook. Any other LEA is copied from its single PSSA school row.
+-- about: One assessment row per LEA. A school district keeps the district workbook. Any other LEA is copied from its single school row that year.
 
 CREATE OR REPLACE VIEW assessment_lea AS
 WITH school_count AS (

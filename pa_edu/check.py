@@ -499,6 +499,10 @@ _SCHOOL_SUBJECT = {
     "math": "math",
     "mathematics": "math",
     "science": "science",
+    "algebra i": "algebra_i",
+    "algebra 1": "algebra_i",
+    "biology": "biology",
+    "literature": "literature",
 }
 _SCHOOL_MEASURE = {
     "number_scored": ["number scored"],
@@ -506,7 +510,12 @@ _SCHOOL_MEASURE = {
     "pct_proficient": ["% proficient", "percent proficient"],
     "pct_basic": ["% basic", "percent basic"],
     "pct_below_basic": ["% below basic", "percent below basic"],
-    "pct_proficient_and_above": ["percent proficient and above"],
+    "pct_proficient_and_above": [
+        "percent proficient and above",
+        "% advanced/proficient",
+        "% proficient and above",
+        "percent advanced/proficient",
+    ],
     "growth": ["growth**"],
 }
 _SCHOOL_COUNT = {"number_scored"}
@@ -525,9 +534,14 @@ _SCHOOL_COPIED = [
 
 
 def _assessment_school_cell(tables, index, cell) -> list[str]:
-    record = _record(index, "pssa_school", int(cell["school_year"]))
+    assessment = str(cell.get("assessment") or "pssa")
+    parser_name = {"pssa": "pssa_school", "keystone": "keystone_school"}.get(assessment)
+    if parser_name is None:
+        return [f"unknown school assessment {assessment}"]
+    record = _record(index, parser_name, int(cell["school_year"]))
+    name = "PSSA" if assessment == "pssa" else "Keystone"
     if record is None:
-        return [f"no PSSA school file for {cell['school_year']}"]
+        return [f"no {name} school file for {cell['school_year']}"]
     path = Path(record["path"])
     sheet = _school_sheet(path)
     if sheet is None:
@@ -535,7 +549,7 @@ def _assessment_school_cell(tables, index, cell) -> list[str]:
     frame = read_headed(path, sheet, 0)
     columns = {_header_key(column): column for column in frame.columns}
     needed = ["aun", "school number", "subject", "group", "grade"]
-    missing = [name for name in needed if name not in columns]
+    missing = [header for header in needed if header not in columns]
     if missing:
         return [f"{record['catalog_id']} is missing {missing}"]
     frame = frame.copy()
@@ -552,7 +566,7 @@ def _assessment_school_cell(tables, index, cell) -> list[str]:
         & (frame["student_group"] == cell["student_group"])
     ]
     label = (
-        f"PSSA school {cell['aun']} {cell['school_number']} {cell['subject']} "
+        f"{name} school {cell['aun']} {cell['school_number']} {cell['subject']} "
         f"grade {cell['grade']} {cell['student_group']}"
     )
     if len(source) != 1:
@@ -563,7 +577,7 @@ def _assessment_school_cell(tables, index, cell) -> list[str]:
             "aun": cell["aun"],
             "school_number": cell["school_number"],
             "school_year": int(cell["school_year"]),
-            "assessment": "pssa",
+            "assessment": assessment,
             "subject": cell["subject"],
             "grade": cell["grade"],
             "student_group": cell["student_group"],
@@ -588,7 +602,11 @@ def _assessment_school_cell(tables, index, cell) -> list[str]:
 
 
 def _assessment_school_lea(tables: dict[str, pd.DataFrame]) -> list[str]:
-    """A non-district LEA is its single school row. Two schools fail and are not summed."""
+    """A non-district LEA is its single school row that year. Schools are not summed.
+
+    Two PSSA schools fail the check. Two Keystone schools stay in the school
+    table and are left out of the LEA view. That exclusion is expected.
+    """
     school = tables["assessment_result_school"]
     district = tables["assessment_result"]
     directory = tables["lea"].drop_duplicates("aun")
@@ -598,19 +616,29 @@ def _assessment_school_lea(tables: dict[str, pd.DataFrame]) -> list[str]:
     if "growth" in view.columns:
         errors.append("assessment_lea carries growth")
     counts = (
-        school.groupby(["aun", "school_year"], dropna=False)["school_number"].nunique()
+        school.groupby(["aun", "school_year", "assessment"], dropna=False)["school_number"].nunique()
         if not school.empty
         else pd.Series(dtype="int64")
     )
-    for (aun, year), schools in counts.items():
+    for (aun, year, assessment), schools in counts.items():
         category = categories.get(str(aun))
         if category is None or category == "school_district" or int(schools) <= 1:
+            continue
+        promoted = view.loc[
+            (view["aun"].astype(str) == str(aun))
+            & (view["school_year"].astype(int) == int(year))
+            & (view["assessment"].astype(str) == str(assessment))
+        ]
+        if str(assessment) == "keystone":
+            if not promoted.empty:
+                errors.append(
+                    f"Keystone {int(year)} AUN {aun} has an LEA row from {int(schools)} schools"
+                )
             continue
         errors.append(
             f"PSSA {int(year)} AUN {aun} has {int(schools)} schools; "
             "a non-district LEA row is not published"
         )
-        promoted = view.loc[(view["aun"].astype(str) == str(aun)) & (view["school_year"].astype(int) == int(year))]
         if not promoted.empty:
             errors.append(f"PSSA {int(year)} AUN {aun} has an LEA row from {int(schools)} schools")
     errors.extend(_lea_matches_school(view, school, categories))

@@ -225,11 +225,48 @@ def test_assessment_lea_copies_one_school_and_skips_two() -> None:
     assert charter["document_id"] == "school-doc"
 
 
-def _result(aun: str, proficient: float, document_id: str) -> dict:
+def test_assessment_lea_copies_one_keystone_school_and_skips_two() -> None:
+    statement = next(view.sql for view in load_views() if view.name == "assessment_lea")
+    district = _result("112011103", 20.0, "district-key", "keystone")
+    school = pd.DataFrame([
+        _school("112011103", "1367", "Avon Grove HS", 99.0, "school-doc", "keystone"),
+        _school("102020001", "7727", "City CHS", 22.8, "school-doc", "keystone"),
+        _school("114060557", "6304", "Berks CTC East", 1.0, "school-doc", "keystone"),
+        _school("114060557", "7068", "Berks CTC West", 2.0, "school-doc", "keystone"),
+    ])
+    lea = pd.DataFrame([
+        {"aun": "112011103", "category": "school_district"},
+        {"aun": "102020001", "category": "charter_school"},
+        {"aun": "114060557", "category": "career_and_technical_center"},
+    ])
+    connection = duckdb.connect()
+    try:
+        connection.register("assessment_result", pd.DataFrame([district]))
+        connection.register("assessment_result_school", school)
+        connection.register("lea", lea)
+        connection.execute(statement)
+        frame = connection.execute("SELECT * FROM assessment_lea ORDER BY aun").fetchdf()
+    finally:
+        connection.close()
+    assert list(frame["aun"]) == ["102020001", "112011103"]
+    charter = frame.loc[frame["aun"] == "102020001"].iloc[0]
+    assert charter["assessment"] == "keystone"
+    assert charter["pct_proficient_and_above"] == 22.8
+    assert charter["school_number"] == "7727"
+    assert charter["school_name"] == "City CHS"
+    assert charter["category"] == "charter_school"
+    district_row = frame.loc[frame["aun"] == "112011103"].iloc[0]
+    assert district_row["pct_proficient_and_above"] == 20.0
+    assert pd.isna(district_row["school_number"])
+    assert district_row["document_id"] == "district-key"
+    assert "114060557" not in set(frame["aun"])
+
+
+def _result(aun: str, proficient: float, document_id: str, assessment: str = "pssa") -> dict:
     return {
         "aun": aun,
         "school_year": 2024,
-        "assessment": "pssa",
+        "assessment": assessment,
         "subject": "ela",
         "grade": "total",
         "student_group": "All Students",
@@ -245,9 +282,16 @@ def _result(aun: str, proficient: float, document_id: str) -> dict:
     }
 
 
-def _school(aun: str, school_number: str, school_name: str, proficient: float, document_id: str) -> dict:
+def _school(
+    aun: str,
+    school_number: str,
+    school_name: str,
+    proficient: float,
+    document_id: str,
+    assessment: str = "pssa",
+) -> dict:
     return {
-        **_result(aun, proficient, document_id),
+        **_result(aun, proficient, document_id, assessment),
         "school_number": school_number,
         "school_name": school_name,
         "growth": 5.0,

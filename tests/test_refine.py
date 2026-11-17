@@ -16,7 +16,7 @@ from pa_edu.parse_homeschool import parse_homeschool
 from pa_edu.parse_iep import parse_iep
 from pa_edu.parse_low_income import parse_low_income
 from pa_edu.parse_retax import parse_retax
-from pa_edu.parse_assessment import parse_keystone, parse_pssa, parse_pssa_school
+from pa_edu.parse_assessment import parse_keystone, parse_keystone_school, parse_pssa, parse_pssa_school
 from pa_edu.parse_chart import descriptions_from_text, titles_from_text
 from pa_edu.parse_gfb import parse_gfb
 from pa_edu.refine import run
@@ -1011,11 +1011,11 @@ def test_two_school_non_district_fails_and_is_not_an_lea_row() -> None:
     assert not any("assessment_lea school" in error or "assessment_lea district" in error for error in errors)
 
 
-def _assessment_row(aun: str, proficient: float, document_id: str) -> dict:
+def _assessment_row(aun: str, proficient: float, document_id: str, assessment: str = "pssa") -> dict:
     return {
         "aun": aun,
         "school_year": 2024,
-        "assessment": "pssa",
+        "assessment": assessment,
         "subject": "ela",
         "grade": "total",
         "student_group": "All Students",
@@ -1031,13 +1031,251 @@ def _assessment_row(aun: str, proficient: float, document_id: str) -> dict:
     }
 
 
-def _school_row(aun: str, school_number: str, school_name: str, proficient: float, document_id: str) -> pd.DataFrame:
+def _school_row(
+    aun: str,
+    school_number: str,
+    school_name: str,
+    proficient: float,
+    document_id: str,
+    assessment: str = "pssa",
+) -> pd.DataFrame:
     return pd.DataFrame([{
-        **_assessment_row(aun, proficient, document_id),
+        **_assessment_row(aun, proficient, document_id, assessment),
         "school_number": school_number,
         "school_name": school_name,
         "growth": 5.0,
     }])
+
+
+def test_keystone_two_school_lea_is_left_out() -> None:
+    district = pd.DataFrame([
+        _assessment_row("112011103", 10.0, "district-doc", "pssa"),
+        _assessment_row("112011103", 20.0, "district-key", "keystone"),
+    ])
+    school = pd.concat(
+        [
+            _school_row("124150002", "7727", "City CHS", 40.0, "pssa-school", "pssa"),
+            _school_row("124150002", "7727", "City CHS", 22.8, "key-school", "keystone"),
+            _school_row("114060557", "6304", "Berks CTC East", 1.0, "key-school", "keystone"),
+            _school_row("114060557", "7068", "Berks CTC West", 2.0, "key-school", "keystone"),
+        ],
+        ignore_index=True,
+    )
+    lea = pd.DataFrame([
+        {"aun": "112011103", "category": "school_district"},
+        {"aun": "124150002", "category": "charter_school"},
+        {"aun": "114060557", "category": "career_and_technical_center"},
+    ])
+    errors = _assessment_school_lea({
+        "assessment_result": district,
+        "assessment_result_school": school,
+        "lea": lea,
+    })
+    assert errors == []
+
+
+def test_keystone_school_keeps_grade_11_and_does_not_invent_a_combined_percent(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "data": [
+                ["2016 Keystone Exams School Level Data"],
+                ["notes"],
+                [
+                    "Year", "AUN", "School Number", "County", "District", "School", "Subject", "Group", "Grade",
+                    "Number Scored", "Percent Advanced", "Percent Proficient", "Percent Basic", "Percent Below Basic",
+                ],
+                [2016, 102020001.0, "000007727", "ADAMS", "CITY CHS", "CITY CHS", "Algebra I", "All Students", 11, 133, 23.3, 49.6, 21.8, 5.3],
+                [2016, 102020001, "000007727", "ADAMS", "CITY CHS", "CITY CHS", "Biology", "All Students", 11, 10, "IS", "IS", "IS", "IS"],
+            ],
+        },
+    )
+    frame = parse_keystone_school(path, {"school_year": 2015, "document_id": "key-school"})["assessment_result_school"]
+    assert list(frame["grade"]) == ["011", "011"]
+    assert list(frame["subject"]) == ["algebra_i", "biology"]
+    row = frame.iloc[0]
+    assert row["aun"] == "102020001"
+    assert row["school_number"] == "7727"
+    assert row["school_name"] == "CITY CHS"
+    assert row["lea_name"] == "CITY CHS"
+    assert row["county"] == "Adams"
+    assert row["pct_advanced"] == 23.3
+    assert row["pct_proficient"] == 49.6
+    assert pd.isna(row["pct_proficient_and_above"])
+    assert pd.isna(row["growth"])
+    assert row["assessment"] == "keystone"
+    assert int(row["school_year"]) == 2015
+    assert row["document_id"] == "key-school"
+    suppressed = frame.iloc[1]
+    assert suppressed["number_scored"] == 10
+    assert pd.isna(suppressed["pct_advanced"])
+
+
+def test_keystone_school_reads_a_grade_first_sheet_without_a_year_column(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "Sheet1": [
+                ["2019 Keystone"],
+                [
+                    "Grade", "AUN", "School Number", "County", "District Name", "School Name", "Subject", "Group",
+                    "Number Scored", "Percent Advanced", "Percent Proficient", "Percent Basic", "Percent Below Basic",
+                ],
+                [11, 124150503, "000001367", "CHESTER", "AVON GROVE SD", "AVON GROVE HS", "Literature", "All Students", 400, 10.0, 20.0, 30.0, 40.0],
+            ],
+        },
+    )
+    row = parse_keystone_school(path, {"school_year": 2018, "document_id": "key-2018"})["assessment_result_school"].iloc[0]
+    assert int(row["school_year"]) == 2018
+    assert row["grade"] == "011"
+    assert row["school_number"] == "1367"
+    assert row["subject"] == "literature"
+    assert pd.isna(row["pct_proficient_and_above"])
+    assert pd.isna(row["growth"])
+
+
+def test_keystone_school_keeps_the_published_combined_percent(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "Sheet1": [
+                ["2023 Keystone"],
+                [
+                    "Year", "AUN", "School Number", "County", "District Name", "School Name", "Subject", "Group", "Grade",
+                    "Number Scored", "Percent Advanced", "Percent Proficient", "Percent Basic", "Percent Below Basic",
+                    "% Advanced/Proficient",
+                ],
+                [2023, 102020001, "7727", "Adams", "CITY CHS", "CITY CHS", "Algebra I", "All Students", 11, 81, 1.2, 14.8, 58.0, 25.9, 16.0],
+            ],
+        },
+    )
+    row = parse_keystone_school(path, {"school_year": 2022, "document_id": "key-2022"})["assessment_result_school"].iloc[0]
+    assert row["pct_advanced"] == 1.2
+    assert row["pct_proficient"] == 14.8
+    assert row["pct_proficient_and_above"] == 16.0
+    assert pd.isna(row["growth"])
+
+    later = tmp_path / "later.xlsx"
+    _save(
+        later,
+        {
+            "Keystone": [
+                ["2025 Keystone"],
+                [
+                    "Year", "AUN", "School Number", "County", "District Name", "School Name", "Subject", "Grade", "Group",
+                    "Number Scored", "Percent Advanced", "Percent Proficient", "Percent Basic", "Percent Below Basic",
+                    "Percent Proficient and above",
+                ],
+                [2025, 124150503, "000001367", "CHESTER", "AVON GROVE SD", "AVON GROVE HS", "Algebra I", 11, "All Students", 410, 35.6, 29.3, 29.5, 5.6, 64.9],
+            ],
+        },
+    )
+    building = parse_keystone_school(later, {"school_year": 2024, "document_id": "key-2024"})["assessment_result_school"].iloc[0]
+    assert building["school_number"] == "1367"
+    assert building["grade"] == "011"
+    assert building["pct_proficient_and_above"] == 64.9
+    assert building["assessment"] == "keystone"
+
+
+def test_keystone_school_rejects_an_unknown_header(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "Sheet1": [
+                [
+                    "AUN", "School Number", "County", "District Name", "School Name", "Subject", "Group", "Grade",
+                    "Number Scored", "Difference in Number Scored From 2019", "Percent Reduction From 2019",
+                    "Percent Advanced", "Percent Proficient", "Percent Basic", "Percent Below Basic",
+                ],
+                [102020001, "7727", "Adams", "CITY CHS", "CITY CHS", "Algebra I", "All Students", 11, 10, -4, 0.1, 1, 2, 3, 4],
+            ],
+        },
+    )
+    with pytest.raises(ValueError, match="unknown columns"):
+        parse_keystone_school(path, {"school_year": 2020, "document_id": "key-2020"})
+
+
+def test_keystone_school_does_not_parse_the_2015_layout(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "School_AssessmentProficiencyWit": [
+                ["2014 - 2015 School Accountability Assessment Results"],
+                [
+                    "Schl", "District Name", "School Name", "Subject", "Grade", "Student_Group_Name",
+                    "N Scored", "Pct. Advanced", "Pct. Proficient", "Pct. Basic", "Pct. Below Basic", "Growth",
+                ],
+                ["7691", "21ST CENTURY CYBER CS", "21ST CENTURY CYBER CS", "A", 11, "All Students", 20, 1, 2, 3, 4, 75],
+            ],
+        },
+    )
+    with pytest.raises(ValueError, match="school sheets"):
+        parse_keystone_school(path, {"school_year": 2014, "document_id": "key-2014"})
+
+
+def test_keystone_school_cell_round_trips_from_the_workbook(tmp_path: Path) -> None:
+    path = tmp_path / "school.xlsx"
+    _save(
+        path,
+        {
+            "Sheet1": [
+                ["2023 Keystone"],
+                [
+                    "Year", "AUN", "School Number", "County", "District Name", "School Name", "Subject", "Group", "Grade",
+                    "Number Scored", "Percent Advanced", "Percent Proficient", "Percent Basic", "Percent Below Basic",
+                    "% Advanced/Proficient",
+                ],
+                [2023, 102020001, "000007727", "Adams", "CITY CHS", "CITY CHS", "Algebra I", "All Students", 11, 81, 1.2, 14.8, 58.0, 25.9, 16.0],
+            ],
+        },
+    )
+    index = {
+        "current": {"keystone-school-2022": "doc-1"},
+        "documents": {
+            "doc-1": {
+                "parser": "keystone_school",
+                "status": "stable",
+                "school_year": 2022,
+                "path": str(path),
+                "catalog_id": "keystone-school-2022",
+            }
+        },
+    }
+    cell = {
+        "school_year": 2022,
+        "aun": "102020001",
+        "school_number": "7727",
+        "assessment": "keystone",
+        "subject": "algebra_i",
+        "grade": "011",
+        "student_group": "All Students",
+    }
+    tables = {
+        "assessment_result_school": pd.DataFrame([{
+            "aun": "102020001",
+            "school_number": "7727",
+            "school_year": 2022,
+            "assessment": "keystone",
+            "subject": "algebra_i",
+            "grade": "011",
+            "student_group": "All Students",
+            "number_scored": 81,
+            "pct_advanced": 1.2,
+            "pct_proficient": 14.8,
+            "pct_basic": 58.0,
+            "pct_below_basic": 25.9,
+            "pct_proficient_and_above": 16.0,
+            "growth": None,
+        }])
+    }
+    assert _assessment_school_cell(tables, index, cell) == []
+    tables["assessment_result_school"].loc[0, "pct_proficient_and_above"] = 16.1
+    assert _assessment_school_cell(tables, index, cell)
 
 
 def test_keystone_district_parser(tmp_path: Path) -> None:

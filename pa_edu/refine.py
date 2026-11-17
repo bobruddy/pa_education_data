@@ -26,7 +26,7 @@ from pa_edu.common import DATA_DIR, ROOT, write_parquet
 from pa_edu.extract import ensure_extract, ingest_discovered, is_workbook, use_extract
 from pa_edu.parse_act1 import parse_act1, parse_act1_base
 from pa_edu.parse_afr import parse_afr
-from pa_edu.parse_assessment import parse_keystone, parse_pssa, parse_pssa_school
+from pa_edu.parse_assessment import parse_keystone, parse_keystone_school, parse_pssa, parse_pssa_school
 from pa_edu.parse_chart import parse_chart
 from pa_edu.parse_charter_adm import parse_charter_adm
 from pa_edu.parse_cohort_grad import parse_cohort_grad
@@ -51,6 +51,7 @@ PARSERS = {
     "pssa": parse_pssa,
     "pssa_school": parse_pssa_school,
     "keystone": parse_keystone,
+    "keystone_school": parse_keystone_school,
     "act1": parse_act1,
     "act1_base": parse_act1_base,
     "retax": parse_retax,
