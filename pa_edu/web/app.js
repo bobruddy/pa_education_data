@@ -1543,7 +1543,7 @@ function paintFinancials(block, priorBlock, priorYear, year, state) {
   host.className = statsGridClass(parts.length);
   host.innerHTML = parts.join("");
   drawSpend(block, state);
-  app.querySelector("#sources").innerHTML = sourceLinks(year);
+  app.querySelector("#sources").innerHTML = sourceLinks(block, year);
 }
 
 function latestStaffYear() {
@@ -1798,7 +1798,7 @@ function paintPssa(state) {
   }
   if (!pssaYears().length) {
     if (stats) stats.innerHTML = "";
-    if (body) body.innerHTML = `<p class="note">No PSSA results are published for this LEA.</p>`;
+    if (body) body.innerHTML = `<p class="note">No PSSA results are published for this LEA.</p>${assessmentSourceNote("pssa")}`;
     return;
   }
 
@@ -1818,7 +1818,7 @@ function paintPssa(state) {
   })).join("");
 
   if (year == null || (!all && !leaPack.years[String(year)]?.pssa?.[subject])) {
-    body.innerHTML = `<p class="note">Not enough data available for ${escapeHtml(label)}.</p>`;
+    body.innerHTML = `<p class="note">Not enough data available for ${escapeHtml(label)}.</p>${assessmentSourceNote("pssa", year)}`;
     return;
   }
 
@@ -1875,7 +1875,7 @@ function paintKeystone(state) {
   }
   if (!keystoneYears().length) {
     if (stats) stats.innerHTML = "";
-    if (body) body.innerHTML = `<p class="note">No Keystone results are published for this LEA.</p>`;
+    if (body) body.innerHTML = `<p class="note">No Keystone results are published for this LEA.</p>${assessmentSourceNote("keystone")}`;
     return;
   }
 
@@ -2020,17 +2020,18 @@ function drawKeystoneGaps(host, rows, metricLabel = "Proficient+") {
 
 function assessmentSourceNote(assessment, year) {
   const items = [];
-  const page = catalog?.sources?.assessment;
-  if (page) items.push(`<a href="${escapeAttr(page)}" target="_blank" rel="noopener">Assessment Reporting</a>`);
-  const workbook = catalog?.sources?.[assessment]?.[String(year)];
+  pushSource(items, catalog?.sources?.assessment, "Assessment Reporting");
+  const workbook = year == null || year === "" ? null : catalog?.sources?.[assessment]?.[String(year)];
   if (workbook) {
-    items.push(`<a href="${escapeAttr(workbook)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(year))} ${assessment === "pssa" ? "PSSA" : "Keystone"} workbook</a>`);
+    const name = assessment === "pssa" ? "PSSA" : "Keystone";
+    pushSource(items, workbook, `${yearLabel(year)} ${name} workbook`);
   }
   const label = assessment === "pssa" ? "PSSA" : "Keystone Exams (grade 11 best score)";
-  const lead = items.length
-    ? `Source: ${items.join(" · ")}`
-    : `Source: PDE Assessment Reporting · ${label}`;
-  return `<p class="sources note">${lead}. Economically disadvantaged is PDE’s published group. Groups under 11 scored students are suppressed.</p>`;
+  return sourceNote(
+    items,
+    "Economically disadvantaged is PDE’s published group. Groups under 11 scored students are suppressed.",
+    `Source: PDE Assessment Reporting · ${label}`,
+  );
 }
 
 function pssaCell(year, subject, gradeCode, group) {
@@ -2585,13 +2586,21 @@ function priorIn(years, year) {
   return earlier.length ? earlier[earlier.length - 1] : null;
 }
 
+function act1BaseShown(block) {
+  const district = block?.act1;
+  const base = block?.act1Base;
+  if (base == null) return false;
+  if (district == null) return true;
+  return Math.abs(district - base) >= 0.05;
+}
+
 function act1Note(block) {
   const district = block.act1;
   const base = block.act1Base;
   if (district == null && base == null) return "";
   if (district == null) return `<div class="note">Act 1 base index ${percentPoints(base)}</div>`;
   const lines = [`<div class="note">Act 1 index ${percentPoints(district)}</div>`];
-  if (base != null && Math.abs(district - base) >= 0.05) {
+  if (act1BaseShown(block)) {
     lines.push(`<div class="note">Statewide base ${percentPoints(base)}</div>`);
   }
   return lines.join("");
@@ -4442,6 +4451,28 @@ function salaryHist(label, stats, edges) {
   return `<svg class="hist" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeAttr(label)} full-time salary distribution">${bars}</svg>`;
 }
 
+function pushSource(items, href, label) {
+  if (!href) return;
+  items.push(`<a href="${escapeAttr(href)}" target="_blank" rel="noopener">${escapeHtml(label)}</a>`);
+}
+
+function sourceNote(items, method, fallback = "Source: PDE files listed in the catalog") {
+  const lead = items.length ? `Source: ${items.join(" · ")}` : fallback;
+  return `<p class="sources note">${lead}${method ? `. ${method}` : ""}</p>`;
+}
+
+function lastYearWhere(predicate) {
+  const years = Object.keys(leaPack?.years || {})
+    .map(Number)
+    .filter((year) => predicate(leaPack.years[String(year)]))
+    .sort((a, b) => a - b);
+  return years.length ? String(years.at(-1)) : "";
+}
+
+function financeSeriesOn(block, series) {
+  return sumMap(block?.[series]) != null || seriesPublished(block, series);
+}
+
 function staffSourceLinks(salaryYear) {
   const sources = catalog?.sources || {};
   const files = sources.personnelWorkbooks || {};
@@ -4456,101 +4487,120 @@ function staffSourceLinks(salaryYear) {
     }
   }
   const items = [];
-  if (sources.personnel) {
-    items.push(`<a href="${escapeAttr(sources.personnel)}" target="_blank" rel="noopener">Professional and support personnel</a>`);
-  }
+  pushSource(items, sources.personnel, "Professional and support personnel");
   const ordered = [...years].filter((year) => files[year]).sort((a, b) => Number(b) - Number(a));
   for (const year of ordered) {
-    items.push(`<a href="${escapeAttr(files[year])}" target="_blank" rel="noopener">${escapeHtml(yearLabel(year))} individual staff workbook</a>`);
+    pushSource(items, files[year], `${yearLabel(year)} individual staff workbook`);
   }
-  const lead = items.length
-    ? `Source: ${items.join(" · ")}`
-    : "Source: PDE professional personnel files listed in the catalog";
-  return `<p class="sources note">${lead}. Full-time salary, experience, and assignments come from PDE’s individual professional-personnel workbooks. A person is counted once: the primary assignment when PDE marked one, otherwise the highest FTE. Part-time staff are left out. Returned next year compares that file with the next year’s workbook.</p>`;
+  return sourceNote(
+    items,
+    "Full-time salary, experience, and assignments come from PDE’s individual professional-personnel workbooks. A person is counted once: the primary assignment when PDE marked one, otherwise the highest FTE. Part-time staff are left out. Returned next year compares that file with the next year’s workbook.",
+    "Source: PDE professional personnel files listed in the catalog",
+  );
 }
 
-function sourceLinks(year) {
+function sourceLinks(block, year) {
+  const sources = catalog?.sources || {};
   const items = [];
-  const enrollment = catalog.sources.enrollment?.[year];
-  const actual = catalog.sources.afr?.[year];
-  const budget = catalog.sources.gfb?.[year];
-  if (enrollment) items.push(`<a href="${escapeAttr(enrollment)}">Enrollment workbook</a>`);
-  if (actual) items.push(`<a href="${escapeAttr(actual)}">Annual Financial Report</a>`);
-  if (budget) items.push(`<a href="${escapeAttr(budget)}">General Fund Budget</a>`);
-  if (catalog.sources.chart) items.push(`<a href="${escapeAttr(catalog.sources.chart)}">Chart of accounts</a>`);
-  if (catalog.sources.act1) items.push(`<a href="${escapeAttr(catalog.sources.act1)}">Act 1 index</a>`);
-  const mills = catalog.sources.retax?.[year];
-  if (mills) items.push(`<a href="${escapeAttr(mills)}">Real estate tax rates</a>`);
-  if (catalog.sources.personnel) items.push(`<a href="${escapeAttr(catalog.sources.personnel)}">Professional personnel</a>`);
-  if (catalog.sources.edna) items.push(`<a href="${escapeAttr(catalog.sources.edna)}">EdNA entity list</a>`);
+  const enrolled = enrollmentOf(block) != null;
+  const hasActual = financeSeriesOn(block, "actual");
+  const hasBudget = financeSeriesOn(block, "budget");
+  if (enrolled) {
+    pushSource(items, sources.enrollmentPage, "Enrollment data");
+    pushSource(items, sources.enrollment?.[year], `${yearLabel(year)} public-school workbook`);
+  }
+  if (hasActual) {
+    pushSource(items, sources.afrPage, "Annual financial report data");
+    pushSource(items, sources.afr?.[year], `${yearLabel(year)} Annual Financial Report`);
+  }
+  if (hasBudget) {
+    pushSource(items, sources.gfbPage, "General fund budget data");
+    pushSource(items, sources.gfb?.[year], `${yearLabel(year)} General Fund Budget`);
+  }
+  if (block?.mills?.length) {
+    pushSource(items, sources.admPage, "Financial data elements");
+    pushSource(items, sources.retax?.[year], `${yearLabel(year)} real estate tax rates`);
+  }
+  if (block?.act1 != null || block?.act1Base != null) {
+    pushSource(items, sources.act1Page, "Act 1 index");
+    pushSource(items, sources.act1, "Act 1 adjusted index");
+    if (act1BaseShown(block)) pushSource(items, sources.act1Base, "Act 1 base index");
+  }
+  if (hasActual || hasBudget) pushSource(items, sources.chart, "Chart of accounts");
+  pushSource(items, sources.personnel, "Professional and support personnel");
+  pushSource(items, sources.edna, "EdNA entity list");
   const note = leaPack.category === "career_and_technical_center"
     ? " Part-day students here can also be counted in a school district."
     : "";
-  return `<p class="note">Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. Income is general-fund revenue from the AFR revenue sheet and the budget revenue sheet: local, state, federal, and other financing sources. It is not added to spending. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. The chart’s Per student view divides each actual, budget, and income account by that same October 1 count. Object 562 is left out of the actual, and those dollars are left out of the budget’s purchased services. A budget year with no annual financial report yet uses the latest object 562, by function, as the estimate. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books. When that year’s AFR is not published, the card uses the general fund budget divided by October 1 enrollment, with estimated charter tuition removed, and compares that with the prior year. Charter tuition is object 562 as a percent of general-fund actual for the latest year with an annual financial report, and the county rank uses that percent. A later budget year does not get an estimate. Debt service per student is AFR function 5110 divided by October 1 enrollment for the year of that actual. Instruction per student is general-fund budget function 1000 divided by October 1 enrollment, with the actual beside it when that year’s AFR published function 1000. A missing account is left off those cards.${note}</p>
-    <p class="sources note">${items.join(" · ") || "Source files are listed in the catalog."}</p>`;
+  return sourceNote(items, `Enrollment is the October 1 count. Actual is general fund (fund 10) AFR detail: subfunction × object, then building when PDE published one. Budget is the general fund budget at function × major object, the finest grain those workbooks publish. Income is general-fund revenue from the AFR revenue sheet and the budget revenue sheet: local, state, federal, and other financing sources. It is not added to spending. The Act 1 index under the budget’s change from the prior year is the cap on a school district’s tax increase for that school year. A district above the aid-ratio cutoff is shown its adjusted index and the statewide base; other LEAs are shown the base index. Real estate mills are the property-tax rates on that adopted budget. A district in more than one county, or with a split rate, lists each one. Actual per student removes tuition paid to brick-and-mortar and cyber charters (object 562), because those students are counted in the charter’s enrollment. The chart’s Per student view divides each actual, budget, and income account by that same October 1 count. Object 562 is left out of the actual, and those dollars are left out of the budget’s purchased services. A budget year with no annual financial report yet uses the latest object 562, by function, as the estimate. Tuition for CTCs, approved private schools, and PRRIs stays in — those students remain on this LEA’s books. When that year’s AFR is not published, the card uses the general fund budget divided by October 1 enrollment, with estimated charter tuition removed, and compares that with the prior year. Charter tuition is object 562 as a percent of general-fund actual for the latest year with an annual financial report, and the county rank uses that percent. A later budget year does not get an estimate. Debt service per student is AFR function 5110 divided by October 1 enrollment for the year of that actual. Instruction per student is general-fund budget function 1000 divided by October 1 enrollment, with the actual beside it when that year’s AFR published function 1000. A missing account is left off those cards.${note}`);
 }
 
 function enrollmentSourceLinks(year) {
   const items = [];
   const sources = catalog?.sources || {};
-  if (sources.enrollmentPage) {
-    items.push(`<a href="${escapeAttr(sources.enrollmentPage)}" target="_blank" rel="noopener">Enrollment data</a>`);
+  const enrollYear = year ? String(year) : "";
+  const enrollFile = enrollYear ? sources.enrollment?.[enrollYear] : "";
+  const lowList = lowIncomeYears();
+  const lowYear = lowList.length ? String(lowList.at(-1)) : "";
+  const lowFile = lowYear ? sources.lowIncome?.[lowYear] : "";
+  if (enrollFile || lowFile) pushSource(items, sources.enrollmentPage, "Enrollment data");
+  if (enrollFile) pushSource(items, enrollFile, `${yearLabel(enrollYear)} public-school workbook`);
+  if (lowFile) pushSource(items, lowFile, `${yearLabel(lowYear)} percent low income`);
+
+  const iepLinked = iepYears().length > 0 && (sources.iepPage || sources.iep);
+  if (iepLinked) {
+    pushSource(items, sources.iepPage, "PennData additional reports");
+    pushSource(items, sources.iep, "Special education by LEA (PennData)");
   }
-  const enrollment = year ? sources.enrollment?.[String(year)] : null;
-  if (enrollment) {
-    items.push(`<a href="${escapeAttr(enrollment)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(year))} public-school workbook</a>`);
-  }
+
+  let charterLinked = false;
+  let homeLinked = false;
+  let saipeLinked = false;
   if (leaPack.category === "school_district") {
-    if (sources.admPage) {
-      items.push(`<a href="${escapeAttr(sources.admPage)}" target="_blank" rel="noopener">Financial data elements (ADM)</a>`);
+    const charterYear = lastYearWhere((row) => row?.charterAdm != null && row.charterAdm !== "");
+    const charterFile = charterYear ? sources.charterAdm?.[charterYear] : "";
+    charterLinked = Boolean(charterYear && (sources.admPage || charterFile));
+    if (charterLinked) {
+      pushSource(items, sources.admPage, "Financial data elements (ADM)");
+      pushSource(items, charterFile, `${yearLabel(charterYear)} charter ADM by district`);
     }
-    const charterYears = Object.keys(sources.charterAdm || {}).sort((a, b) => Number(b) - Number(a));
-    for (const charterYear of charterYears) {
-      const url = sources.charterAdm[charterYear];
-      if (!url) continue;
-      items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(charterYear))} charter ADM by district</a>`);
+    const homeYear = lastYearWhere((row) => row?.homeEducation != null && row.homeEducation !== "");
+    const homeFile = homeYear ? sources.homeEducation?.[homeYear] : "";
+    if (homeFile) {
+      homeLinked = true;
+      pushSource(items, homeFile, `${yearLabel(homeYear)} home education`);
     }
-    const homeYears = Object.keys(sources.homeEducation || {}).sort((a, b) => Number(b) - Number(a));
-    for (const homeYear of homeYears) {
-      const url = sources.homeEducation[homeYear];
-      if (!url) continue;
-      items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(homeYear))} home education</a>`);
-    }
-    const saipeYears = Object.keys(sources.saipe || {}).sort((a, b) => Number(b) - Number(a));
-    for (const saipeYear of saipeYears) {
-      const url = sources.saipe[saipeYear];
-      if (!url) continue;
-      items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(saipeYear))} Census SAIPE</a>`);
-    }
-  }
-  const lowYear = year && sources.lowIncome?.[String(year)] ? String(year) : null;
-  if (lowYear) {
-    items.push(`<a href="${escapeAttr(sources.lowIncome[lowYear])}" target="_blank" rel="noopener">${escapeHtml(yearLabel(lowYear))} percent low income</a>`);
-  } else {
-    const lowYears = Object.keys(sources.lowIncome || {}).sort((a, b) => Number(b) - Number(a));
-    if (lowYears[0]) {
-      items.push(`<a href="${escapeAttr(sources.lowIncome[lowYears[0]])}" target="_blank" rel="noopener">${escapeHtml(yearLabel(lowYears[0]))} percent low income</a>`);
+    const saipeYear = lastYearWhere((row) => (
+      saipeCount(row, "population517") != null || saipeCount(row, "children517InPoverty") != null
+    ));
+    const saipePage = saipeYear ? sources.saipePage?.[saipeYear] : "";
+    const saipeFile = saipeYear ? sources.saipe?.[saipeYear] : "";
+    if (saipePage || saipeFile) {
+      saipeLinked = true;
+      pushSource(items, saipePage, `${yearLabel(saipeYear)} Census SAIPE`);
+      pushSource(items, saipeFile, `${yearLabel(saipeYear)} SAIPE Pennsylvania file`);
     }
   }
-  if (sources.iep) {
-    items.push(`<a href="${escapeAttr(sources.iep)}" target="_blank" rel="noopener">Special education by LEA (PennData)</a>`);
+
+  const gradList = gradYears();
+  const gradYear = gradList.length ? String(gradList.at(-1)) : "";
+  const gradFile = gradYear ? sources.cohortGrad?.[gradYear]?.["4"] : "";
+  const gradLinked = Boolean(gradYear && (sources.graduationPage || gradFile));
+  if (gradLinked) {
+    pushSource(items, sources.graduationPage, "Cohort graduation rates");
+    pushSource(items, gradFile, `${yearLabel(gradYear)} 4-year cohort graduation`);
   }
-  if (sources.graduationPage) {
-    items.push(`<a href="${escapeAttr(sources.graduationPage)}" target="_blank" rel="noopener">Cohort graduation rates</a>`);
-  }
-  const gradFileYears = Object.keys(sources.cohortGrad || {}).sort((a, b) => Number(a) - Number(b));
-  for (const gradFileYear of gradFileYears) {
-    const url = sources.cohortGrad[gradFileYear]?.["4"];
-    if (!url) continue;
-    items.push(`<a href="${escapeAttr(url)}" target="_blank" rel="noopener">${escapeHtml(yearLabel(gradFileYear))} 4-year cohort graduation</a>`);
-  }
-  const lead = items.length
-    ? `Source: ${items.join(" · ")}`
-    : "Source: PDE enrollment files listed in the catalog";
-  const saipeNote = leaPack.category === "school_district"
-    ? " Ages 5–17 and ages 5–17 in poverty are Census SAIPE estimates."
-    : "";
-  return `<p class="sources note">${lead}. October 1 public-school counts come from the yearly enrollment workbooks. Economically disadvantaged is PDE’s percent-low-income LEA count. IEP is December 1 school-age child count from PennData. Charter is average daily membership of resident students in charter schools from the ADM release. Homeschool is PDE’s home-education student total. The 4-year graduation rate is the published cohort rate for a regular diploma.${saipeNote}</p>`;
+
+  const method = [
+    enrollFile ? "October 1 public-school counts come from the yearly enrollment workbooks." : "",
+    lowFile ? "Economically disadvantaged is PDE’s percent-low-income LEA count." : "",
+    iepLinked ? "IEP is December 1 school-age child count from PennData." : "",
+    charterLinked ? "Charter is average daily membership of resident students in charter schools from the ADM release." : "",
+    homeLinked ? "Homeschool is PDE’s home-education student total." : "",
+    gradLinked ? "The 4-year graduation rate is the published cohort rate for a regular diploma." : "",
+    saipeLinked ? "Ages 5–17 and ages 5–17 in poverty are Census SAIPE estimates." : "",
+  ].filter(Boolean).join(" ");
+  return sourceNote(items, method, "Source: PDE enrollment files listed in the catalog");
 }
 
 function homeHtml() {

@@ -49,6 +49,20 @@ ADM_PAGE = (
     "https://www.pa.gov/agencies/education/programs-and-services/schools/"
     "grants-and-funding/school-finances/financial-data/financial-data-elements"
 )
+AFR_PAGE = (
+    "https://www.pa.gov/agencies/education/programs-and-services/schools/"
+    "grants-and-funding/school-finances/financial-data/"
+    "summary-of-annual-financial-report-data/afr-data-summary-level"
+)
+GFB_PAGE = (
+    "https://www.pa.gov/agencies/education/programs-and-services/schools/"
+    "grants-and-funding/school-finances/financial-data/general-fund-budget-gfb-data"
+)
+ACT1_PAGE = (
+    "https://www.pa.gov/agencies/education/programs-and-services/schools/"
+    "grants-and-funding/property-tax-relief/act-1-index"
+)
+IEP_PAGE = "https://penndata.hbg.psu.edu/Additional-Reports"
 SALARY_GROUPS = [
     ("elementary", "Elementary teachers"),
     ("secondary", "Secondary teachers"),
@@ -839,15 +853,17 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         "enrollmentPage": ENROLLMENT_PAGE,
         "admPage": ADM_PAGE,
         "charterAdm": {}, "homeEducation": {}, "lowIncome": {}, "iep": None,
-        "saipe": {},
+        "iepPage": IEP_PAGE,
+        "afrPage": AFR_PAGE, "gfbPage": GFB_PAGE, "act1Page": ACT1_PAGE,
+        "saipe": {}, "saipePage": {},
         "cohortGrad": {}, "graduationPage": GRADUATION_PAGE,
         "personnelWorkbooks": {},
         "chart": None,
     }
     frame = connection.sql(f"""
-        SELECT parser, school_year, source_url, catalog_id
+        SELECT parser, school_year, source_url, page_url, catalog_id
         FROM (
-            SELECT parser, school_year, source_url, catalog_id,
+            SELECT parser, school_year, source_url, page_url, catalog_id,
                    row_number() OVER (PARTITION BY catalog_id ORDER BY retrieved_at DESC) AS n
             FROM '{REFINED / "document.parquet"}'
         )
@@ -881,7 +897,10 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
         elif row.parser == "low_income" and row.school_year is not None and not _missing(row.school_year):
             sources["lowIncome"][str(int(row.school_year))] = row.source_url
         elif row.parser == "saipe" and row.school_year is not None and not _missing(row.school_year):
-            sources["saipe"][str(int(row.school_year))] = row.source_url
+            year = str(int(row.school_year))
+            sources["saipe"][year] = row.source_url
+            if not _missing(row.page_url):
+                sources["saipePage"][year] = row.page_url
         elif row.parser == "cohort_grad" and row.school_year is not None and not _missing(row.school_year):
             span = str(row.catalog_id).rsplit("-", 1)[-1]
             if span in {"4", "5", "6"}:

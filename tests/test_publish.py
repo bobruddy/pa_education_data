@@ -55,6 +55,7 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
             "parser": "personnel",
             "school_year": 2024,
             "source_url": "https://example.test/staff-2024.xlsx",
+            "page_url": None,
             "catalog_id": "personnel-2024",
             "retrieved_at": "2026-01-02T00:00:00",
         },
@@ -62,6 +63,7 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
             "parser": "personnel",
             "school_year": 2024,
             "source_url": "https://example.test/staff-2024-old.xlsx",
+            "page_url": None,
             "catalog_id": "personnel-2024",
             "retrieved_at": "2025-01-01T00:00:00",
         },
@@ -69,6 +71,7 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
             "parser": "personnel",
             "school_year": 2025,
             "source_url": "https://example.test/staff-2025.xlsx",
+            "page_url": None,
             "catalog_id": "personnel-2025",
             "retrieved_at": "2026-02-01T00:00:00",
         },
@@ -76,6 +79,7 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
             "parser": "personnel",
             "school_year": None,
             "source_url": "https://example.test/staff-blank.xlsx",
+            "page_url": None,
             "catalog_id": "personnel-blank",
             "retrieved_at": "2026-01-01T00:00:00",
         },
@@ -83,6 +87,7 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
             "parser": "enrollment",
             "school_year": 2024,
             "source_url": "https://example.test/enrollment-2024.xlsx",
+            "page_url": "https://example.test/enrollment",
             "catalog_id": "enrollment-2024",
             "retrieved_at": "2026-01-01T00:00:00",
         },
@@ -90,6 +95,7 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
             "parser": "saipe",
             "school_year": 2023,
             "source_url": "https://example.test/sd23-pa.txt",
+            "page_url": "https://www.census.gov/data/datasets/2023/demo/saipe/2023-school-districts.html",
             "catalog_id": "saipe-2023",
             "retrieved_at": "2026-01-01T00:00:00",
         },
@@ -102,6 +108,13 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
     }
     assert sources["enrollment"]["2024"] == "https://example.test/enrollment-2024.xlsx"
     assert sources["saipe"]["2023"] == "https://example.test/sd23-pa.txt"
+    assert sources["saipePage"]["2023"] == (
+        "https://www.census.gov/data/datasets/2023/demo/saipe/2023-school-districts.html"
+    )
+    assert sources["afrPage"].endswith("afr-data-summary-level")
+    assert sources["gfbPage"].endswith("general-fund-budget-gfb-data")
+    assert sources["act1Page"].endswith("act-1-index")
+    assert sources["iepPage"] == "https://penndata.hbg.psu.edu/Additional-Reports"
 
 
 def test_support_service_titles_keep_the_chart_suffix() -> None:
