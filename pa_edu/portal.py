@@ -151,6 +151,28 @@ def views_for(tables: list[str], views: list[PortalView] | None = None) -> list[
     return chosen
 
 
+def assessment_school_select(source: str) -> str:
+    """School rows, with a null Keystone proficient+ filled from the level percents.
+
+    The stored percent is kept when the workbook published one. PSSA rows stay
+    null. A row with only one of the two level percents stays null. The sum is
+    not rounded. Every other column is the stored cell.
+    """
+    return (
+        "SELECT * REPLACE (\n"
+        "        CASE\n"
+        "            WHEN pct_proficient_and_above IS NOT NULL THEN pct_proficient_and_above\n"
+        "            WHEN assessment = 'keystone'\n"
+        "             AND pct_advanced IS NOT NULL\n"
+        "             AND pct_proficient IS NOT NULL\n"
+        "            THEN pct_advanced + pct_proficient\n"
+        "            ELSE NULL\n"
+        "        END AS pct_proficient_and_above\n"
+        "    )\n"
+        f"FROM {source}"
+    )
+
+
 def schema_sql(
     parquet_base: str,
     tables: list[str],
@@ -182,9 +204,9 @@ def schema_sql(
             if name not in schemas:
                 raise SystemExit(f"{name} has no column schema")
             clause = f", schema={schemas[name]}"
-        lines.append(
-            f"CREATE OR REPLACE VIEW {name} AS SELECT * FROM read_parquet('{_parquet_ref(parquet_base, name)}'{clause});"
-        )
+        source = f"read_parquet('{_parquet_ref(parquet_base, name)}'{clause})"
+        select = assessment_school_select(source) if name == "assessment_result_school" else f"SELECT * FROM {source}"
+        lines.append(f"CREATE OR REPLACE VIEW {name} AS {select};")
     lines.append("")
     for view in views_for(tables, views):
         if view.about:

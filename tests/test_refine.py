@@ -8,7 +8,13 @@ import pandas as pd
 import pytest
 from openpyxl import Workbook
 
-from pa_edu.check import GRAIN, _assessment_school_cell, _assessment_school_lea, _grain
+from pa_edu.check import (
+    GRAIN,
+    _assessment_lea_frame,
+    _assessment_school_cell,
+    _assessment_school_lea,
+    _grain,
+)
 from pa_edu.parse_act1 import base_from_text, parse_act1
 from pa_edu.parse_charter_adm import parse_charter_adm
 from pa_edu.parse_cohort_grad import parse_cohort_grad
@@ -1072,6 +1078,50 @@ def test_keystone_two_school_lea_is_left_out() -> None:
         "lea": lea,
     })
     assert errors == []
+
+
+def test_keystone_school_lea_matches_the_view_sum_when_the_cell_is_null() -> None:
+    building = _school_row("112011103", "1367", "Avon Grove HS", None, "key-school", "keystone")
+    building["pct_advanced"] = 4.1
+    building["pct_proficient"] = 56.4
+    charter = _school_row("102020001", "7727", "City CHS", None, "key-school", "keystone")
+    charter["pct_advanced"] = 10.0
+    charter["pct_proficient"] = 30.0
+    published = _school_row("115210001", "8001", "One Campus", 16.0, "key-school", "keystone")
+    partial = _school_row("124150002", "7691", "Cyber", None, "key-school", "keystone")
+    partial["pct_proficient"] = None
+    pssa = _school_row("126000002", "3", "Early", None, "pssa-school", "pssa")
+    school = pd.concat(
+        [building, charter, published, partial, pssa],
+        ignore_index=True,
+    )
+    lea = pd.DataFrame([
+        {"aun": "112011103", "category": "school_district"},
+        {"aun": "102020001", "category": "charter_school"},
+        {"aun": "115210001", "category": "career_and_technical_center"},
+        {"aun": "124150002", "category": "charter_school"},
+        {"aun": "126000002", "category": "charter_school"},
+    ])
+    tables = {
+        "assessment_result": pd.DataFrame([
+            _assessment_row("112011103", 20.0, "district-key", "keystone"),
+        ]),
+        "assessment_result_school": school,
+        "lea": lea,
+    }
+    view, school_view = _assessment_lea_frame(tables)
+
+    def proficient(frame: pd.DataFrame, aun: str):
+        value = frame.loc[frame["aun"].astype(str) == aun, "pct_proficient_and_above"].iloc[0]
+        return None if pd.isna(value) else value
+
+    assert proficient(school_view, "112011103") == 60.5
+    assert proficient(view, "112011103") == 20.0
+    assert proficient(view, "102020001") == 40.0
+    assert proficient(view, "115210001") == 16.0
+    assert proficient(view, "124150002") is None
+    assert proficient(view, "126000002") is None
+    assert _assessment_school_lea(tables) == []
 
 
 def test_keystone_school_keeps_grade_11_and_does_not_invent_a_combined_percent(tmp_path: Path) -> None:

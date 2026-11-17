@@ -9,7 +9,15 @@ import duckdb
 import pandas as pd
 import pytest
 
-from pa_edu.portal import TABLES, build_portal, county_slug, load_views, write_duckdb
+from pa_edu.portal import (
+    TABLES,
+    assessment_school_select,
+    build_portal,
+    county_slug,
+    load_views,
+    schema_sql,
+    write_duckdb,
+)
 from pa_edu.refine import COLUMNS
 
 
@@ -260,6 +268,141 @@ def test_assessment_lea_copies_one_keystone_school_and_skips_two() -> None:
     assert pd.isna(district_row["school_number"])
     assert district_row["document_id"] == "district-key"
     assert "114060557" not in set(frame["aun"])
+
+
+def test_model_school_view_uses_the_keystone_sum() -> None:
+    text = (Path(__file__).resolve().parents[1] / "sql" / "model.sql").read_text(encoding="utf-8")
+    expected = (
+        "CREATE OR REPLACE VIEW assessment_result_school AS\n"
+        + assessment_school_select("read_parquet('data/refined/assessment_result_school.parquet')")
+        + ";"
+    )
+    assert expected in text
+
+
+def test_school_view_fills_a_null_keystone_proficient_plus(tmp_path: Path) -> None:
+    building = _school("112011103", "1367", "Avon Grove HS", None, "school-doc", "keystone")
+    building["pct_advanced"] = 4.1
+    building["pct_proficient"] = 56.4
+    charter = _school("102020001", "7727", "City CHS", None, "school-doc", "keystone")
+    charter["pct_advanced"] = 10.0
+    charter["pct_proficient"] = 30.0
+    published = _school("115210001", "8001", "One Campus", 16.0, "school-doc", "keystone")
+    partial = _school("124150002", "7691", "Cyber", None, "school-doc", "keystone")
+    partial["pct_proficient"] = None
+    pssa = _school("126000002", "3", "Early", None, "pssa-school", "pssa")
+    east = _school("114060557", "6304", "East", None, "school-doc", "keystone")
+    west = _school("114060557", "7068", "West", None, "school-doc", "keystone")
+    tables = tmp_path / "tables"
+    tables.mkdir()
+    pd.DataFrame([building, charter, published, partial, pssa, east, west]).to_parquet(
+        tables / "assessment_result_school.parquet", index=False,
+    )
+    pd.DataFrame([_result("112011103", 20.0, "district-key", "keystone")]).to_parquet(
+        tables / "assessment_result.parquet", index=False,
+    )
+    pd.DataFrame([
+        {"aun": "112011103", "category": "school_district"},
+        {"aun": "102020001", "category": "charter_school"},
+        {"aun": "115210001", "category": "career_and_technical_center"},
+        {"aun": "124150002", "category": "charter_school"},
+        {"aun": "126000002", "category": "charter_school"},
+        {"aun": "114060557", "category": "career_and_technical_center"},
+    ]).to_parquet(tables / "lea.parquet", index=False)
+
+    connection = duckdb.connect()
+    try:
+        connection.execute(schema_sql(tables.resolve().as_posix(), [
+            "assessment_result",
+            "assessment_result_school",
+            "lea",
+        ]))
+        building_pct = connection.execute("""
+            SELECT pct_proficient_and_above
+            FROM assessment_result_school
+            WHERE school_number = '1367'
+        """).fetchone()[0]
+        kept = connection.execute("""
+            SELECT pct_proficient_and_above
+            FROM assessment_result_school
+            WHERE aun = '115210001'
+        """).fetchone()[0]
+        partial_pct = connection.execute("""
+            SELECT pct_proficient_and_above
+            FROM assessment_result_school
+            WHERE aun = '124150002'
+        """).fetchone()[0]
+        pssa_pct = connection.execute("""
+            SELECT pct_proficient_and_above
+            FROM assessment_result_school
+            WHERE aun = '126000002'
+        """).fetchone()[0]
+        centers = connection.execute("""
+            SELECT school_number, pct_proficient_and_above
+            FROM assessment_result_school
+            WHERE aun = '114060557'
+            ORDER BY school_number
+        """).fetchall()
+        lea = connection.execute("SELECT aun, pct_proficient_and_above FROM assessment_lea").fetchdf()
+    finally:
+        connection.close()
+
+    assert building_pct == 60.5
+    assert kept == 16.0
+    assert partial_pct is None or pd.isna(partial_pct)
+    assert pssa_pct is None or pd.isna(pssa_pct)
+    assert centers == [("6304", 3.0), ("7068", 3.0)]
+
+    def proficient(aun: str):
+        value = lea.loc[lea["aun"] == aun, "pct_proficient_and_above"].iloc[0]
+        return None if pd.isna(value) else value
+
+    assert set(lea["aun"]) == {"112011103", "102020001", "115210001", "124150002", "126000002"}
+    assert proficient("112011103") == 20.0
+    assert proficient("102020001") == 40.0
+    assert proficient("115210001") == 16.0
+    assert proficient("124150002") is None
+    assert proficient("126000002") is None
+
+
+def test_public_school_view_binds_the_sum_without_fetching(tmp_path: Path) -> None:
+    tables = tmp_path / "tables"
+    tables.mkdir()
+    frame = pd.DataFrame([{
+        "aun": "102020001",
+        "assessment": "keystone",
+        "pct_advanced": 4.1,
+        "pct_proficient": 56.4,
+        "pct_proficient_and_above": None,
+    }])
+    frame.to_parquet(tables / "assessment_result_school.parquet", index=False)
+    database = tmp_path / "pdenumbers.duckdb"
+    write_duckdb(
+        database,
+        "https://127.0.0.1:9/download/tables",
+        ["assessment_result_school"],
+        schema_from=tables,
+        extension_directory=tmp_path / "extensions",
+    )
+    connection = duckdb.connect(
+        str(database),
+        read_only=True,
+        config={
+            "extension_directory": str(tmp_path / "extensions"),
+            "home_directory": str(tmp_path / "extensions"),
+        },
+    )
+    try:
+        sql = connection.execute(
+            "SELECT sql FROM duckdb_views() WHERE view_name = 'assessment_result_school'"
+        ).fetchone()[0]
+        assert "pct_advanced + pct_proficient" in sql
+        assert "https://127.0.0.1:9/download/tables/assessment_result_school.parquet" in sql
+        assert str(tables) not in sql
+        columns = connection.execute("DESCRIBE SELECT * FROM assessment_result_school").fetchall()
+        assert [row[0] for row in columns] == list(frame.columns)
+    finally:
+        connection.close()
 
 
 def _result(aun: str, proficient: float, document_id: str, assessment: str = "pssa") -> dict:

@@ -933,8 +933,9 @@ def _keystone_school(row: dict, number: str, name: str) -> dict:
 def test_keystone_publishes_one_school_lea_and_skips_a_sum(tmp_path: Path, monkeypatch) -> None:
     """A charter or one-school technical school is its school row.
 
-    A district building is not the district total. Two schools are not added,
-    and a missing combined percent is not filled from advanced plus proficient.
+    A district building is not the district total. Two schools are not added.
+    A charter year with no combined percent uses advanced plus proficient.
+    A district year with no combined percent stays empty.
     """
     refined = tmp_path / "refined"
     refined.mkdir()
@@ -956,6 +957,13 @@ def test_keystone_publishes_one_school_lea_and_skips_a_sum(tmp_path: Path, monke
     school_rows = [
         _keystone_school(
             _keystone_result("112011103", 2024, "algebra_i", 15, 99.0, document_id="school-key"),
+            "1367", "Avon Grove HS",
+        ),
+        _keystone_school(
+            _keystone_result(
+                "112011103", 2022, "algebra_i", 241, None,
+                advanced=4.1, proficient_level=56.4, document_id="school-2022",
+            ),
             "1367", "Avon Grove HS",
         ),
         _keystone_school(
@@ -1047,6 +1055,13 @@ def test_keystone_publishes_one_school_lea_and_skips_a_sum(tmp_path: Path, monke
     early = keystone["112011103"][2022]["algebra_i"]["011"]["All Students"]
     assert early == {"n": 100, "advanced": 10.0, "proficient": 30.0, "basic": 3.0, "below": 4.0}
     assert "pct" not in early
+    building = connection.execute("""
+        SELECT school_year, pct_proficient_and_above
+        FROM assessment_result_school
+        WHERE aun = '112011103' AND subject = 'algebra_i'
+        ORDER BY school_year
+    """).fetchall()
+    assert building == [(2022, 60.5), (2024, 99.0)]
 
     charter = keystone["102020001"][2024]["algebra_i"]["011"]["All Students"]
     assert charter["pct"] == 22.8
@@ -1055,7 +1070,7 @@ def test_keystone_publishes_one_school_lea_and_skips_a_sum(tmp_path: Path, monke
     assert keystone["102020001"][2024]["biology"]["011"]["All Students"]["pct"] == 40.0
     assert keystone["102020001"][2024]["algebra_i"]["011"]["Multi-ethnic (not Hispanic)"]["pct"] == 18.0
     charter_early = keystone["102020001"][2022]["algebra_i"]["011"]["All Students"]
-    assert "pct" not in charter_early
+    assert charter_early["pct"] == 40.0
     assert charter_early["n"] == 30
     assert charter_early["advanced"] == 10.0
     assert charter_early["proficient"] == 30.0
@@ -1082,7 +1097,7 @@ def test_keystone_publishes_one_school_lea_and_skips_a_sum(tmp_path: Path, monke
     )
     assert "keystoneSchoolsOnly" not in plain
     assert plain["years"]["2024"]["keystone"]["algebra_i"]["011"]["All Students"]["pct"] == 22.8
-    assert "pct" not in plain["years"]["2022"]["keystone"]["algebra_i"]["011"]["All Students"]
+    assert plain["years"]["2022"]["keystone"]["algebra_i"]["011"]["All Students"]["pct"] == 40.0
 
     profiles = [
         {"aun": "112011103", "name": "Avon Grove", "county": "Chester", "category": "school_district"},

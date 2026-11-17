@@ -611,7 +611,7 @@ def _assessment_school_lea(tables: dict[str, pd.DataFrame]) -> list[str]:
     district = tables["assessment_result"]
     directory = tables["lea"].drop_duplicates("aun")
     categories = dict(zip(directory["aun"].astype(str), directory["category"].astype(str), strict=True))
-    view = _assessment_lea_frame(tables)
+    view, school_view = _assessment_lea_frame(tables)
     errors = []
     if "growth" in view.columns:
         errors.append("assessment_lea carries growth")
@@ -641,12 +641,13 @@ def _assessment_school_lea(tables: dict[str, pd.DataFrame]) -> list[str]:
         )
         if not promoted.empty:
             errors.append(f"PSSA {int(year)} AUN {aun} has an LEA row from {int(schools)} schools")
-    errors.extend(_lea_matches_school(view, school, categories))
+    errors.extend(_lea_matches_school(view, school_view, categories))
     errors.extend(_lea_matches_district(view, district, categories))
     return errors
 
 
 def _lea_matches_school(view, school, categories: dict[str, str]) -> list[str]:
+    """The LEA copy matches the school view, including a filled Keystone proficient+."""
     if school.empty:
         extra = view.loc[view["category"].astype(str) != "school_district"] if not view.empty else view
         if extra is not None and not extra.empty:
@@ -705,19 +706,30 @@ def _lea_matches_district(view, district, categories: dict[str, str]) -> list[st
     )
 
 
-def _assessment_lea_frame(tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
+def _assessment_lea_frame(tables: dict[str, pd.DataFrame]) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """LEA view, and the school view it copies.
+
+    The school view fills a null Keystone proficient+ from the level percents.
+    The LEA copy matches that view value. The stored parquet cell is unchanged.
+    """
     import duckdb
 
-    from pa_edu.portal import load_views
+    from pa_edu.portal import assessment_school_select, load_views
 
     statement = next(view.sql for view in load_views() if view.name == "assessment_lea")
     connection = duckdb.connect()
     try:
         connection.register("assessment_result", tables["assessment_result"])
-        connection.register("assessment_result_school", tables["assessment_result_school"])
+        connection.register("_assessment_result_school", tables["assessment_result_school"])
+        connection.execute(
+            "CREATE VIEW assessment_result_school AS "
+            + assessment_school_select("_assessment_result_school")
+        )
         connection.register("lea", tables["lea"])
         connection.execute(statement)
-        return connection.execute("SELECT * FROM assessment_lea").fetchdf()
+        lea = connection.execute("SELECT * FROM assessment_lea").fetchdf()
+        school = connection.execute("SELECT * FROM assessment_result_school").fetchdf()
+        return lea, school
     finally:
         connection.close()
 

@@ -26,7 +26,14 @@ import pandas as pd
 import requests
 
 from pa_edu.common import DATA_DIR, ROOT
-from pa_edu.portal import DUCKDB_NAME, PUBLIC_TABLE_ROOT, build_portal, load_views, write_duckdb
+from pa_edu.portal import (
+    DUCKDB_NAME,
+    PUBLIC_TABLE_ROOT,
+    assessment_school_select,
+    build_portal,
+    load_views,
+    write_duckdb,
+)
 
 OUT = ROOT / "pde_site"
 WEB = Path(__file__).resolve().parent / "web"
@@ -2155,10 +2162,9 @@ def _bind_assessment_lea(connection: duckdb.DuckDBPyConnection) -> str | None:
         ("assessment_result_school", school),
         ("lea", lea),
     ):
-        connection.execute(
-            f"CREATE OR REPLACE VIEW {name} AS "
-            f"SELECT * FROM read_parquet('{_sql_path(path)}')"
-        )
+        source = f"read_parquet('{_sql_path(path)}')"
+        select = assessment_school_select(source) if name == "assessment_result_school" else f"SELECT * FROM {source}"
+        connection.execute(f"CREATE OR REPLACE VIEW {name} AS {select}")
     statement = next(view.sql for view in load_views() if view.name == "assessment_lea")
     connection.execute(statement)
     return "assessment_lea"
@@ -2215,9 +2221,9 @@ def _keystone(connection: duckdb.DuckDBPyConnection) -> dict:
 
     Reads `assessment_lea`. A school district stays on the district workbook.
     Any other LEA is the single school row for that year. Two or more schools
-    are omitted there and are not added together. `pct` is only the published
-    combined percent. Advanced and proficient are kept as their own levels
-    and are not summed into the headline.
+    are omitted there and are not added together. `pct` is that row's
+    proficient+. On a school row, a null combined percent is advanced plus
+    proficient. The level percents stay on the row.
 
     2022 and 2023 workbooks label multi-ethnic students "Multi-Racial".
     Later files, and the PSSA files, say "Multi-ethnic". Store one name.
