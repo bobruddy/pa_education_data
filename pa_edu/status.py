@@ -274,17 +274,18 @@ def _refined_section(refined: dict) -> str:
         link = html.escape(name)
         rows.append(
             "<tr>"
-            f'<td><a href="/refined/{link}">{link}</a></td>'
+            f'<td><a href="/browse/{link}">{link}</a></td>'
             f"<td class=\"num\">{_rows(table.get('rows'))}</td>"
             f"<td class=\"num\">{html.escape(_bytes(table.get('bytes')))}</td>"
+            f'<td><a href="/refined/{link}">parquet</a></td>'
             "</tr>"
         )
-    body = "".join(rows) or "<tr><td colspan=\"3\">No refined tables.</td></tr>"
+    body = "".join(rows) or "<tr><td colspan=\"4\">No refined tables.</td></tr>"
     return (
         f"<p>School years (start year): {_text(year_text)}</p>"
         f"<p>Newest document: {_text(newest_text)}</p>"
         '<div class="wrap"><table><thead><tr><th>Table</th><th class="num">Rows</th>'
-        f'<th class="num">Size</th></tr></thead><tbody>{body}</tbody></table></div>'
+        f'<th class="num">Size</th><th>Download</th></tr></thead><tbody>{body}</tbody></table></div>'
     )
 
 

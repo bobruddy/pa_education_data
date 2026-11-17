@@ -1,11 +1,12 @@
-"""Serve refined Parquet and a status page. Workbooks stay off this port.
+"""Serve refined Parquet, a table browser, and a status page. Workbooks stay off this port.
 
 DuckDB ``httpfs`` reads ``/refined/<table>.parquet``. Range requests are
 supported so a query can fetch the row groups it needs. Files are replaced
 by rename, and names that are not a finished table are not served.
 
-``/`` and ``/status`` are the check and inventory page. ``/status.json`` is
-the same report for a monitor. Both read ``<data>/status/runs.json``.
+``/browse/<table>.parquet`` is one page of that file. ``/`` and ``/status``
+are the check and inventory page. ``/status.json`` is the same report for a
+monitor. Both read ``<data>/status/runs.json``.
 """
 
 from __future__ import annotations
@@ -17,6 +18,7 @@ import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
+from pa_edu.browse import render_browse
 from pa_edu.common import DATA_DIR
 from pa_edu.status import render_status, status_report
 
@@ -37,12 +39,17 @@ class Handler(BaseHTTPRequestHandler):
         print(f"{self.address_string()} {fmt % args}")
 
     def _handle(self, send_body: bool) -> None:
-        path = urllib.parse.unquote(urllib.parse.urlparse(self.path).path)
+        parsed = urllib.parse.urlparse(self.path)
+        path = urllib.parse.unquote(parsed.path)
         if path in {"/", "/status", "/status.json"}:
             self._status(send_body, as_json=path == "/status.json")
             return
         if path in {"/refined", "/refined/"}:
             self._list(send_body)
+            return
+        if path.startswith("/browse/"):
+            name = path.removeprefix("/browse/")
+            self._table(name, urllib.parse.parse_qs(parsed.query), send_body)
             return
         name = path.removeprefix("/refined/")
         if name == path or not TABLE_NAME.fullmatch(name):
@@ -77,6 +84,17 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         if send_body:
             self.wfile.write(body)
+
+    def _table(self, name: str, query: dict[str, list[str]], send_body: bool) -> None:
+        if not TABLE_NAME.fullmatch(name):
+            self.send_error(404)
+            return
+        file = (self.root / name).resolve()
+        if file.parent != self.root.resolve() or not file.is_file():
+            self.send_error(404)
+            return
+        body = render_browse(file, query).encode()
+        self._send_bytes(body, "text/html; charset=utf-8", send_body)
 
     def _list(self, send_body: bool) -> None:
         if self.root.is_dir():
