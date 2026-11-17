@@ -634,8 +634,11 @@ def _spending(
     rows: dict[str, list[tuple[str, str, float]]] = {}
     documents = set()
     for aun, function, obj, amount, document_id in frame:
-        if function is None or obj is None or amount is None:
-            raise SystemExit(f"{aun} general-fund {kind} row is missing a function, object, or amount")
+        if function is None or obj is None:
+            raise SystemExit(f"{aun} general-fund {kind} row is missing a function or object")
+        # A blank amount is absence. A reported zero stays.
+        if amount is None or amount != amount:
+            continue
         function = str(function)
         obj = str(obj)
         if len(function) != 4 or not function.isdigit() or len(obj) != 3 or not obj.isdigit():

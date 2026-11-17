@@ -189,6 +189,8 @@ def write_compare(
         fact("124150503", "3300", "100", 0),
         # Spending with no students is absence.
         fact("124152003", "1110", "100", 5000),
+        # A blank amount is not a posted zero and does not fail the build.
+        fact("124151902", "2110", "100", None),
     ]
     if charter_on_parent:
         rows.append(fact("124151902", "1100", "562", 25))
