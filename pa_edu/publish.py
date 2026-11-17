@@ -268,7 +268,7 @@ def main() -> None:
     data_dir = OUT / "data" / "lea"
     data_dir.mkdir(parents=True)
     catalog["comparisons"] = _publish_comparisons(REFINED)
-    for name in ("index.html", "app.css", "app.js", "stamp.js"):
+    for name in ("index.html", "app.css", "app.js", "stamp.js", "favicon.svg"):
         shutil.copyfile(WEB / name, OUT / name)
 
     rows = []

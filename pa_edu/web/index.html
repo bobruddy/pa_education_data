@@ -3,15 +3,24 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PDE data</title>
-<link rel="stylesheet" href="app.css?v=20261117d">
+<title>Pennsylvania education numbers</title>
+<link rel="icon" href="favicon.svg?v=20261117g" type="image/svg+xml">
+<link rel="stylesheet" href="app.css?v=20261117f">
 </head>
 <body>
 <a class="skip" href="#app">Skip to content</a>
 <header class="top">
   <div class="top-row">
-    <a class="brand" href="./">PDE data</a>
-    <p class="brand-note">Pennsylvania local education agencies</p>
+    <div class="brand-block">
+      <a class="brand" href="./">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M5.3 3.6H26.7L24.3 8.6 30.5 8.8 23.1 28.4H8.9L1.6 8.8 7.7 8.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter" stroke-miterlimit="3"/>
+          <path d="M13.2 24.5V18M16 24.5V12M18.8 24.5V19.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-name">Pennsylvania education numbers</span>
+      </a>
+      <p class="brand-note">Not affiliated with or funded by the Commonwealth of Pennsylvania.</p>
+    </div>
     <button type="button" class="nav-link" data-about-open>About</button>
     <a class="nav-link site-link" href="download/">Downloads</a>
     <button type="button" id="share" class="share" aria-label="Copy link to this view">
@@ -55,6 +64,8 @@
 <dialog id="about" class="about" aria-labelledby="about-title">
   <button type="button" class="about-close" aria-label="Close">×</button>
   <h2 id="about-title">About</h2>
+  <h3>Independence</h3>
+  <p>This site is not affiliated with or funded by the Commonwealth of Pennsylvania.</p>
   <h3>Where the numbers come from</h3>
   <p>The numbers come from Pennsylvania and U.S. government sources. Detailed views link the source file for each figure.</p>
   <h3>What this project does</h3>
@@ -65,6 +76,6 @@
   <p>I am a parent and community member, passionate about public education. I spent 28 years in technology infrastructure, most recently in data engineering.</p>
   <p class="about-sign">Robert Ruddy</p>
 </dialog>
-<script type="module" src="app.js?v=20261117d"></script>
+<script type="module" src="app.js?v=20261117e"></script>
 </body>
 </html>

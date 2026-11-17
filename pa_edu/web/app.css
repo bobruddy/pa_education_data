@@ -54,14 +54,28 @@ a:hover { color: #083f3b; }
   align-items: center;
   gap: 16px;
 }
+.brand-block { flex: 1; min-width: 0; }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
   font-family: "Iowan Old Style", Palatino, Georgia, serif;
-  font-size: 1.45rem;
+  font-size: 1.35rem;
+  line-height: 1.15;
   color: var(--ink);
   text-decoration: none;
   letter-spacing: -0.02em;
 }
-.brand-note { margin: 0; color: var(--muted); flex: 1; }
+.mark { width: 28px; height: 28px; flex: none; color: var(--teal); }
+.brand-name { min-width: 0; }
+.brand-note {
+  margin: 2px 0 0 38px;
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
 .share {
   display: inline-flex;
   align-items: center;
@@ -761,7 +775,10 @@ table.schools td.num, table.schools th.num { text-align: right; }
 @media (max-width: 800px) {
   .overview-group { min-width: min(100%, calc(var(--cards) * 170px)); }
   .sun-layout { grid-template-columns: 1fr; }
-  .brand-note { display: none; }
+  .brand-block { flex: 1 1 100%; }
+  .brand { font-size: 1.15rem; }
+  .mark { width: 24px; height: 24px; }
+  .brand-note { margin-left: 34px; }
   .top-row { flex-wrap: wrap; row-gap: 8px; }
   .site-foot-row { flex-direction: column; }
   .site-stamp { align-items: flex-start; text-align: left; }

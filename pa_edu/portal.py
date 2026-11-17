@@ -28,7 +28,7 @@ from pa_edu.common import DATA_DIR, ROOT
 PUBLIC_SITE = "https://pdenumbers.org"
 PUBLIC_TABLE_ROOT = f"{PUBLIC_SITE}/download/tables"
 DUCKDB_NAME = "pdenumbers.duckdb"
-ASSET_VERSION = "20261114b"
+ASSET_VERSION = "20261117b"
 WEB_CSS = Path(__file__).resolve().parent / "web" / "download.css"
 PORTAL_SQL = ROOT / "sql" / "portal.sql"
 _NAME = re.compile(r"^[a-z][a-z0-9_]*$")
@@ -328,15 +328,24 @@ def render_html(
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>PDE data download</title>
+<title>Download · Pennsylvania education numbers</title>
+<link rel="icon" href="../favicon.svg?v={ASSET_VERSION}" type="image/svg+xml">
 <link rel="stylesheet" href="download.css?v={ASSET_VERSION}">
 </head>
 <body>
 <a class="skip" href="#content">Skip to content</a>
 <header class="top">
   <div class="top-row">
-    <a class="brand" href="../">PDE data</a>
-    <p class="brand-note">Download</p>
+    <div class="brand-block">
+      <a class="brand" href="../">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M5.3 3.6H26.7L24.3 8.6 30.5 8.8 23.1 28.4H8.9L1.6 8.8 7.7 8.6Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="miter" stroke-miterlimit="3"/>
+          <path d="M13.2 24.5V18M16 24.5V12M18.8 24.5V19.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span class="brand-name">Pennsylvania education numbers</span>
+      </a>
+      <p class="brand-note">Not affiliated with or funded by the Commonwealth of Pennsylvania.</p>
+    </div>
   </div>
 </header>
 <main id="content">

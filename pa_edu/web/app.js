@@ -14,6 +14,7 @@ const STATUSES = [
   ["unknown", "Unknown"],
 ];
 const CATEGORY_LABEL = Object.fromEntries(CATEGORIES);
+const SITE_NAME = "Pennsylvania education numbers";
 
 const app = document.querySelector("#app");
 const crumb = document.querySelector("#crumb");
@@ -910,7 +911,7 @@ function paintHome(state) {
     results.innerHTML = hits.length
       ? `<div class="list">${hits.slice(0, 40).map((lea) => leaLink(lea, state)).join("")}</div>`
       : `<p class="empty">No LEAs match that search.</p>`;
-    document.title = `Search · PDE data`;
+    document.title = `Search · ${SITE_NAME}`;
     return;
   }
   const byCounty = new Map();
@@ -932,7 +933,7 @@ function paintHome(state) {
   results.innerHTML = cards.length
     ? `<div class="county-grid">${cards.join("")}</div>`
     : `<p class="empty">No counties match these filters.</p>`;
-  document.title = "PDE data";
+  document.title = SITE_NAME;
 }
 
 function paintCounty(state) {
@@ -960,7 +961,7 @@ function paintCounty(state) {
   app.querySelector("#results").innerHTML = rows.length
     ? rows.map((lea) => leaLink(lea, state)).join("")
     : `<p class="empty">No LEAs match these filters.</p>`;
-  document.title = state.county + " · PDE data";
+  document.title = state.county + " · " + SITE_NAME;
 }
 
 function leaLink(lea, state) {
@@ -1051,7 +1052,7 @@ function paintLea(state) {
   else if (tab === "pssa") paintPssa(state);
   else paintKeystone(state);
 
-  document.title = leaPack.name + " · PDE data";
+  document.title = leaPack.name + " · " + SITE_NAME;
 }
 
 function financeStats(block, priorBlock, priorYear, year) {
@@ -4802,7 +4803,7 @@ function paintFund10() {
   const code = comparePath.at(-1) || null;
   const kids = code ? shown.nodes[code].children : compareMajorCodes();
   app.querySelector("#compare-title").textContent = `${shown.yearLabel} ${shown.heading} per student`;
-  document.title = `${comparePack.title} · ${comparePack.county} · PDE data`;
+  document.title = `${comparePack.title} · ${comparePack.county} · ${SITE_NAME}`;
   const deck = app.querySelector("#compare-deck");
   if (!code) deck.textContent = shown.blurb;
   else if (kids.length) deck.textContent = `${compareNamed(code)}. Each bar is the next account. Click a color to open it.`;

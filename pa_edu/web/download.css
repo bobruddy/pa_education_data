@@ -46,17 +46,31 @@ a:hover { color: #083f3b; }
   max-width: 1120px;
   margin: 0 auto;
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 16px;
 }
+.brand-block { min-width: 0; }
 .brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 100%;
   font-family: "Iowan Old Style", Palatino, Georgia, serif;
-  font-size: 1.45rem;
+  font-size: 1.35rem;
+  line-height: 1.15;
   color: var(--ink);
   text-decoration: none;
   letter-spacing: -0.02em;
 }
-.brand-note { margin: 0; color: var(--muted); }
+.mark { width: 28px; height: 28px; flex: none; color: var(--teal); }
+.brand-name { min-width: 0; }
+.brand-note {
+  margin: 2px 0 0 38px;
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: 0.78rem;
+  line-height: 1.3;
+}
 
 main {
   max-width: 1120px;
@@ -150,6 +164,9 @@ td.num, th.num { text-align: right; white-space: nowrap; }
 .site-stamp[hidden] { display: none; }
 
 @media (max-width: 800px) {
+  .brand { font-size: 1.15rem; }
+  .mark { width: 24px; height: 24px; }
+  .brand-note { margin-left: 34px; }
   .counties { columns: 1; }
   h1 { font-size: 1.7rem; }
   .site-foot-row { flex-direction: column; }
