@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>PDE data</title>
-<link rel="stylesheet" href="app.css?v=20261116b">
+<link rel="stylesheet" href="app.css?v=20261116d">
 </head>
 <body>
 <a class="skip" href="#app">Skip to content</a>
@@ -12,6 +12,7 @@
   <div class="top-row">
     <a class="brand" href="./">PDE data</a>
     <p class="brand-note">Pennsylvania local education agencies</p>
+    <button type="button" class="nav-link" data-about-open>About</button>
     <a class="nav-link site-link" href="download/">Downloads</a>
     <button type="button" id="share" class="share" aria-label="Copy link to this view">
       <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -40,7 +41,7 @@
         <a class="feedback" data-template="03-site-bug.yml" data-page-field="url" href="https://github.com/bobruddy/pa_education_data/issues/new?template=03-site-bug.yml">site bug</a>.
         A free GitHub account is required.
       </p>
-      <p><a class="site-link" href="download/">Download the tables</a></p>
+      <p><button type="button" class="foot-link" data-about-open>About</button> · <a class="site-link" href="download/">Download the tables</a></p>
     </div>
     <p class="site-stamp" id="build-stamp" hidden>
       <span>Commit <a href="https://github.com/bobruddy/pa_education_data"></a></span>
@@ -51,6 +52,19 @@
 </footer>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="tip" role="tooltip" hidden></div>
-<script type="module" src="app.js?v=20261116i"></script>
+<dialog id="about" class="about" aria-labelledby="about-title">
+  <button type="button" class="about-close" aria-label="Close">×</button>
+  <h2 id="about-title">About</h2>
+  <h3>Where the numbers come from</h3>
+  <p>The numbers come from Pennsylvania and U.S. government sources. Detailed views link the source file for each figure.</p>
+  <h3>What this project does</h3>
+  <p>This site pulls those public files in, normalizes them into a database, and lays them out for browsing.</p>
+  <h3>Code and reporting</h3>
+  <p>All of the code is open source. You can report bugs, data problems, or feature requests at the links in the footer.</p>
+  <h3>About the author</h3>
+  <p>I am a parent and community member, passionate about public education. I spent 28 years in technology infrastructure, most recently in data engineering.</p>
+  <p class="about-sign">Robert Ruddy</p>
+</dialog>
+<script type="module" src="app.js?v=20261116j"></script>
 </body>
 </html>

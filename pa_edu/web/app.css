@@ -86,6 +86,47 @@ a:hover { color: #083f3b; }
   box-shadow: var(--shadow);
 }
 .nav-link:hover, .nav-link:focus-visible { border-color: var(--teal); color: var(--teal); outline: none; }
+.about {
+  width: min(34rem, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  margin: auto;
+  padding: 22px 22px 18px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--card);
+  color: var(--ink);
+  box-shadow: 0 10px 30px rgba(28, 25, 21, 0.22);
+}
+.about::backdrop { background: rgba(28, 25, 21, 0.45); }
+.about h2 {
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 1.6rem;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  margin: 0 36px 12px 0;
+}
+.about h3 { font-size: 0.95rem; font-weight: 600; margin: 14px 0 4px; }
+.about p { margin: 0; }
+.about p + p { margin-top: 10px; }
+.about .about-sign {
+  margin-top: 16px;
+  font-family: "Iowan Old Style", Palatino, Georgia, serif;
+  font-size: 1.05rem;
+}
+.about-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
+  color: var(--ink);
+  line-height: 1;
+  box-shadow: var(--shadow);
+}
+.about-close:hover, .about-close:focus-visible { border-color: var(--teal); color: var(--teal); outline: none; }
 .crumb {
   max-width: 1120px;
   margin: 6px auto 0;
@@ -482,8 +523,15 @@ table.schools td.num, table.schools th.num { text-align: right; }
 .site-foot-notes { min-width: 0; }
 .site-foot-notes p { margin: 0; }
 .site-foot-notes p + p { margin-top: 6px; }
-.site-foot a { color: var(--muted); text-underline-offset: 2px; }
-.site-foot a:hover { color: var(--teal); }
+.site-foot a, .foot-link { color: var(--muted); text-underline-offset: 2px; }
+.site-foot a:hover, .foot-link:hover, .foot-link:focus-visible { color: var(--teal); outline: none; }
+.foot-link {
+  border: 0;
+  padding: 0;
+  background: none;
+  font: inherit;
+  text-decoration: underline;
+}
 .site-stamp {
   display: flex;
   flex-direction: column;
@@ -657,6 +705,7 @@ table.schools td.num, table.schools th.num { text-align: right; }
   .overview-group { min-width: min(100%, calc(var(--cards) * 170px)); }
   .sun-layout { grid-template-columns: 1fr; }
   .brand-note { display: none; }
+  .top-row { flex-wrap: wrap; row-gap: 8px; }
   .site-foot-row { flex-direction: column; }
   .site-stamp { align-items: flex-start; text-align: left; }
   .stats, .stats-wide, .stats-5, .stats-6, .stats-2, .stats-3, .panels, .lea-row, .salary-grid { grid-template-columns: 1fr 1fr; }

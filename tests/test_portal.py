@@ -21,6 +21,19 @@ def test_county_slug_is_a_file_name() -> None:
     assert county_slug("Adams") == "adams"
 
 
+def test_about_control_opens_from_the_header_and_footer() -> None:
+    root = Path(__file__).resolve().parents[1]
+    html = (root / "pa_edu" / "web" / "index.html").read_text(encoding="utf-8")
+    script = (root / "pa_edu" / "web" / "app.js").read_text(encoding="utf-8")
+    header, _, rest = html.partition("</header>")
+    assert header.index('class="nav-link" data-about-open') < header.index('href="download/"')
+    footer = rest[rest.index('class="site-foot"') :]
+    assert footer.index('class="foot-link" data-about-open') < footer.index("Download the tables")
+    assert 'id="about"' in html
+    assert "pde-about-seen" in script
+    assert "30 * 24 * 60 * 60 * 1000" in script
+
+
 def test_downloads_link_leaves_the_lea_browser() -> None:
     root = Path(__file__).resolve().parents[1]
     html = (root / "pa_edu" / "web" / "index.html").read_text(encoding="utf-8")

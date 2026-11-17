@@ -4718,6 +4718,45 @@ async function render() {
   renderCrumb(readState());
 }
 
+const ABOUT_SEEN = "pde-about-seen";
+const ABOUT_DAYS = 30 * 24 * 60 * 60 * 1000;
+const about = document.querySelector("#about");
+
+function aboutDue() {
+  try {
+    const raw = localStorage.getItem(ABOUT_SEEN);
+    if (!raw) return true;
+    const seen = Number(raw);
+    return !Number.isFinite(seen) || Date.now() - seen >= ABOUT_DAYS;
+  } catch {
+    return false;
+  }
+}
+
+function rememberAbout() {
+  try {
+    localStorage.setItem(ABOUT_SEEN, String(Date.now()));
+  } catch {
+    /* private mode cannot store the timer */
+  }
+}
+
+function openAbout() {
+  if (!about.open) about.showModal();
+}
+
+document.querySelectorAll("[data-about-open]").forEach((button) => {
+  button.addEventListener("click", openAbout);
+});
+about.querySelector(".about-close").addEventListener("click", () => about.close());
+about.addEventListener("click", (event) => {
+  const box = about.getBoundingClientRect();
+  const inside = event.clientX >= box.left && event.clientX <= box.right
+    && event.clientY >= box.top && event.clientY <= box.bottom;
+  if (!inside) about.close();
+});
+about.addEventListener("close", rememberAbout);
+
 document.querySelector("#share").addEventListener("click", share);
 window.addEventListener("popstate", () => { render().catch(showError); });
 document.body.addEventListener("click", (event) => {
@@ -4734,4 +4773,5 @@ function showError(error) {
   app.innerHTML = `<h1>Something went wrong</h1><p class="lede">${escapeHtml(error.message)}</p>`;
 }
 
+if (aboutDue()) openAbout();
 render().catch(showError);
