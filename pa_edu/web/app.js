@@ -2021,7 +2021,7 @@ function drawKeystoneGaps(host, rows, metricLabel = "Proficient+") {
 function assessmentSourceNote(assessment, year) {
   const items = [];
   pushSource(items, catalog?.sources?.assessment, "Assessment Reporting");
-  const workbook = year == null || year === "" ? null : catalog?.sources?.[assessment]?.[String(year)];
+  const workbook = assessmentWorkbook(assessment, year);
   if (workbook) {
     const name = assessment === "pssa" ? "PSSA" : "Keystone";
     pushSource(items, workbook, `${yearLabel(year)} ${name} workbook`);
@@ -2032,6 +2032,17 @@ function assessmentSourceNote(assessment, year) {
     "Economically disadvantaged is PDE’s published group. Groups under 11 scored students are suppressed.",
     `Source: PDE Assessment Reporting · ${label}`,
   );
+}
+
+function assessmentWorkbook(assessment, year) {
+  if (year == null || year === "") return null;
+  const sources = catalog?.sources || {};
+  // A school district cites the district workbook. Every other LEA on this
+  // tab is the single school row, so the footnote cites that school file.
+  const key = assessment === "pssa" && leaPack?.category !== "school_district"
+    ? "pssaSchool"
+    : assessment;
+  return sources[key]?.[String(year)] || null;
 }
 
 function pssaCell(year, subject, gradeCode, group) {

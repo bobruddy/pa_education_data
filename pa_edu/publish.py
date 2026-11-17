@@ -26,7 +26,7 @@ import pandas as pd
 import requests
 
 from pa_edu.common import DATA_DIR, ROOT
-from pa_edu.portal import DUCKDB_NAME, PUBLIC_TABLE_ROOT, build_portal, write_duckdb
+from pa_edu.portal import DUCKDB_NAME, PUBLIC_TABLE_ROOT, build_portal, load_views, write_duckdb
 
 OUT = ROOT / "pde_site"
 WEB = Path(__file__).resolve().parent / "web"
@@ -172,6 +172,7 @@ def lea_document(profile: dict, years: dict) -> dict:
                 "act1Base",
                 "mills",
                 "keystone",
+                "pssa",
                 "charterAdm",
                 "homeEducation",
             )
@@ -849,7 +850,7 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
     sources = {
         "enrollment": {}, "afr": {}, "gfb": {}, "edna": None,
         "act1": None, "act1Base": None, "retax": {},
-        "pssa": {}, "keystone": {}, "assessment": ASSESSMENT_PAGE,
+        "pssa": {}, "pssaSchool": {}, "keystone": {}, "assessment": ASSESSMENT_PAGE,
         "enrollmentPage": ENROLLMENT_PAGE,
         "admPage": ADM_PAGE,
         "charterAdm": {}, "homeEducation": {}, "lowIncome": {}, "iep": None,
@@ -868,7 +869,7 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
             FROM '{REFINED / "document.parquet"}'
         )
         WHERE n = 1 AND parser IN (
-            'enrollment', 'afr', 'gfb', 'edna', 'act1', 'act1_base', 'retax', 'pssa', 'keystone',
+            'enrollment', 'afr', 'gfb', 'edna', 'act1', 'act1_base', 'retax', 'pssa', 'pssa_school', 'keystone',
             'charter_adm', 'homeschool', 'low_income', 'iep', 'cohort_grad', 'chart', 'personnel',
             'saipe'
         )
@@ -911,6 +912,8 @@ def _catalog(connection: duckdb.DuckDBPyConnection) -> dict:
             and not _missing(row.source_url)
         ):
             sources["personnelWorkbooks"][str(int(row.school_year))] = row.source_url
+        elif row.parser == "pssa_school" and row.school_year is not None and not _missing(row.school_year):
+            sources["pssaSchool"][str(int(row.school_year))] = row.source_url
         elif row.school_year is not None and not _missing(row.school_year):
             sources[row.parser][str(int(row.school_year))] = row.source_url
     functions = {
@@ -2125,15 +2128,50 @@ def _enrollment_dim(connection: duckdb.DuckDBPyConnection, filename: str, column
     return grouped
 
 
+def _bind_assessment_lea(connection: duckdb.DuckDBPyConnection) -> str | None:
+    """Point DuckDB at `assessment_lea`, or the district file when the school file is absent.
+
+    The view keeps a school district on the district workbook and copies one
+    school row for any other LEA. District buildings stay in the school table.
+    """
+    result = REFINED / "assessment_result.parquet"
+    if not result.exists():
+        return None
+    school = REFINED / "assessment_result_school.parquet"
+    lea = REFINED / "lea.parquet"
+    if not school.exists() or not lea.exists():
+        return f"read_parquet('{_sql_path(result)}')"
+    for name, path in (
+        ("assessment_result", result),
+        ("assessment_result_school", school),
+        ("lea", lea),
+    ):
+        connection.execute(
+            f"CREATE OR REPLACE VIEW {name} AS "
+            f"SELECT * FROM read_parquet('{_sql_path(path)}')"
+        )
+    statement = next(view.sql for view in load_views() if view.name == "assessment_lea")
+    connection.execute(statement)
+    return "assessment_lea"
+
+
 def _assessment(connection: duckdb.DuckDBPyConnection, assessment: str) -> dict:
-    path = REFINED / "assessment_result.parquet"
-    if not path.exists():
+    """PSSA rows for an LEA page. Keystone stays on `_keystone`.
+
+    `pct_proficient_and_above` is the only headline percent. A year the
+    workbook leaves null stays null here, including when advanced and
+    proficient are filled in. The scored count is still kept.
+    """
+    if assessment != "pssa":
+        raise ValueError(f"{assessment} is not a PSSA publish")
+    source = _bind_assessment_lea(connection)
+    if source is None:
         return {}
     frame = connection.sql(f"""
         SELECT aun, school_year, subject, grade, student_group,
                number_scored, pct_proficient_and_above
-        FROM '{path}'
-        WHERE assessment = '{assessment}'
+        FROM {source}
+        WHERE assessment = 'pssa'
           AND subject IN ('math', 'ela')
           AND grade IN ('total', '003', '004', '005', '006', '007', '008')
           AND student_group IN (

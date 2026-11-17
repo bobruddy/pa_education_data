@@ -12,6 +12,7 @@ from pa_edu.publish import (
     SALARY_EDGES,
     JSON_GZIP_LEVEL,
     _ages517_share,
+    _assessment,
     _latest_population_5_17,
     _catalog,
     _county_ranks,
@@ -99,6 +100,22 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
             "catalog_id": "saipe-2023",
             "retrieved_at": "2026-01-01T00:00:00",
         },
+        {
+            "parser": "pssa",
+            "school_year": 2024,
+            "source_url": "https://example.test/pssa-district-2024.xlsx",
+            "page_url": None,
+            "catalog_id": "pssa-district-2024",
+            "retrieved_at": "2026-01-01T00:00:00",
+        },
+        {
+            "parser": "pssa_school",
+            "school_year": 2024,
+            "source_url": "https://example.test/pssa-school-2024.xlsx",
+            "page_url": None,
+            "catalog_id": "pssa-school-2024",
+            "retrieved_at": "2026-01-01T00:00:00",
+        },
     ]).to_parquet(refined / "document.parquet", index=False)
     monkeypatch.setattr("pa_edu.publish.REFINED", refined)
     sources = _catalog(duckdb.connect())["sources"]
@@ -107,6 +124,8 @@ def test_catalog_links_each_personnel_workbook(tmp_path: Path, monkeypatch) -> N
         "2025": "https://example.test/staff-2025.xlsx",
     }
     assert sources["enrollment"]["2024"] == "https://example.test/enrollment-2024.xlsx"
+    assert sources["pssa"]["2024"] == "https://example.test/pssa-district-2024.xlsx"
+    assert sources["pssaSchool"]["2024"] == "https://example.test/pssa-school-2024.xlsx"
     assert sources["saipe"]["2023"] == "https://example.test/sd23-pa.txt"
     assert sources["saipePage"]["2023"] == (
         "https://www.census.gov/data/datasets/2023/demo/saipe/2023-school-districts.html"
@@ -741,6 +760,119 @@ def test_graduation_rank_uses_the_four_year_rate() -> None:
     assert ranks["2"][2024]["graduation"]["rank"] == 1
     assert ranks["1"][2024]["graduation"]["rank"] == 2
     assert ranks["2"][2024]["graduation"]["peers"][0]["value"] == 90
+
+
+def _pssa_result(aun: str, year: int, subject: str, grade: str, scored: int, proficient) -> dict:
+    return {
+        "aun": aun,
+        "school_year": year,
+        "assessment": "pssa",
+        "subject": subject,
+        "grade": grade,
+        "student_group": "All Students",
+        "number_scored": scored,
+        "pct_advanced": 10.0,
+        "pct_proficient": 30.0,
+        "pct_basic": 20.0,
+        "pct_below_basic": 40.0,
+        "pct_proficient_and_above": proficient,
+        "lea_name": "Name",
+        "county": "Chester",
+        "document_id": "district-doc",
+    }
+
+
+def test_pssa_publishes_one_school_lea_and_keeps_the_district_workbook(tmp_path: Path, monkeypatch) -> None:
+    """A charter is its school row. A district building is not the district total."""
+    refined = tmp_path / "refined"
+    refined.mkdir()
+    district = _pssa_result("112011103", 2024, "math", "total", 80, 40.0)
+    district_grade = _pssa_result("112011103", 2024, "math", "003", 20, 35.0)
+    stray_charter = _pssa_result("124150002", 2024, "math", "total", 9, 1.0)
+    phila = _pssa_result("126000001", 2024, "math", "total", 100, 30.0)
+    phila_ela = _pssa_result("126000001", 2024, "ela", "total", 100, 50.0)
+    chester = _pssa_result("110000001", 2024, "math", "total", 40, 10.0)
+    pd.DataFrame([district, district_grade, stray_charter, phila, phila_ela, chester]).to_parquet(
+        refined / "assessment_result.parquet", index=False,
+    )
+    early = _pssa_result("124150002", 2021, "math", "total", 44, None)
+    early_grade = _pssa_result("124150002", 2021, "math", "005", 8, None)
+    school_rows = [
+        {**_pssa_result("112011103", 2024, "math", "total", 15, 99.0), "school_number": "1", "school_name": "Building"},
+        {**_pssa_result("124150002", 2024, "math", "total", 50, 70.0), "school_number": "7691", "school_name": "Cyber"},
+        {**_pssa_result("124150002", 2024, "math", "003", 12, 55.0), "school_number": "7691", "school_name": "Cyber"},
+        {**_pssa_result("124150002", 2024, "ela", "total", 48, 60.0), "school_number": "7691", "school_name": "Cyber"},
+        {**early, "school_number": "7691", "school_name": "Cyber", "document_id": "school-2021"},
+        {**early_grade, "school_number": "7691", "school_name": "Cyber", "document_id": "school-2021"},
+        {**_pssa_result("124150002", 2024, "science", "total", 40, 80.0), "school_number": "7691", "school_name": "Cyber"},
+        {**_pssa_result("124150002", 2024, "math", "011", 30, 90.0), "school_number": "7691", "school_name": "Cyber"},
+        {**_pssa_result("123456789", 2024, "math", "total", 10, 10.0), "school_number": "1", "school_name": "One"},
+        {**_pssa_result("123456789", 2024, "math", "total", 10, 90.0), "school_number": "2", "school_name": "Two"},
+        {**_pssa_result("102020001", 2024, "math", "011", 20, 50.0), "school_number": "9", "school_name": "High"},
+        {**_pssa_result("126000002", 2021, "math", "total", 20, None), "school_number": "3", "school_name": "Early"},
+        {
+            **_pssa_result("124150002", 2024, "algebra_i", "011", 40, 22.0),
+            "assessment": "keystone",
+            "school_number": "7691",
+            "school_name": "Cyber",
+        },
+    ]
+    pd.DataFrame(school_rows).to_parquet(refined / "assessment_result_school.parquet", index=False)
+    pd.DataFrame([
+        {"aun": "112011103", "category": "school_district"},
+        {"aun": "126000001", "category": "school_district"},
+        {"aun": "110000001", "category": "school_district"},
+        {"aun": "124150002", "category": "charter_school"},
+        {"aun": "123456789", "category": "charter_school"},
+        {"aun": "102020001", "category": "charter_school"},
+        {"aun": "126000002", "category": "charter_school"},
+    ]).to_parquet(refined / "lea.parquet", index=False)
+    monkeypatch.setattr("pa_edu.publish.REFINED", refined)
+
+    pssa = _assessment(duckdb.connect(), "pssa")
+    district_total = pssa["112011103"][2024]["math"]["total"]["All Students"]
+    assert district_total == {"n": 80, "pct": 40.0}
+    assert pssa["112011103"][2024]["math"]["003"]["All Students"]["pct"] == 35.0
+    charter = pssa["124150002"][2024]["math"]["total"]["All Students"]
+    assert charter == {"n": 50, "pct": 70.0}
+    assert pssa["124150002"][2024]["math"]["003"]["All Students"]["pct"] == 55.0
+    assert pssa["124150002"][2024]["ela"]["total"]["All Students"]["pct"] == 60.0
+    early_cell = pssa["124150002"][2021]["math"]["total"]["All Students"]
+    assert early_cell == {"n": 44}
+    assert pssa["124150002"][2021]["math"]["005"]["All Students"] == {"n": 8}
+    assert "science" not in pssa["124150002"][2024]
+    assert "011" not in pssa["124150002"][2024]["math"]
+    assert "123456789" not in pssa
+    assert "102020001" not in pssa
+    assert pssa["126000002"][2021]["math"]["total"]["All Students"] == {"n": 20}
+
+    years = _years_for(
+        "124150002", {}, {}, {}, {}, pssa, {}, {}, {}, {}, {}, {},
+    )
+    document = lea_document(
+        {"aun": "124150002", "name": "Cyber", "county": "Philadelphia", "category": "charter_school"},
+        years,
+    )
+    assert document["years"]["2021"]["pssa"]["math"]["total"]["All Students"] == {"n": 44}
+    assert document["years"]["2024"]["pssa"]["math"]["003"]["All Students"]["pct"] == 55.0
+
+    profiles = [
+        {"aun": "112011103", "name": "Alpha", "county": "Fayette", "category": "school_district"},
+        {"aun": "126000001", "name": "Phila", "county": "Philadelphia", "category": "school_district"},
+        {"aun": "110000001", "name": "Chester", "county": "Chester", "category": "school_district"},
+        {"aun": "124150002", "name": "Cyber", "county": "Philadelphia", "category": "charter_school"},
+        {"aun": "123456789", "name": "Two", "county": "Philadelphia", "category": "charter_school"},
+        {"aun": "102020001", "name": "High", "county": "Philadelphia", "category": "charter_school"},
+        {"aun": "126000002", "name": "Early", "county": "Philadelphia", "category": "charter_school"},
+    ]
+    ranks = _county_ranks(profiles, {}, {}, {}, {}, pssa=pssa)
+    peers = [peer["aun"] for peer in ranks["124150002"][2024]["pssa_math"]["peers"]]
+    assert peers == ["124150002", "126000001"]
+    assert ranks["124150002"][2024]["pssa_math"]["rank"] == 1
+    assert ranks["126000001"][2024]["pssa_math"]["rank"] == 2
+    assert "pssa_math" not in ranks.get("124150002", {}).get(2021, {})
+    assert "126000002" not in ranks or 2021 not in ranks.get("126000002", {})
+    assert "pssa_ela" in ranks["124150002"][2024]
 
 
 def test_keystone_year_is_kept_on_its_own() -> None:
