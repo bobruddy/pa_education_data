@@ -208,6 +208,63 @@ h1 {
 .county-card:hover, .lea-row:hover { border-color: #c9bba4; }
 .county-card strong { display: block; font-size: 1.05rem; }
 .county-card span { color: var(--muted); font-size: 0.92rem; }
+.section-title { font-size: 1.05rem; font-weight: 600; margin: 8px 0 10px; }
+#comparisons { margin-bottom: 22px; }
+#comparisons:empty { display: none; }
+
+.compare .chips { align-items: center; }
+.compare .chip.sort { margin-left: auto; }
+.compare .board { margin: 8px 0 0; }
+.compare .grid {
+  display: grid;
+  grid-template-columns: minmax(11rem, 20rem) minmax(12rem, 1fr) 7.4rem;
+  column-gap: 12px;
+  row-gap: 7px;
+  align-items: center;
+}
+.compare .name { margin: 0; font-size: 0.95rem; color: inherit; text-decoration: none; }
+.compare a.name:hover { color: var(--teal); }
+.compare .value { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.compare .value.quiet { color: var(--muted); font-size: 0.92rem; }
+.compare .track {
+  position: relative;
+  display: flex;
+  gap: 1px;
+  height: 22px;
+  align-items: stretch;
+}
+.compare .seg {
+  display: block;
+  height: 100%;
+  border: 0;
+  padding: 0;
+  min-width: 2px;
+  border-radius: 1px;
+}
+.compare button.seg { cursor: pointer; }
+.compare .seg:hover, .compare .seg:focus-visible { outline: 2px solid var(--ink); outline-offset: 1px; }
+.compare .mark {
+  position: absolute;
+  top: -4px;
+  bottom: -4px;
+  width: 1px;
+  background: rgba(94, 87, 76, 0.7);
+  pointer-events: none;
+  z-index: 1;
+}
+.compare .median-note { position: relative; height: 1.2rem; margin-top: 6px; }
+.compare .median-note span {
+  position: absolute;
+  top: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+.compare .sources a { white-space: nowrap; }
+.compare-about { margin-top: 22px; max-width: 46rem; }
+.compare-about h2 { font-size: 0.95rem; font-weight: 600; margin: 16px 0 4px; }
+.compare-about h2:first-child { margin-top: 0; }
+.compare-about p { margin: 0; color: var(--muted); }
 
 .toolbar { display: flex; justify-content: space-between; gap: 12px; align-items: end; margin-bottom: 8px; }
 .list { display: flex; flex-direction: column; gap: 8px; }
@@ -711,6 +768,8 @@ table.schools td.num, table.schools th.num { text-align: right; }
   .stats, .stats-wide, .stats-5, .stats-6, .stats-2, .stats-3, .panels, .lea-row, .salary-grid { grid-template-columns: 1fr 1fr; }
   .lea-row { grid-template-columns: 1fr auto; }
   .lea-row .hide-sm { display: none; }
+  .compare .grid { grid-template-columns: minmax(7rem, 10rem) minmax(4rem, 1fr) 4.8rem; }
+  .compare .name, .compare .value { font-size: 0.82rem; }
   .salary-stats { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 560px) {

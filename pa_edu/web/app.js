@@ -324,6 +324,7 @@ function readState() {
   const experience = query.get("experience") === "edu" ? "edu" : "lea";
   return {
     county: query.get("county") || "",
+    compare: query.get("aun") ? "" : (query.get("compare") || ""),
     aun: query.get("aun") || "",
     year: query.get("year") || "",
     tab: LEA_TABS.some(([id]) => id === tab) ? tab : "overview",
@@ -355,6 +356,7 @@ function readState() {
 function writeUrl(state, mode) {
   const query = new URLSearchParams();
   if (state.county) query.set("county", state.county);
+  if (state.compare && !state.aun) query.set("compare", state.compare);
   if (state.aun) query.set("aun", state.aun);
   if (includeYear(state)) query.set("year", state.year);
   if (state.aun && state.tab && state.tab !== "overview") query.set("tab", state.tab);
@@ -491,16 +493,20 @@ function setPressed(selector, selected) {
 function renderCrumb(state) {
   const parts = [`<a href="./">Counties</a>`];
   if (state.county) {
-    const countyState = { ...state, aun: "", year: "" };
+    const countyState = { ...state, aun: "", year: "", compare: "" };
     parts.push(`<a href="${escapeAttr(link(countyState))}">${escapeHtml(state.county)}</a>`);
   }
-  if (state.aun && leaPack) parts.push(`<span>${escapeHtml(leaPack.name)}</span>`);
+  if (state.compare && !state.aun) {
+    const item = comparisonById(state.compare);
+    parts.push(`<span>${escapeHtml(item ? item.title : "Comparison")}</span>`);
+  } else if (state.aun && leaPack) parts.push(`<span>${escapeHtml(leaPack.name)}</span>`);
   crumb.innerHTML = parts.join(" / ");
 }
 
 function link(state) {
   const query = new URLSearchParams();
   if (state.county) query.set("county", state.county);
+  if (state.compare && !state.aun) query.set("compare", state.compare);
   if (state.aun) query.set("aun", state.aun);
   if (includeYear(state)) query.set("year", state.year);
   if (state.aun && state.tab && state.tab !== "overview") query.set("tab", state.tab);
@@ -930,6 +936,10 @@ function paintHome(state) {
 }
 
 function paintCounty(state) {
+  const title = app.querySelector("#county-title");
+  if (title) title.textContent = state.county;
+  const comparisons = app.querySelector("#comparisons");
+  if (comparisons) comparisons.innerHTML = comparisonCards(state);
   syncInput("#q", state.q);
   setPressed('[data-kind="category"]', (value) => state.category.includes(value));
   setPressed('[data-kind="status"]', (value) => state.status.includes(value));
@@ -4632,6 +4642,482 @@ function enrollmentSourceLinks(year) {
   return sourceNote(items, method, "Source: PDE enrollment files listed in the catalog");
 }
 
+const COMPARE_IDS = new Set(["fund10"]);
+let comparePack = null;
+let compareViewId = "actual";
+let comparePath = [];
+let compareOrder = null;
+
+function comparisonById(id) {
+  return (catalog?.comparisons || []).find((item) => item.id === id) || null;
+}
+
+function comparisonCards(state) {
+  const items = (catalog.comparisons || []).filter((item) => COMPARE_IDS.has(item.id));
+  if (!items.length) return "";
+  const cards = items.map((item) => {
+    const query = new URLSearchParams();
+    query.set("county", state.county);
+    query.set("compare", item.id);
+    return `<a class="county-card" href="${escapeAttr("?" + query.toString())}"><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.blurb)}</span></a>`;
+  }).join("");
+  return `<h2 class="section-title">Comparisons</h2><div class="county-grid">${cards}</div>`;
+}
+
+function countySlug(name) {
+  return String(name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
+async function renderComparison(state) {
+  if (!COMPARE_IDS.has(state.compare) || !comparisonById(state.compare)) {
+    app.dataset.view = "";
+    app.innerHTML = `<h1>Comparison not found</h1><p class="lede">This county page does not have that comparison.</p>`;
+    return;
+  }
+  const key = `${state.county}/${state.compare}`;
+  const fresh = app.dataset.view !== "compare" || comparePack?._key !== key;
+  if (!comparePack || comparePack._key !== key) {
+    app.dataset.view = "";
+    app.innerHTML = `<p class="lede">Loading ${escapeHtml(state.county)}…</p>`;
+    try {
+      comparePack = await loadJson(`data/compare/${countySlug(state.county)}/${state.compare}.json`);
+    } catch (error) {
+      app.dataset.view = "";
+      app.innerHTML = `<h1>Comparison not found</h1><p class="lede">${escapeHtml(error.message)}</p>`;
+      comparePack = null;
+      return;
+    }
+    comparePack._key = key;
+  }
+  if (fresh) restoreCompare(compareStateFromUrl());
+  if (ensure("compare", fund10Html())) bindFund10();
+  paintFund10();
+}
+
+function compareStateFromUrl() {
+  const query = new URLSearchParams(location.search);
+  const spend = query.get("spend");
+  const order = (query.get("order") || "").split(",").filter((aun) => /^\d{9}$/.test(aun));
+  return {
+    viewId: spend === "budget" || spend === "income" ? spend : "actual",
+    code: query.get("code") || "",
+    order,
+  };
+}
+
+function restoreCompare(saved) {
+  compareViewId = comparePack.views.some((item) => item.id === saved.viewId) ? saved.viewId : "actual";
+  comparePath = compareShown().nodes[saved.code] ? compareAncestors(saved.code) : [];
+  compareOrder = saved.order.length ? saved.order : null;
+}
+
+function syncCompareUrl() {
+  const state = readState();
+  const query = new URLSearchParams();
+  query.set("county", state.county);
+  query.set("compare", state.compare);
+  if (compareViewId !== "actual") query.set("spend", compareViewId);
+  const code = comparePath.at(-1);
+  if (code) query.set("code", code);
+  if (compareOrder?.length) query.set("order", compareOrder.join(","));
+  const next = location.pathname + "?" + query.toString();
+  if (next === location.pathname + location.search) return;
+  history.replaceState(null, "", next);
+  applyFeedbackLinks(buildStamp);
+}
+
+function fund10Html() {
+  return `<div class="compare">
+    <h1 id="compare-title"></h1>
+    <p class="lede" id="compare-deck"></p>
+    <div class="chips" id="compare-switch" aria-label="Which amounts"></div>
+    <div class="drill" id="compare-crumb"></div>
+    <div class="board" id="compare-board"></div>
+    <div class="compare-about" id="compare-about"></div>
+    <p class="sources" id="compare-sources"></p>
+  </div>`;
+}
+
+function bindFund10() {
+  app.querySelector("#compare-switch").addEventListener("click", (event) => {
+    if (event.target.closest("[data-sort]")) {
+      sortCompare();
+      return;
+    }
+    const button = event.target.closest("[data-view]");
+    if (!button || button.dataset.view === compareViewId) return;
+    compareViewId = button.dataset.view;
+    comparePath = [];
+    compareOrder = null;
+    hideTip();
+    paintFund10();
+  });
+  app.querySelector("#compare-crumb").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-back]");
+    if (!button) return;
+    if (button.dataset.back === "all") comparePath = [];
+    else comparePath = comparePath.slice(0, comparePath.indexOf(button.dataset.back) + 1);
+    hideTip();
+    paintFund10();
+  });
+  const board = app.querySelector("#compare-board");
+  board.addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-code]");
+    if (!button) return;
+    comparePath = compareAncestors(button.dataset.code);
+    hideTip();
+    paintFund10();
+  });
+  board.addEventListener("pointerover", (event) => {
+    const seg = event.target.closest("[data-code]");
+    if (!seg) return;
+    showCompareTip(seg, event.clientX, event.clientY);
+  });
+  board.addEventListener("pointermove", (event) => {
+    if (tip.hidden) return;
+    placeCompareTip(event.clientX, event.clientY);
+  });
+  board.addEventListener("pointerout", (event) => {
+    const seg = event.target.closest("[data-code]");
+    if (!seg || seg.contains(event.relatedTarget)) return;
+    hideTip();
+  });
+  board.addEventListener("focusin", (event) => {
+    const seg = event.target.closest("[data-code]");
+    if (!seg) return;
+    const rect = seg.getBoundingClientRect();
+    showCompareTip(seg, rect.left, rect.top);
+  });
+  board.addEventListener("focusout", (event) => {
+    if (event.target.closest("[data-code]")) hideTip();
+  });
+}
+
+function compareShown() {
+  return comparePack.views.find((item) => item.id === compareViewId);
+}
+
+function paintFund10() {
+  const shown = compareShown();
+  const code = comparePath.at(-1) || null;
+  const kids = code ? shown.nodes[code].children : compareMajorCodes();
+  app.querySelector("#compare-title").textContent = `${shown.yearLabel} ${shown.heading} per student`;
+  document.title = `${comparePack.title} · ${comparePack.county} · PDE data`;
+  const deck = app.querySelector("#compare-deck");
+  if (!code) deck.textContent = shown.blurb;
+  else if (kids.length) deck.textContent = `${compareNamed(code)}. Each bar is the next account. Click a color to open it.`;
+  else deck.textContent = compareNamed(code);
+  paintCompareSwitch();
+  paintCompareCrumb();
+  const clickable = !code || kids.length > 0;
+  const codes = !code ? kids : (kids.length ? kids : [code]);
+  paintCompareBoard(codes, compareListed(), code ? code : "total", clickable && kids.length > 0);
+  paintCompareAbout(code, kids.length ? kids : codes);
+  paintCompareSources();
+  syncCompareUrl();
+}
+
+function paintCompareAbout(code, shownCodes) {
+  const host = app.querySelector("#compare-about");
+  const shown = compareShown();
+  const items = code
+    ? [{ code, label: shown.nodes[code]?.label || code }]
+    : shownCodes.map((item) => ({ code: item, label: shown.nodes[item]?.label || item }));
+  host.innerHTML = items.map((item) => {
+    const text = compareChartText(item.code);
+    if (!text) return "";
+    return `<h2>${escapeHtml(`${item.code} ${item.label}`)}</h2><p>${escapeHtml(text)}</p>`;
+  }).join("");
+  host.hidden = !host.innerHTML;
+}
+
+function compareChartText(code) {
+  if (compareViewId === "income") return catalog.revenueDescriptions?.[code] || "";
+  if (String(code).includes("-")) {
+    const object = String(code).split("-").pop();
+    return catalog.objectDescriptions?.[object] || "";
+  }
+  return catalog.functionDescriptions?.[code] || "";
+}
+
+function paintCompareSwitch() {
+  const switcher = app.querySelector("#compare-switch");
+  switcher.replaceChildren();
+  for (const item of comparePack.views) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "chip";
+    button.dataset.view = item.id;
+    button.textContent = item.label;
+    button.setAttribute("aria-pressed", item.id === compareViewId ? "true" : "false");
+    switcher.append(button);
+  }
+  const sort = document.createElement("button");
+  sort.type = "button";
+  sort.className = "chip sort";
+  sort.dataset.sort = "desc";
+  sort.textContent = "Big to small";
+  switcher.append(sort);
+}
+
+function compareListed() {
+  const shown = compareShown();
+  if (!compareOrder) return shown.districts;
+  const byAun = new Map(shown.districts.map((item) => [item.aun, item]));
+  return compareOrder.map((aun) => byAun.get(aun)).filter(Boolean);
+}
+
+function sortCompare() {
+  const shown = compareShown();
+  const code = comparePath.at(-1) || null;
+  const kids = code ? shown.nodes[code].children : [];
+  const codes = code ? (kids.length ? kids : [code]) : compareMajorCodes();
+  const ranked = shown.districts.slice().sort((a, b) => {
+    const rank = (district) => {
+      if (!district.published) return [2, 0, district.name];
+      const amount = compareStack(district, codes);
+      if (amount == null || !(district.enrolled > 0)) return [1, 0, district.name];
+      return [0, -(amount / district.enrolled), district.name];
+    };
+    const [ar, ap, an] = rank(a);
+    const [br, bp, bn] = rank(b);
+    return ar - br || ap - bp || an.localeCompare(bn);
+  });
+  compareOrder = ranked.map((item) => item.aun);
+  hideTip();
+  paintFund10();
+}
+
+function paintCompareCrumb() {
+  const node = app.querySelector("#compare-crumb");
+  node.replaceChildren();
+  if (!comparePath.length) {
+    node.append(compareHere("All accounts"));
+    return;
+  }
+  node.append(compareCrumbButton("All accounts", "all"));
+  comparePath.forEach((code, index) => {
+    node.append(document.createTextNode(" / "));
+    const text = compareNamed(code);
+    node.append(index === comparePath.length - 1 ? compareHere(text) : compareCrumbButton(text, code));
+  });
+}
+
+function paintCompareBoard(codes, districts, medianKey, clickable) {
+  const max = compareScale(codes, districts);
+  const median = compareShown().medians[medianKey];
+  const grid = document.createElement("div");
+  grid.className = "grid";
+  const showMedian = median != null && max > 0;
+  const at = showMedian ? (median / max) * 100 : 0;
+  for (const district of districts) {
+    const name = document.createElement("a");
+    name.className = "name";
+    name.href = link({
+      county: comparePack.county,
+      aun: district.aun,
+      compare: "",
+      categoryAll: true,
+      status: ["open"],
+      tab: "overview",
+      schools: "enrollment",
+      sort: "name",
+      dir: "asc",
+    });
+    name.textContent = district.name;
+    const track = document.createElement("div");
+    track.className = "track";
+    if (showMedian) {
+      const mark = document.createElement("i");
+      mark.className = "mark";
+      mark.style.left = `${at}%`;
+      mark.setAttribute("aria-hidden", "true");
+      track.append(mark);
+    }
+    const value = document.createElement("p");
+    value.className = "value";
+    if (!district.published) {
+      value.classList.add("quiet");
+      value.textContent = "Not published";
+    } else {
+      const stack = compareStack(district, codes);
+      if (stack == null) {
+        value.classList.add("quiet");
+        value.textContent = "—";
+      } else {
+        for (const code of codes) {
+          const level = district.levels[code];
+          if (!level || !(level.amount > 0)) continue;
+          track.append(compareSegment(district, code, level.amount / district.enrolled / max * 100, clickable));
+        }
+        value.textContent = compareMoney(stack / district.enrolled);
+      }
+    }
+    grid.append(name, track, value);
+  }
+  if (showMedian) {
+    const note = document.createElement("div");
+    note.className = "median-note";
+    note.style.gridColumn = "2";
+    const label = document.createElement("span");
+    label.textContent = `median ${compareMoney(median)}`;
+    label.style.left = `${at}%`;
+    label.style.transform = at > 82 ? "translateX(-100%)" : at < 12 ? "none" : "translateX(-50%)";
+    note.append(label);
+    grid.append(note);
+  }
+  const board = app.querySelector("#compare-board");
+  board.replaceChildren(grid);
+  const account = comparePath.length ? compareNamed(comparePath.at(-1)) : "the general-fund total";
+  board.setAttribute("aria-label", `${comparePack.county} County, ${compareShown().yearLabel}, ${account}.`);
+}
+
+function compareSegment(district, code, width, clickable) {
+  const node = document.createElement(clickable ? "button" : "div");
+  node.className = "seg";
+  if (clickable) node.type = "button";
+  else node.tabIndex = 0;
+  node.dataset.code = code;
+  node.dataset.aun = district.aun;
+  node.style.flex = `0 0 ${width}%`;
+  node.style.background = compareColor(code);
+  const level = district.levels[code];
+  node.setAttribute("aria-label", `${compareNamed(code)}, ${compareMoneyPer(level.perStudent)} per student, ${district.name}`);
+  return node;
+}
+
+function compareScale(codes, districts) {
+  let max = 0;
+  for (const district of districts) {
+    if (!district.published) continue;
+    const amount = compareStack(district, codes);
+    if (amount == null || !(district.enrolled > 0)) continue;
+    max = Math.max(max, amount / district.enrolled);
+  }
+  return max;
+}
+
+function compareStack(district, codes) {
+  let amount = 0;
+  let any = false;
+  for (const code of codes) {
+    const level = district.levels?.[code];
+    if (!level) continue;
+    any = true;
+    amount += level.amount;
+  }
+  return any ? amount : null;
+}
+
+function compareMajorCodes() {
+  const shown = compareShown();
+  return shown.majors.map((item) => item.code).filter((code) => shown.nodes[code]);
+}
+
+function compareAncestors(code) {
+  const chain = [];
+  let cursor = code;
+  const nodes = compareShown().nodes;
+  while (cursor) {
+    chain.unshift(cursor);
+    cursor = nodes[cursor]?.parent || null;
+  }
+  return chain;
+}
+
+function compareIsMajor(code) {
+  return compareShown().majors.some((item) => item.code === code);
+}
+
+function compareNamed(code) {
+  return `${code} ${compareShown().nodes[code]?.label || code}`;
+}
+
+function compareColor(code) {
+  const shown = compareShown();
+  const major = compareIsMajor(code) ? code : `${code[0]}000`;
+  const base = shown.majors.find((item) => item.code === major)?.color || "#5e574c";
+  if (compareIsMajor(code)) return base;
+  const siblings = shown.nodes[shown.nodes[code].parent]?.children || [];
+  const index = Math.max(0, siblings.indexOf(code));
+  if (siblings.length <= 1) return base;
+  return mixHex(base, "#fffdf8", (index / (siblings.length - 1)) * 0.55);
+}
+
+function compareCrumbButton(text, back) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset.back = back;
+  button.textContent = text;
+  return button;
+}
+
+function compareHere(text) {
+  const node = document.createElement("span");
+  node.className = "here";
+  node.textContent = text;
+  return node;
+}
+
+function paintCompareSources() {
+  const shown = compareShown();
+  const sources = app.querySelector("#compare-sources");
+  sources.replaceChildren(document.createTextNode(shown.note));
+  if (shown.source?.url) {
+    const anchor = document.createElement("a");
+    anchor.href = shown.source.url;
+    anchor.className = "site-link";
+    anchor.textContent = `${shown.sourceLabel} ${shown.yearLabel}`;
+    sources.append(anchor, document.createTextNode(". "));
+  }
+  if (shown.enrollment?.url) {
+    const anchor = document.createElement("a");
+    anchor.href = shown.enrollment.url;
+    anchor.className = "site-link";
+    anchor.textContent = `October 1 enrollment ${shown.yearLabel}`;
+    sources.append(anchor, document.createTextNode("."));
+  }
+}
+
+function showCompareTip(seg, x, y) {
+  const district = compareShown().districts.find((item) => item.aun === seg.dataset.aun);
+  const level = district?.levels?.[seg.dataset.code];
+  if (!district || !level) return;
+  const shown = compareShown();
+  tip.hidden = false;
+  tip.innerHTML = `<div class="tip-title">${escapeHtml(compareNamed(seg.dataset.code))}</div>`
+    + `<div>${escapeHtml(compareMoneyPer(level.perStudent))} per student</div>`
+    + `<div>${escapeHtml(moneyFull(level.amount))}</div>`
+    + `<div>${escapeHtml(count(district.enrolled))} students on October 1</div>`
+    + `<div class="tip-muted">${escapeHtml(shown.sourceLabel)} ${escapeHtml(shown.yearLabel)}</div>`;
+  placeCompareTip(x, y);
+}
+
+function placeCompareTip(x, y) {
+  const pad = 12;
+  tip.style.left = "0px";
+  tip.style.top = "0px";
+  const rect = tip.getBoundingClientRect();
+  let left = x + 14;
+  let top = y - rect.height - 10;
+  if (top < pad) top = y + 16;
+  if (left + rect.width > window.innerWidth - pad) left = x - rect.width - 14;
+  tip.style.left = `${Math.max(pad, left)}px`;
+  tip.style.top = `${Math.max(pad, top)}px`;
+}
+
+function compareMoneyPer(value) {
+  const amount = Number(value);
+  if (amount > 0 && amount < 0.5) return "under $1";
+  return compareMoney(amount);
+}
+
+function compareMoney(value) {
+  const amount = Math.round(Number(value));
+  const sign = amount < 0 ? "−" : "";
+  return `${sign}$${Math.abs(amount).toLocaleString("en-US")}`;
+}
+
 function homeHtml() {
   return `<h1>Counties</h1>
     <p class="lede">October 1 enrollment for ${yearLabel(catalog.enrollmentYear)}, general fund actuals for ${yearLabel(catalog.actualYear)}, and adopted budgets for ${yearLabel(catalog.budgetYear)}.</p>
@@ -4639,8 +5125,10 @@ function homeHtml() {
     <div id="results"></div>`;
 }
 
-function countyHtml(state) {
-  return `<h1>${escapeHtml(state.county)}</h1>
+function countyHtml() {
+  return `<h1 id="county-title"></h1>
+    <div id="comparisons"></div>
+    <h2 class="section-title">LEAs</h2>
     <p class="lede" id="count"></p>
     ${filterHtml("Filter LEAs in this county")}
     <div class="toolbar"><div class="sorts">
@@ -4767,6 +5255,7 @@ function escapeAttr(value) {
 }
 
 async function render() {
+  hideTip();
   applyFeedbackLinks(buildStamp);
   const state = readState();
   if (!catalog) catalog = await loadJson("data/index.json");
@@ -4785,9 +5274,12 @@ async function render() {
     if (!state.county) state.county = leaPack.county;
     if (ensure("lea", leaHtml())) bindLea();
     paintLea(readState());
+  } else if (state.county && state.compare) {
+    leaPack = null;
+    await renderComparison(state);
   } else if (state.county) {
     leaPack = null;
-    if (ensure("county", countyHtml(state))) bindCounty();
+    if (ensure("county", countyHtml())) bindCounty();
     paintCounty(readState());
   } else {
     leaPack = null;

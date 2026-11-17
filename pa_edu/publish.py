@@ -1,7 +1,8 @@
 """Write the static LEA browser for https://pdenumbers.org.
 
 `python -m pa_edu.publish` reads `data/refined/*.parquet` and writes `pde_site/`.
-LEA JSON is stored gzipped (`index.json.gz`, `lea/<aun>.json.gz`). nginx
+LEA JSON is stored gzipped (`index.json.gz`, `lea/<aun>.json.gz`). County
+comparisons are `data/compare/<county>/<id>.json.gz`. nginx
 `gzip_static` serves those for the `.json` URLs. Jenkins builds that directory
 into an image, pushes it, and replaces the container on docker09. The download
 portal is `pde_site/download/`. Its DuckDB views read the Parquet already
@@ -26,11 +27,13 @@ import pandas as pd
 import requests
 
 from pa_edu.common import DATA_DIR, ROOT
+from pa_edu.compare import build_compare, comparison_catalog, comparison_counties
 from pa_edu.portal import (
     DUCKDB_NAME,
     PUBLIC_TABLE_ROOT,
     assessment_school_select,
     build_portal,
+    county_slug,
     load_views,
     write_duckdb,
 )
@@ -264,6 +267,7 @@ def main() -> None:
         shutil.rmtree(OUT)
     data_dir = OUT / "data" / "lea"
     data_dir.mkdir(parents=True)
+    catalog["comparisons"] = _publish_comparisons(REFINED)
     for name in ("index.html", "app.css", "app.js", "stamp.js"):
         shutil.copyfile(WEB / name, OUT / name)
 
@@ -412,6 +416,22 @@ def _git(*args: str) -> str:
 
 # Level 1. nginx gzip_static serves the body; the higher levels dominated publish.
 JSON_GZIP_LEVEL = 1
+
+
+def _publish_comparisons(refined: Path) -> list[dict]:
+    """One gzipped JSON per county for each comparison the county page lists."""
+    catalog = comparison_catalog()
+    for county in comparison_counties(refined):
+        payload = build_compare(refined, county)
+        folder = OUT / "data" / "compare" / county_slug(county)
+        folder.mkdir(parents=True, exist_ok=True)
+        _write_json(folder / f"{payload['id']}.json", payload)
+        published = sum(1 for district in payload["views"][0]["districts"] if district["published"])
+        print(
+            f"compare {county}: {published} of {len(payload['views'][0]['districts'])} LEAs",
+            flush=True,
+        )
+    return catalog
 
 
 def _write_json(path: Path, payload: dict) -> None:
