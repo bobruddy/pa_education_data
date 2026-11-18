@@ -5293,6 +5293,7 @@ async function render() {
 const ABOUT_SEEN = "pde-about-seen";
 const ABOUT_DAYS = 30 * 24 * 60 * 60 * 1000;
 const about = document.querySelector("#about");
+const sources = document.querySelector("#sources");
 
 function aboutDue() {
   try {
@@ -5313,20 +5314,32 @@ function rememberAbout() {
   }
 }
 
+function openDialog(dialog) {
+  if (!dialog.open) dialog.showModal();
+}
+
 function openAbout() {
-  if (!about.open) about.showModal();
+  openDialog(about);
+}
+
+function bindDialog(dialog) {
+  dialog.querySelector(".about-close").addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (event) => {
+    const box = dialog.getBoundingClientRect();
+    const inside = event.clientX >= box.left && event.clientX <= box.right
+      && event.clientY >= box.top && event.clientY <= box.bottom;
+    if (!inside) dialog.close();
+  });
 }
 
 document.querySelectorAll("[data-about-open]").forEach((button) => {
   button.addEventListener("click", openAbout);
 });
-about.querySelector(".about-close").addEventListener("click", () => about.close());
-about.addEventListener("click", (event) => {
-  const box = about.getBoundingClientRect();
-  const inside = event.clientX >= box.left && event.clientX <= box.right
-    && event.clientY >= box.top && event.clientY <= box.bottom;
-  if (!inside) about.close();
+document.querySelectorAll("[data-sources-open]").forEach((button) => {
+  button.addEventListener("click", () => openDialog(sources));
 });
+bindDialog(about);
+bindDialog(sources);
 about.addEventListener("close", rememberAbout);
 
 document.querySelector("#share").addEventListener("click", share);

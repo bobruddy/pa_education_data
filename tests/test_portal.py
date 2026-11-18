@@ -30,6 +30,20 @@ def test_county_slug_is_a_file_name() -> None:
     assert county_slug("Adams") == "adams"
 
 
+def test_data_sources_control_sits_left_of_about() -> None:
+    root = Path(__file__).resolve().parents[1]
+    html = (root / "pa_edu" / "web" / "index.html").read_text(encoding="utf-8")
+    script = (root / "pa_edu" / "web" / "app.js").read_text(encoding="utf-8")
+    header, _, rest = html.partition("</header>")
+    assert header.index("data-sources-open") < header.index("data-about-open")
+    footer = rest[rest.index('class="site-foot"') :]
+    assert footer.index("data-sources-open") < footer.index("data-about-open")
+    assert 'id="sources"' in html
+    assert 'href="https://www.pa.gov/agencies/education"' in html
+    assert 'href="https://www.census.gov/"' in html
+    assert "data-sources-open" in script
+
+
 def test_about_control_opens_from_the_header_and_footer() -> None:
     root = Path(__file__).resolve().parents[1]
     html = (root / "pa_edu" / "web" / "index.html").read_text(encoding="utf-8")

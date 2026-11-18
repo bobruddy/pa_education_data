@@ -110,6 +110,7 @@ a:hover { color: #083f3b; }
   background: var(--card);
   color: var(--ink);
   box-shadow: 0 10px 30px rgba(28, 25, 21, 0.22);
+  overflow: auto;
 }
 .about::backdrop { background: rgba(28, 25, 21, 0.45); }
 .about h2 {

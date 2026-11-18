@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pennsylvania education numbers</title>
 <link rel="icon" href="favicon.svg?v=20261117g" type="image/svg+xml">
-<link rel="stylesheet" href="app.css?v=20261117f">
+<link rel="stylesheet" href="app.css?v=20261117h">
 </head>
 <body>
 <a class="skip" href="#app">Skip to content</a>
@@ -21,6 +21,7 @@
       </a>
       <p class="brand-note">Not affiliated with or funded by the Commonwealth of Pennsylvania.</p>
     </div>
+    <button type="button" class="nav-link" data-sources-open>Data Sources</button>
     <button type="button" class="nav-link" data-about-open>About</button>
     <a class="nav-link site-link" href="download/">Downloads</a>
     <button type="button" id="share" class="share" aria-label="Copy link to this view">
@@ -50,7 +51,7 @@
         <a class="feedback" data-template="03-site-bug.yml" data-page-field="url" href="https://github.com/bobruddy/pa_education_data/issues/new?template=03-site-bug.yml">site bug</a>.
         A free GitHub account is required.
       </p>
-      <p><button type="button" class="foot-link" data-about-open>About</button> · <a class="site-link" href="download/">Download the tables</a></p>
+      <p><button type="button" class="foot-link" data-sources-open>Data Sources</button> · <button type="button" class="foot-link" data-about-open>About</button> · <a class="site-link" href="download/">Download the tables</a></p>
     </div>
     <p class="site-stamp" id="build-stamp" hidden>
       <span>Commit <a href="https://github.com/bobruddy/pa_education_data"></a></span>
@@ -61,6 +62,18 @@
 </footer>
 <div id="toast" role="status" aria-live="polite"></div>
 <div id="tip" role="tooltip" hidden></div>
+<dialog id="sources" class="about" aria-labelledby="sources-title">
+  <button type="button" class="about-close" aria-label="Close">×</button>
+  <h2 id="sources-title">Data Sources</h2>
+  <h3>Public government files</h3>
+  <p>This site reports figures that official government agencies have already published.</p>
+  <p><a href="https://www.pa.gov/agencies/education" target="_blank" rel="noopener">Pennsylvania Department of Education</a></p>
+  <p><a href="https://www.census.gov/" target="_blank" rel="noopener">U.S. Census Bureau</a></p>
+  <h3>What a conclusion can rest on</h3>
+  <p>A conclusion drawn from these pages is only as good as the data quality in those sources.</p>
+  <h3>Why a district's own release can differ</h3>
+  <p>A figure here can differ slightly from a number a local education agency distributes about itself. That difference comes from timing, or from more detailed records the district has about its own numbers. PDE collects reports from every LEA and resolves data issues before it publishes a statewide package. Districts can release their own figures sooner, while that public file is still being assembled.</p>
+</dialog>
 <dialog id="about" class="about" aria-labelledby="about-title">
   <button type="button" class="about-close" aria-label="Close">×</button>
   <h2 id="about-title">About</h2>
@@ -76,6 +89,6 @@
   <p>I am a parent and community member, passionate about public education. I spent 28 years in technology infrastructure, most recently in data engineering.</p>
   <p class="about-sign">Robert Ruddy</p>
 </dialog>
-<script type="module" src="app.js?v=20261117e"></script>
+<script type="module" src="app.js?v=20261117f"></script>
 </body>
 </html>
